@@ -3,6 +3,25 @@
 lng1=cs
 lng2=en
 
+# STEP 0 apply opuscleaner
+raw_data="data/raw"
+clean_dest="data/clean"
+for pipeline in ${raw_data}/*.filters.json; do
+
+  prefix=$(basename $pipeline)
+  prefix=${prefix/%.filters.json/}
+
+  (opuscleaner-clean $pipeline --parallel 8) > \
+    >(
+      tee \
+        >(cut -f1 | pigz >${clean_dest}/${prefix}.$lng1.gz) \
+        >(cut -f2 | pigz >${clean_dest}/${prefix}.$lng2.gz) \
+        >/dev/null
+    ) \
+    2> >(tee ${clean_dest}/${prefix}.log >&2)
+
+done
+
 # STEP 1 generate vocab(s)
 PREFIX="--model_prefix=model.${lng1}-${lng2}"
 VOCAB_SIZE=32000
