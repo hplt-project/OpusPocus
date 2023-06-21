@@ -5,7 +5,7 @@ import argparse
 import sys
 
 
-def make_hashes(sample):
+def make_hashes(line):
     src, tgt = line.rstrip("\r").split("\t", 2)
     # maybe we want to translate(str.maketrans("", "", string.punctuation))
     return src.strip().lower(), tgt.strip().lower()
@@ -20,8 +20,8 @@ def main(args):
     for testfile in args.testfiles:
         for line in testfile:
             src, tgt = make_hashes(line)
-            src_test_samples.add(make_hash(src))
-            tgt_test_samples.add(make_hash(tgt))
+            src_test_samples.add(src)
+            tgt_test_samples.add(tgt)
 
     for i, line in enumerate(sys.stdin):
         src, tgt = make_hashes(line)
