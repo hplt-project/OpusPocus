@@ -1,0 +1,18 @@
+datasets:
+  auth_clean: data/clean
+  synth: data/synt
+
+stages:
+  - main
+
+main:
+  - auth_clean 0.5
+  - synth 0.5
+  - until auth_clean inf # until 5 epochs of auth_clean were seen
+
+modifiers:
+- UpperCase: 0.01
+- TitleCase: 0.01
+# - Misspelling: ?
+
+seed: 1111
