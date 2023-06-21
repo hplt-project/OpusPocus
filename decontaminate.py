@@ -15,6 +15,7 @@ def main(args):
 
     src_test_samples = set()
     tgt_test_samples = set()
+    removed = 0
 
     for testfile in args.testfiles:
         for line in testfile:
@@ -22,13 +23,16 @@ def main(args):
             src_test_samples.add(make_hash(src))
             tgt_test_samples.add(make_hash(tgt))
 
-    for line in sys.stdin:
+    for i, line in enumerate(sys.stdin):
         src, tgt = make_hashes(line)
         if src in src_test_samples or tgt in tgt_test_samples:
             if len(src) + len(tgt) > 2 * args.min_length:
+                removed += 1
                 continue
 
         print(line)
+
+    print(f"Removed {removed} lines out of {i}", file=sys.stderr)
 
 
 if __name__ == "__main__":
