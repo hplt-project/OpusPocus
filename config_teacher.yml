@@ -1,0 +1,34 @@
+datasets:
+  auth_clean: data/clean
+  synth: data/synt
+  auth_crawl: data/crawled
+
+stages:
+  - start
+  - mid
+  - end
+
+start:
+  - auth_clean 0.8
+  - synth 0.2
+  - auth_crawl 0
+  - until auth_clean 5 # until 5 epochs of auth_clean were seen
+
+mid:
+  - auth_clean 0.6
+  - synth 0.3
+  - auth_crawl 0.1
+  - until synth 3  # until 3 epochs of synth were seen (equiv to ~6epochs of auth_clean)
+
+end:
+  - auth_clean 0.4
+  - synth 0.3
+  - auth_crawl 0.3
+  - until auth_crawl inf # keep going until stopping crit
+
+modifiers:
+- UpperCase: 0.01
+- TitleCase: 0.01
+# - Misspelling: ?
+
+seed: 1111
