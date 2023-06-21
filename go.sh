@@ -42,11 +42,11 @@ for pipeline in ${raw_data}/*.filters.json; do
   # Compute hashes of source and target of dev/test set.
   # If _either_ matches the line in the training data matches, omit it
   pigz -dc \
-    ${clean_dest}/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz | decontaminate.py \
-    --to-remove \
-    data/dev/dev.${lng1}-${lng2}.tsv \
-    data/dev/devtest.${lng1}-${lng2}.tsv |
-    pigz ${clean_dest}/para/${prefix}.$lng1-$lng2.tsv.gz
+    ${clean_dest}/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz | \
+      decontaminate.py --min-length 25 \
+                       data/dev/dev.${lng1}-${lng2}.tsv \
+                       data/dev/devtest.${lng1}-${lng2}.tsv | \
+      pigz ${clean_dest}/para/${prefix}.$lng1-$lng2.tsv.gz
 
 done
 
