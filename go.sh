@@ -98,10 +98,13 @@ for ln in $lng1 $lng2; do
     pigz ${clean_dest}/mono.$lng1-$lng2.tsv.gz
 done
 
-# STEP 2 train model in direction lng1 -> lng2
+# STEP 2 Train models for iterative backtranslation
+# Generate iterative translated mono text
+# Note: We do not use these BT-models for the teacher because they only see
+# clean parallel authentic data, and parallel from synthetic mono text
 bts=5
-for bt_iteration in {1..bts}; do
-  if [ src = lng1 ]; then tgt=lng2; else tgt=lng1; fi
+for bt_iteration in {1..$bts}; do
+  if [ $src = $lng1 ]; then tgt=$lng2; else tgt=$lng1; fi
 
   seed=1
 
@@ -139,21 +142,26 @@ for bt_iteration in {1..bts}; do
       >/dev/null
 
   # switch src and tgt, continue
-  src=tgt
+  src=$tgt
 done
 
-for src in lng1 lng2; do
-  if [ src = lng1 ]; then tgt=lng2; else tgt=lng1; fi
+
+# Recycle BT-models for distillation to bitext students
+
+
+
+for src in $lng1 $lng2; do
+  if [ $src = $lng1 ]; then tgt=$lng2; else tgt=$lng1; fi
 
   for seed in 7 222 1337 2131; do
     model_dir=model_${src}-${tgt}-${seed}
     mkdir -p model_dir
 
-    marian -c config.yml \
-      --seed $seed \
-      --train-sets=data/train.{$src,$tgt}.txt \
-      --valid-sets=data/dev.{$src,$tgt}.txt \
-      --model $model_dir/model.npz \
-      --num_devices 8
+    opustrainer -c config_teacher.yml marian
+    # config_teacher.yml will specify a training schedule of
+    # auth_clean
+    # synth
+    # auth_crawl (our new data [ + some old data? ])
+
   done
 done
