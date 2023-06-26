@@ -25,10 +25,10 @@ def main(args):
     for testfile in args.testfiles:
         for line in testfile:
             src, tgt = make_hashes(line)
-            if src in src_test_samples:
-                print(f"'{src}' already appears on source-side", file=sys.stderr)
-            if tgt in tgt_test_samples:
-                print(f"'{tgt}' already appears on target-side", file=sys.stderr)
+            # if src in src_test_samples:
+            #     print(f"'{src}' already appears on source-side", file=sys.stderr)
+            # if tgt in tgt_test_samples:
+            #     print(f"'{tgt}' already appears on target-side", file=sys.stderr)
 
             src_test_samples[src] = Counter()
             tgt_test_samples[tgt] = Counter()
