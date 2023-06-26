@@ -1,12 +1,12 @@
 #!/bin/bash
 
-set -eo pipefail
+set -euo pipefail
 
 # Requirements:
 #  - We need to keep in TSV format for OpusTrainer
 
-lng1=cs
-lng2=en
+lng1=en
+lng2=uk
 
 # Requires:
 # 1. Already have written filters for your downloaded datastes through opuscleaner
@@ -28,25 +28,25 @@ get_seeded_random() {
 # STEP 0 apply opuscleaner
 raw_data="data/raw"
 clean_dest="data/clean"
-mkdir -p ${clean_dest}
+mkdir -p ${clean_dest}/para
 for pipeline in ${raw_data}/*.filters.json; do
 
   prefix=$(basename $pipeline)
   prefix=${prefix/%.filters.json/}
 
-  (opuscleaner-clean $pipeline --parallel 8) > \
-    >(pigz >${clean_dest}/para/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz) \
-    2> >(tee ${clean_dest}/para/${prefix}.$lng1-$lng2.log >&2)
+  (opuscleaner-clean $pipeline --parallel 8 2> >(tee ${clean_dest}/para/${prefix}.$lng1-$lng2.log >&2)) | \
+    pigz -c >${clean_dest}/para/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz
+
 
   # REMOVE DEV/TEST FROM THESE OUTPUTS
   # Compute hashes of source and target of dev/test set.
   # If _either_ matches the line in the training data matches, omit it
   pigz -dc \
-    ${clean_dest}/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz | \
+    ${clean_dest}/para/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz | \
       decontaminate.py --min-length 25 \
                        data/dev/dev.${lng1}-${lng2}.tsv \
                        data/dev/devtest.${lng1}-${lng2}.tsv | \
-      pigz ${clean_dest}/para/${prefix}.$lng1-$lng2.tsv.gz
+      pigz -c > ${clean_dest}/para/${prefix}.$lng1-$lng2.tsv.gz
 
 done
 
