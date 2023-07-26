@@ -31,25 +31,25 @@ get_seeded_random() {
 # STEP 0 apply opuscleaner
 raw_data="data/train-parts"  # by default OpusCleaner downloads data to this dir
 clean_dest="data/clean"
-# mkdir -p ${clean_dest}/para
-# for pipeline in ${raw_data}/*.filters.json; do
+mkdir -p ${clean_dest}/para
+for pipeline in ${raw_data}/*.filters.json; do
 
-#   prefix=$(basename $pipeline)
-#   prefix=${prefix/%.filters.json/}
+  prefix=$(basename $pipeline)
+  prefix=${prefix/%.filters.json/}
 
-#   (opuscleaner-clean $pipeline --parallel 8 2> >(tee ${clean_dest}/para/${prefix}.log >&2)) | \
-#     pigz -c >${clean_dest}/para/opuscleaner.${prefix}.tsv.gz
+  (opuscleaner-clean $pipeline --parallel 8 2> >(tee ${clean_dest}/para/${prefix}.log >&2)) | \
+    pigz -c >${clean_dest}/para/opuscleaner.${prefix}.tsv.gz
 
-#   # REMOVE DEV/TEST FROM THESE OUTPUTS
-#   # Compute hashes of source and target of dev/test set.
-#   # If _either_ matches the line in the training data matches, omit it
-#   pigz -dc ${clean_dest}/para/opuscleaner.${prefix}.tsv.gz | \
-#     $basedir/decontaminate.py --min-length 25 \
-# 			      data/dev/dev.${lng1}-${lng2}.tsv \
-# 			      data/dev/devtest.${lng1}-${lng2}.tsv | \
-#     pigz -c > ${clean_dest}/para/${prefix}.tsv.gz
+  # REMOVE DEV/TEST FROM THESE OUTPUTS
+  # Compute hashes of source and target of dev/test set.
+  # If _either_ matches the line in the training data matches, omit it
+  pigz -dc ${clean_dest}/para/opuscleaner.${prefix}.tsv.gz | \
+    $basedir/decontaminate.py --min-length 25 \
+			      data/dev/dev.${lng1}-${lng2}.tsv \
+			      data/dev/devtest.${lng1}-${lng2}.tsv | \
+    pigz -c > ${clean_dest}/para/${prefix}.tsv.gz
 
-# done
+done
 
 # Get the prefixes for "clean" labelled datasets from opuscleaner
 mkdir -p data/train
