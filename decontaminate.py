@@ -61,7 +61,9 @@ def main(args):
                 if tgt in tgt_test_samples:
                     tgt_test_samples[tgt].kept += 1
                 retained+=1
-        print(line)
+
+        # We never stripped the original newline
+        print(line, end="")
 
     print(f"Removed {removed:,} lines out of {i:,}. Retained {retained:,} below length threshold", file=sys.stderr)
 

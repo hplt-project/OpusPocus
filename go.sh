@@ -4,9 +4,12 @@ set -euo pipefail
 
 # Requirements:
 #  - We need to keep in TSV format for OpusTrainer
+basedir=$(dirname "$0")
+marian_root=marian-dev
+spm_root=$marian_root/build-cpu
 
 lng1=en
-lng2=uk
+lng2=he
 
 # Requires:
 # 1. Already have written filters for your downloaded datastes through opuscleaner
@@ -26,64 +29,60 @@ get_seeded_random() {
 # 2. Extract dev/devtest _before_ cleaning, and tidy them into some "cleaner" dev/devtest
 
 # STEP 0 apply opuscleaner
-raw_data="data/raw"
+raw_data="data/train-parts"  # by default OpusCleaner downloads data to this dir
 clean_dest="data/clean"
-mkdir -p ${clean_dest}/para
-for pipeline in ${raw_data}/*.filters.json; do
+# mkdir -p ${clean_dest}/para
+# for pipeline in ${raw_data}/*.filters.json; do
 
-  prefix=$(basename $pipeline)
-  prefix=${prefix/%.filters.json/}
+#   prefix=$(basename $pipeline)
+#   prefix=${prefix/%.filters.json/}
 
-  (opuscleaner-clean $pipeline --parallel 8 2> >(tee ${clean_dest}/para/${prefix}.$lng1-$lng2.log >&2)) | \
-    pigz -c >${clean_dest}/para/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz
+#   (opuscleaner-clean $pipeline --parallel 8 2> >(tee ${clean_dest}/para/${prefix}.log >&2)) | \
+#     pigz -c >${clean_dest}/para/opuscleaner.${prefix}.tsv.gz
 
+#   # REMOVE DEV/TEST FROM THESE OUTPUTS
+#   # Compute hashes of source and target of dev/test set.
+#   # If _either_ matches the line in the training data matches, omit it
+#   pigz -dc ${clean_dest}/para/opuscleaner.${prefix}.tsv.gz | \
+#     $basedir/decontaminate.py --min-length 25 \
+# 			      data/dev/dev.${lng1}-${lng2}.tsv \
+# 			      data/dev/devtest.${lng1}-${lng2}.tsv | \
+#     pigz -c > ${clean_dest}/para/${prefix}.tsv.gz
 
-  # REMOVE DEV/TEST FROM THESE OUTPUTS
-  # Compute hashes of source and target of dev/test set.
-  # If _either_ matches the line in the training data matches, omit it
-  pigz -dc \
-    ${clean_dest}/para/opuscleaner.${prefix}.$lng1-$lng2.tsv.gz | \
-      decontaminate.py --min-length 25 \
-                       data/dev/dev.${lng1}-${lng2}.tsv \
-                       data/dev/devtest.${lng1}-${lng2}.tsv | \
-      pigz -c > ${clean_dest}/para/${prefix}.$lng1-$lng2.tsv.gz
-
-done
+# done
 
 # Get the prefixes for "clean" labelled datasets from opuscleaner
+mkdir -p data/train
 clean_ds=$(python -c "import json; ds=json.load(open('${raw_data}/categories.json'))['mapping']['clean']; print(' '.join(ds))")
-for ds_prefix in clean_ds; do
-  cat ${clean_dest}/para/${ds_prefix}.$lng1-$lng2.tsv.gz
+echo "Clean datasets: $clean_ds"
+for ds_prefix in $clean_ds; do
+  clean_ds_file="${clean_dest}/para/${ds_prefix}.tsv.gz"
+
+  if [ ! -e "$clean_ds_file" ]; then
+    echo "WARNING! Missing $clean_ds_file" >&2
+    continue
+  fi
+
+  echo "Adding $clean_ds_file to training data" >&2
+  cat $clean_ds_file
 done >data/train/clean.$lng1-$lng2.tsv.gz
 
 # STEP 1 generate vocab(s)
-PREFIX="--model_prefix=model.${lng1}-${lng2}"
-VOCAB_SIZE=32000
+spm_prefix="spm.${lng1}-${lng2}"
+# TODO if vocab size exceeds real vocab size, spm fails.
+spm_vocab_size=8000
 
-spm_train \
+$spm_root/spm_train \
   --bos_id=-1 \
   --eos_id=0 \
   --unk_id=1 \
-  ${PREFIX} \
-  --vocab_size=${VOCAB_SIZE} \
-  --input=<(sed 's/\t/\n/g' <data/train/clean.$lng1-$lng2.tsv.gz) \
+  --model_prefix=${spm_prefix} \
+  --vocab_size=${spm_vocab_size} \
+  --input=<(pigz -cd data/train/clean.$lng1-$lng2.tsv.gz | sed 's/\t/\n/') \
   --input_sentence_size=20000000 \
   --train_extremely_large_corpus \
   --byte_fallback
 
-# train_model() {
-#     seed=$1
-#     src_data=$2
-#     tgt_data=$3
-#     model_dir=$4
-
-#     marian -c config.yml \
-# 	   --seed $seed \
-# 	   --train-sets $src_data $tgt_data \
-# 	   --valid-sets data/dev.{$src,$tgt}.txt \
-# 	   --model $model_dir/model.npz \
-# 	   --num_devices 8
-# }
 
 # STEP 2.pre
 # When OpusCleaner supports mono-lingual, we should do cleaning here too
