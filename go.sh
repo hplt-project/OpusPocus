@@ -91,10 +91,9 @@ $spm_root/spm_train \
 for ln in $lng1 $lng2; do
   pigz -dc \
     data/raw/mono.$ln.txt.gz | decontaminate.py \
-    --to-remove \
-    data/dev/dev.${lng1}-${lng2}.tsv \
-    data/dev/devtest.${lng1}-${lng2}.tsv |
-    pigz ${clean_dest}/mono.$lng1-$lng2.tsv.gz
+				 data/dev/dev.${lng1}-${lng2}.tsv \
+				 data/dev/devtest.${lng1}-${lng2}.tsv |
+    pigz -c ${clean_dest}/mono.$lng1-$lng2.tsv.gz
 done
 
 # STEP 2 Train models for iterative backtranslation
