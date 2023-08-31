@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import argparse
 import sys
 
@@ -8,12 +7,13 @@ class Counter:
     kept = 0
     removed = 0
 
+def hash_mono(line):
+    return line.strip().lower()
 
 def make_hashes(line):
     src, tgt = line.split("\t", 2)
     # maybe we want to translate(str.maketrans("", "", string.punctuation))
-    return src.strip().lower(), tgt.strip().lower()
-
+    return hash_mono(src), hash_mono(tgt)
 
 def main(args):
 
@@ -34,33 +34,42 @@ def main(args):
             tgt_test_samples[tgt] = Counter()
 
     for i, line in enumerate(sys.stdin, 1):
-        src, tgt = make_hashes(line)
+        if args.mono:
+            src = hash_mono(line)
+            tgt = None
+        else:
+            src, tgt = make_hashes(line)
 
         # Seen
         src_seen, tgt_seen = False, False
         if src in src_test_samples:
             src_test_samples[src].seen += 1
             src_seen = True
-        if tgt in tgt_test_samples:
+        if not args.mono and tgt in tgt_test_samples:
             tgt_test_samples[tgt].seen +=1
             tgt_seen = True
 
         # Remove sentences which are present on either side of the devsets but
         # only if the average length is greater than min_length
         if src_seen or tgt_seen:
-            if len(src) + len(tgt) > 2 * args.min_length:
+            if args.mono:
+                limit = len(src) * 2
+            else:
+                limit = len(src) + len(tgt)
+
+            if limit > 2 * args.min_length:
                 if src in src_test_samples:
                     src_test_samples[src].removed += 1
-                if tgt in tgt_test_samples:
+                if not args.mono and tgt in tgt_test_samples:
                     tgt_test_samples[tgt].removed += 1
-                removed+=1
+                removed += 1
                 continue
             else:
                 if src in src_test_samples:
                     src_test_samples[src].kept += 1
-                if tgt in tgt_test_samples:
+                if not args.mono and tgt in tgt_test_samples:
                     tgt_test_samples[tgt].kept += 1
-                retained+=1
+                retained += 1
 
         # We never stripped the original newline
         print(line, end="")
@@ -94,6 +103,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("decontamination script")
     parser.add_argument("testfiles", nargs="+", type=argparse.FileType('r'))
     parser.add_argument("--min-length", required=False, type=int, default=0)
+    parser.add_argument("--mono", action="store_true")
     args = parser.parse_args()
 
     main(args)
