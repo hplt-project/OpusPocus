@@ -59,19 +59,42 @@ jid=$(sbatch \
     $SLURM_SCRIPTS/generate_vocab.sh \
 )
 slurm_deps="afterok:${jid}"
-
+next_slurm_deps=""
 
 ## 04 Start Training ##
 ## TODO: a loop submitting sbatch for each iter_bt iteration
+for i in `seq 0 1 $NUM_ITERATIONS`; do
+    # 04.1 Train
+    # Forward model
+    jid=$(sbatch \
+        --parsable \
+        --dependency=$slurm_deps \
+        --account=$project_$PROJECT_NUM \
+        --partition=small-g \
+        $SLURM_SCRIPTS/train_model.sh $i $SRC $TGT \
+    )
+    next_slurm_deps="afterok:${jid}"
 
-# 04.1 Train
-# - Validate
+    # Backward model
+    jid=$(sbatch \
+        --parsable \
+        --dependency=$slurm_deps \
+        --account=$project_$PROJECT_NUM \
+        --partition=small-g \
+        $SLURM_SCRIPTS/train_model.sh $i $TGT $SRC \
+    )
+    next_slurm_deps="$next_slurm_deps,afterok:${jid}"
 
-# 04.2 Split-mono + Backtranslation + Merge
+    slurm_deps=$next_slurm_deps
+    next_slurm_deps=""
 
-# 04.3 Clean Backtranlation
+    # - Validate
 
+    # 04.2 Split-mono + Backtranslation + Merge
+
+    # 04.3 Clean Backtranlation
+
+done
 
 ## (TODO) 05 Train students ##
 
-wait

@@ -6,7 +6,7 @@ ROOT_DIR=$(pwd)
 SEED=42
 
 # TOOLS
-OPUS_ENV="/project/project_462000067/software/opus-env"
+OPUS_ENV="/project/project_465000574/software/opus-env"
 #[[ ! -d $OPUS_ENV ]] && bash /project/project_462000067/src/opus-env/build.sh
 export PATH="$OPUS_ENV/bin:$PATH"
 MARIAN_DIR="/project/project_465000574/software/marian-320dd390"
@@ -15,7 +15,7 @@ SLURM_SCRIPTS="$ROOT_DIR/scripts/slurm"  # HPC-specific processing step scripts
 
 
 # VARIABLES AND PATHS
-PROJECT_NUM="462000067"
+PROJECT_NUM="462000252"
 
 # Directories
 LP="${SRC}-${TGT}"
@@ -36,4 +36,5 @@ TEST_DIR="$EXP_DIR/data/test"
 MODEL_DIR="$EXP_DIR/model"
 
 # Marian
+MODEL="base"
 VOCAB_SIZE=64000
