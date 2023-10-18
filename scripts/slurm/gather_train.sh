@@ -5,10 +5,17 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=1G
 #SBATCH --partition=small
+#SBATCH -o logs/gather_train.%j.log
+#SBATCH -e logs/gather_train.%j.log
 # Gather the individual datasets into training groups based
 # on the opuscleaner categories
 # TODO: logging
 set -euo pipefail
+
+export SRC=${1:-en}
+export TGT=${2:-he}
+export EXP_NAME=${3:-debug}
+
 . config/pipeline.config.sh
 . config/pipeline.functions.sh
 

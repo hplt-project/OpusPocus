@@ -5,12 +5,19 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=20G
 #SBATCH --partition=small
+#SBATCH -o logs/generate_vocab.%j.log
+#SBATCH -e logs/generate_vocab.%j.log
 # TODO: logging (logfiles - maybe in the ``pipeline'' script?)
 set -euo pipefail
+
+export SRC=${1:-en}
+export TGT=${2:-he}
+export EXP_NAME=${3:-debug}
+
 . config/pipeline.config.sh
 . config/pipeline.functions.sh
 
-srun $MARIAN_DIR/bin/spm_train \
+$MARIAN_DIR/bin/spm_train \
     --random_seed=$SEED \
     --bos_id=-1 \
     --eos_id=0 \
@@ -22,11 +29,10 @@ srun $MARIAN_DIR/bin/spm_train \
     --train_extremely_large_corpus \
     --byte_fallback \
     --num_threads $SLURM_CPUS_PER_TASK \
-wait
 
-mv model.$SRC-$TGT.model $MODEL_DIR/model.$SRC-$TGT.model
+mv model.$SRC-$TGT.model $MODEL_DIR/model.$SRC-$TGT.spm
 mv model.$SRC-$TGT.vocab $MODEL_DIR/model.$SRC-$TGT.vocab
 
 # Create links for the backtranslation
-ln -s $MODEL_DIR/model.$SRC-$TGT.model $MODEL_DIR/model.$TGT-$SRC.model
-ln -s $MODEL_DIR/model.$SRC-$TGT.vocab $MODEL_DIR/model.$TGT-$SRC.vocab
+ln -s model.$SRC-$TGT.spm $MODEL_DIR/model.$TGT-$SRC.spm
+ln -s model.$SRC-$TGT.vocab $MODEL_DIR/model.$TGT-$SRC.vocab
