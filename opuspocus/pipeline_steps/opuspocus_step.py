@@ -4,6 +4,9 @@ import logging
 import yaml
 from pathlib import Path
 
+from utils import print_indented
+from command_utils import build_subprocess
+
 
 STEP_STATES = ['INITED', 'RUNNING', 'FAILED', 'DONE']
 
@@ -13,12 +16,6 @@ logger = logging.getLogger(__name__)
 def get_hash():
     # TODO: proper hashing
     return 'debug'
-
-
-# TODO: instead of step parameter in __init__,
-# define a abstract step class attribute that is then extracted
-# to create the step->DerivedClassStep mapping for the create_step
-# method
 
 
 class OpusPocusStep(object):
@@ -35,51 +32,53 @@ class OpusPocusStep(object):
     def __init__(
         self,
         step,
-        pipeline_dir,
+        args,
         **kwargs
     ):
+        """
+        TODO: the derived classes should add attributes+logic for optional
+        step dependencies.
+        TODO: can we do it in a smarter way?
+        """
         self.step = step
-        self.pipeline_dir = pipeline_dir
-        for k, v in kwargs:
-            self.__dict__[k] = v
-
-        if not hasattr(self, 'pipeline_dir'):
-            self.pipeline_dir = Path(self.pipeline_dir)
-
-        if not hasattr(self, 'step_dir'):
-            self.step_dir = Path(self.pipeline_dir, self.step_name)
-
-        # init dependencies
-        #self.dependencies = self.build_dependencies(args)
-
+        self.pipeline_dir = args.pipeline_dir
+        self.dependencies = {}
         self.state = self.load_state()
-        if self.state is not None:
-            # Implies the existence of the step_dir
-            self.load_state()
 
     @classmethod
-    def build_step(cls, step, pipeline_dir, **kwargs):
+    def build_step(cls, step, args, **kwargs):
         """Build a specified step instance.
 
         Args:
             args (argparse.Namespace): parsed command-line arguments
         """
-        return cls(step, pipeline_dir, **kwargs)
+        return cls(step, args, **kwargs)
 
     @classmethod
     def load_variables(cls, step_name, pipeline_dir):
         """Load existing step."""
-
         vars_path = Path(pipeline_dir, step_name, cls.variables_file)
         logger.debug('Loading variables from {}'.format(vars_path))
         return yaml.load(open(vars_path, 'r'))
 
-    def build_dependencies(self):
-        raise NotImplementedError()
+    @classmethod
+    def load_dependencies(cls, step_name, pipeline_dir):
+        """Load step dependecies (directories)."""
+        deps_path = Path(pipeline_dir, step_name, cls.dependencies_file)
+        logger.debug('Loading dependencies from {}'.format(deps_path))
+        return yaml.load(open(deps_path, 'r'))
 
     @property
     def step_name(self):
+        """
+        We can have multiple instances of a step with different
+        parametrization. Must be implemented by the derived step classes.
+        """
         raise NotImplementedError()
+
+    @property
+    def step_dir(self):
+        return Path(self.pipeline_dir, self.step_name)
 
     def init_step(self):
         if self.state is not None:
@@ -91,29 +90,37 @@ class OpusPocusStep(object):
                     'Trying to initialize step in a {} state.'.format(self.state)
                 )
 
-        self.init_dependencies()
         self.create_step_dir()
+        self.init_dependencies()
+        #self._init_step()  # copying/linking files/dirs from dependencies
         self.save_variables()
+        self.save_dependencies()
         self.create_command()
 
         # initialize state
         logger.info('[{}.init] Step Initialized.'.format(self.step))
         self.set_state('INITED')
 
+    #def _add_dependency(self, key: str, val: OpusPocusStep):
+    #    if key in self.dependencies:
+    #        raise ValueError(
+    #            'Duplicate dependency {}: {}'.format(key, val.__name__)
+    #        )
+    #    self.dependencies[key] = val
+
     def init_dependencies(self):
         # TODO: improve the dependency representation and implement a
         # child-agnostic init deps method
-        logger.warn('init_dependencies() method is not currently implemented.')
-        pass
-        #raise NotImplementedError()
+        for dep in self.dependencies.values():
+            if not dep.has_state('INITED'):
+                dep.init_step()
 
     def save_dependencies(self):
-        logger.warn('save_dependencies() method is not currently implemented.')
-        pass
-
-    def load_dependencies(self):
-        logger.warn('load_dependencies() method is not currently implemented.')
-        pass
+        deps_dict = {k: v.step_name for k, v in self.dependencies.items()}
+        yaml.dump(
+            deps_dict,
+            open(Path(self.step_dir, self.dependencies_file), 'w')
+        )
 
     def create_step_dir(self):
         # create step dir
@@ -125,9 +132,7 @@ class OpusPocusStep(object):
             )
         self.step_dir.mkdir(parents=True)
 
-    def save_variables(self):
-        # TODO: do we use a different way for saving?
-        logger.debug('Saving step variables.')
+    def get_variables(self):
         vars_dict = {}
         for k, v in self.__dict__.items():
             # TODO: other variable exceptions
@@ -135,16 +140,27 @@ class OpusPocusStep(object):
                 continue
             if k == "state":
                 continue
-            if isinstance(v, OpusPocusStep):
-                # do not save dependency objects
+            if k == "dependencies":
                 continue
+            #if isinstance(v, OpusPocusStep):
+                # do not save dependency objects
+            #    continue
             if isinstance(v, Path):
                 v = str(v)
             vars_dict[k] = v
-        yaml.dump(vars_dict, open(Path(self.step_dir, self.variables_file), 'w'))
+        return vars_dict
+
+    def save_variables(self):
+        # TODO: do we use a different way for saving?
+        logger.debug('Saving step variables.')
+        yaml.dump(
+            self.get_variables(),
+            open(Path(self.step_dir, self.variables_file), 'w')
+        )
 
     def create_command(self):
         # TODO: add start-end command boilerplate, slurm-related (or other)
+
         cmd_path = Path(self.step_dir, self.command_file)
         if cmd_path.exists():
             raise ValueError('File {} already exists.'.format(cmd_path))
@@ -155,21 +171,58 @@ class OpusPocusStep(object):
     def get_command_str(self):
         raise NotImplementedError()
 
-    def run_step(cls):
+    def run_step(self, args):
         # TODO: logic for rerunning/overriding failed/running steps
-        if not self.has_state('INITED'):
+        if self.has_state('RUNNING'):
+            jobid = open(Path(self._step_dir, self.jobid_file), 'r').readline().strip()
+            return jobid
+        elif self.has_state('DONE'):
+            logger.info(
+                'Step {} already finished. Skipping...'.format(self.stepstep_name)
+            )
+            return None
+        elif self.has_state('FAILED'):
+            return self.retry_step(args)
+        elif (
+            not self.has_state('INITED')
+        ):
             raise ValueError(
                 'Cannot run step. Not in INITED state.'.format(self.step)
             )
-        import subprocess
+        # TODO: add rerun option for FAILED jobs
+
+        jid_deps = []
+        for dep in self.dependencies.values():
+            jid = dep.run_step(args)
+            if jid is not None:
+                jid_deps.append(jid)
+
         cmd_path = Path(self.step_dir, self.command_file)
-        subprocess.run(['bash', self.cmd_path])
+        sub = build_subprocess(cmd_path, args, jid_deps=jid_deps)
 
-    def traceback_step(cls):
-        pass
+        logger.info('Submitted {} job {}'.format(args.runner, sub['jobid']))
+        print(sub['jobid'], file=open(Path(self.step_dir, self.jobid_file), 'w'))
 
-    def init_dependencies(self):
-        pass
+        return sub['jobid']
+
+    def retry_step(self, args):
+        """
+        Try to recover from a failed state.
+
+        Default behavior is to change state and just rerun.
+        Derived class should override this method if necessary.
+        """
+        self.set_state('INITED')
+        sef.run_state(args)
+
+    def traceback_step(cls, level=0):
+        print_indented('+ {}'.format(step_name), level)
+        for k, v in self.get_variables():
+            print_indented('| {} = {}'.format(k, v))
+        for name, dep in self.dependencies.values():
+            print(print_indented('--| {}'.format(name)))
+            dep.traceback_step(level + 1)
+
 
     def load_state(self):
         state_file = Path(self.step_dir, self.state_file)

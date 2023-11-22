@@ -12,13 +12,11 @@ class DebugStep(OpusPocusStep):
     def __init__(
         self,
         step,
-        pipeline_dir,
-        seed,
-        text = "test",
+        args,
     ):
-        super().__init__(step, pipeline_dir)
-        self.seed = seed
-        self.text = text
+        super().__init__(step, args)
+        self.seed = args.seed
+        self.text = args.text
 
     def build_dependencies(self, args):
         return {}

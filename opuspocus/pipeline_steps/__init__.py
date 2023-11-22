@@ -3,6 +3,8 @@ import importlib
 from pathlib import Path
 
 from .opuspocus_step import OpusPocusStep
+from utils import update_args
+
 
 STEP_REGISTRY = {}
 STEP_INSTANCE_REGISTRY = {}
@@ -16,20 +18,33 @@ __all__ = [
 def build_step(step, args, step_name: str = None, **kwargs):
     if step_name is not None and step_name in STEP_INSTANCE_REGISTRY:
         return STEP_INSTANCE_REGISTRY[step_name]
-    import pdb; pdb.set_trace()
+
     step_instance = STEP_REGISTRY[step].build_step(
-        step, args.pipeline_dir, **kwargs
+        step, args
     )
+
+    # sanity check (TODO: make this test into a warning)
+    if step_name is not None:
+        assert step_name == step_instance.step_name
+
     STEP_INSTANCE_REGISTRY[step_instance.step_name] = step_instance
     return step_instance
 
 
 def load_step(step_name, args):
-    step_vars = OpusPocusStep.load_variables(step_name, args)
+    # recursively load and instantiate the dependencies first
+    step_deps = OpusPocusStep.load_dependencies(step_name, args.pipeline_dir)
+    step_deps_inst = {}
+    for dep, dep_name in step_deps.items():
+        dep_inst = load_step(dep_name, args)
+        step_deps_inst[dep] = dep_inst
+
+    # now we load the current step
+    step_vars = OpusPocusStep.load_variables(step_name, args.pipeline_dir)
     step = step_vars['step']
     del step_vars['step']
-    print(step_vars)
-    return build_step(step, args, step_name, **step_vars)
+    step_args = update_args(args, step_vars)
+    return build_step(step, step_args, step_name, **step_deps_inst)
 
 
 def register_step(name):

@@ -4,6 +4,7 @@ import yaml
 from pathlib import Path
 
 from opuspocus.pipeline_steps import build_step, load_step
+from utils import update_args
 
 
 def build_pipeline(args):
@@ -21,9 +22,9 @@ def init_pipeline(pipeline, args):
         v.init_step()
 
 
-def run_pipeline(pipeline):
+def run_pipeline(pipeline, args):
     for _, v in pipeline.items():
-        v.run_step()
+        v.run_step(args)
 
 
 def traceback_pipeline(pipeline):
@@ -43,7 +44,7 @@ def main_init(args):
 
 def main_run(args):
     pipeline = load_pipeline(args)
-    run_pipeline(pipeline)
+    run_pipeline(pipeline, args)
 
 
 def main_traceback(args):
@@ -94,7 +95,19 @@ def create_args_parser():
         help='TODO'
     )
     parser_run.add_argument(
+        '--runner', choices=['sbatch'], default='bash',
+        help='TODO'
+    )
+    parser_run.add_argument(
+        '--runner-opts', type=str, default=None,
+        help='TODO'
+    )
+    parser_run.add_argument(
         '--overwrite', action='store_true',
+        help='TODO'
+    )
+    parser_run.add_argument(
+        '--rerun-failed', action='store_true',
         help='TODO'
     )
     parser_run.set_defaults(fn=main_run)
@@ -122,15 +135,7 @@ def parse_args(parser):
             raise ValueError('File {} not found.'.format(config_path))
         config = yaml.load(open(str(config_path), 'r'))
         delattr(args, 'config')
-        #arg_dict = args.__dict__
-        for key, val in config.items():
-            if isinstance(val, list):
-                val_list = []
-                for v in ValueError:
-                    val_list.extend(v)
-                setattr(args, key, val_list)
-            else:
-                setattr(args, key, val)
+        return update_args(args, config)
     return args
 
 
