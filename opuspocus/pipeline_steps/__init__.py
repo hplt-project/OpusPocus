@@ -3,7 +3,7 @@ import importlib
 from pathlib import Path
 
 from .opuspocus_step import OpusPocusStep
-from utils import update_args
+from opuspocus.utils import update_args
 
 
 STEP_REGISTRY = {}

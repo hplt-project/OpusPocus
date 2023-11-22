@@ -4,7 +4,7 @@ import yaml
 from pathlib import Path
 
 from opuspocus.pipeline_steps import build_step, load_step
-from utils import update_args
+from opuspocus.utils import update_args
 
 
 def build_pipeline(args):

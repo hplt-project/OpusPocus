@@ -4,8 +4,8 @@ import logging
 import yaml
 from pathlib import Path
 
-from utils import print_indented
-from command_utils import build_subprocess
+from opuspocus.command_utils import build_subprocess
+from opuspocus.utils import print_indented
 
 
 STEP_STATES = ['INITED', 'RUNNING', 'FAILED', 'DONE']
@@ -215,12 +215,12 @@ class OpusPocusStep(object):
         self.set_state('INITED')
         sef.run_state(args)
 
-    def traceback_step(cls, level=0):
-        print_indented('+ {}'.format(step_name), level)
-        for k, v in self.get_variables():
-            print_indented('| {} = {}'.format(k, v))
+    def traceback_step(self, level=0):
+        print_indented('+ {}'.format(self.step_name), level)
+        for k, v in self.get_variables().items():
+            print_indented('|-- {} = {}'.format(k, v))
         for name, dep in self.dependencies.values():
-            print(print_indented('--| {}'.format(name)))
+            print(print_indented('└-+ {}'.format(name)))
             dep.traceback_step(level + 1)
 
 
