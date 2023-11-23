@@ -80,6 +80,14 @@ class OpusPocusStep(object):
     def step_dir(self):
         return Path(self.pipeline_dir, self.step_name)
 
+    @property
+    def output_dir(self):
+        return Path(self.step_dir, 'output')
+
+    @property
+    def log_dir(self):
+        return Path(self.step_dir, 'logs')
+
     def init_step(self):
         if self.state is not None:
             if self.has_state('INITED'):
@@ -90,9 +98,8 @@ class OpusPocusStep(object):
                     'Trying to initialize step in a {} state.'.format(self.state)
                 )
 
-        self.create_step_dir()
+        self.create_directories()
         self.init_dependencies()
-        #self._init_step()  # copying/linking files/dirs from dependencies
         self.save_variables()
         self.save_dependencies()
         self.create_command()
@@ -122,7 +129,7 @@ class OpusPocusStep(object):
             open(Path(self.step_dir, self.dependencies_file), 'w')
         )
 
-    def create_step_dir(self):
+    def create_directories(self):
         # create step dir
         logger.debug('Creating step dir.')
         if self.step_dir.is_dir():
@@ -130,7 +137,8 @@ class OpusPocusStep(object):
                 'Cannot create {}. Directory already exists.'
                 .format(self.step_dir)
             )
-        self.step_dir.mkdir(parents=True)
+        for d in [self.step_dir, self.output_dir]:
+            d.mkdir(parents=True)
 
     def get_variables(self):
         vars_dict = {}
