@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class DecontaminateCorpusStep(OpusPocusStep):
-    """TODO: split into individual corpus-steps"""
+    """
+    TODO: split into individual corpus-steps
+    TODO: reduce code duplicates from mono/para split
+    """
     def __init__(
         self,
         step,
@@ -57,12 +60,16 @@ class DecontaminateCorpusParaStep(DecontaminateCorpusStep):
 
     @property
     def step_name(self):
-        return 's.decontaminate.{}-{}'.format(self.src_lang, self.tgt_lang)
+        return 's.{}.{}-{}'.format(
+            self.step,
+            self.src_lang,
+            self.tgt_lang
+        )
 
     def get_command_str(self, args) -> str:
         return """
             #!/usr/bin/env bash
-            #SBATCH --job-name=deduplicate
+            #SBATCH --job-name=decontaminate
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=8
@@ -126,6 +133,9 @@ class DecontaminateCorpusParaStep(DecontaminateCorpusStep):
                         && fail "Lines in the output files do not match ($src_lines != $tgt_lines)"
             done
 
+            # create link to the corpus categories file
+            ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
+
             echo DONE > {state_file}
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
@@ -153,12 +163,12 @@ class DecontaminateCorpusMonoStep(DecontaminateCorpusStep):
 
     @property
     def step_name(self):
-        return 's.decontaminate.{}'.format(self.lang)
+        return 's.{}.{}'.format(self.step, self.lang)
 
     def get_command_str(self, args) -> str:
         return """
             #!/usr/bin/env bash
-            #SBATCH --job-name=deduplicate
+            #SBATCH --job-name=decontaminate
             #SBATCH --nodes=1
             #SBATCH --ntasks=1
             #SBATCH --cpus-per-task=8
@@ -200,6 +210,9 @@ class DecontaminateCorpusMonoStep(DecontaminateCorpusStep):
                 )
                 2> >(tee $LOG_DIR/decontaminate.$dataset.log >&2)
             done
+
+            # create link to the corpus categories file
+            ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
 
             echo DONE > {state_file}
         """.format(

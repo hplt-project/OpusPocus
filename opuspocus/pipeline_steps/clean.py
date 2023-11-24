@@ -15,7 +15,6 @@ class CleanCorpusStep(OpusPocusStep):
     """
     TODO: split into individual corpus-steps
     TODO: reduce code duplicates from mono/para split
-
     """
     def __init__(
         self,
@@ -49,7 +48,11 @@ class CleanCorpusParaStep(CleanCorpusStep):
 
     @property
     def step_name(self):
-        return 's.clean.{}-{}'.format(self.src_lang, self.tgt_lang)
+        return 's.{}.{}-{}'.format(
+            self.step,
+            self.src_lang,
+            self.tgt_lang
+        )
 
     def get_command_str(self, args) -> str:
         return """
@@ -110,6 +113,9 @@ class CleanCorpusParaStep(CleanCorpusStep):
                     && fail "Lines in the output files do not match ($src_lines != $tgt_lines)"
             done
 
+            # create link to the corpus categories file
+            ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
+
             echo DONE > {state_file}
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
@@ -143,7 +149,7 @@ class CleanCorpusMonoStep(CleanCorpusStep):
 
     @property
     def step_name(self):
-        return 's.clean.{}'.format(self.lang)
+        return 's.{}.{}'.format(self.step, self.lang)
 
     def get_command_str(self, args) -> str:
         return """
@@ -190,6 +196,9 @@ class CleanCorpusMonoStep(CleanCorpusStep):
                 ) \
                 2> >(tee $LOG_DIR/opuscleaner.$dataset.log >&2)
             done
+
+            # create link to the corpus categories file
+            ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
 
             echo DONE > {state_file}
         """.format(
