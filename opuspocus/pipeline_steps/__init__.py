@@ -56,7 +56,7 @@ def load_step(step_name, args):
 def register_step(name):
     """
     New steps can be added to OpusPocus with the
-    :func:`~opuspocus.steps.register_step` function decorator.
+    :func:`~opuspocus.opuspocus_steps.register_step` function decorator.
 
     Inspired by Fairseq task/model/etc registrations
 

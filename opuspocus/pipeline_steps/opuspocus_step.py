@@ -1,5 +1,6 @@
 from typing import Dict
 
+import argparse
 import logging
 import yaml
 from pathlib import Path
@@ -31,8 +32,8 @@ class OpusPocusStep(object):
 
     def __init__(
         self,
-        step,
-        args,
+        step: str,
+        args: argparse.Namespace,
         **kwargs
     ):
         """
@@ -46,7 +47,9 @@ class OpusPocusStep(object):
         self.state = self.load_state()
 
     @classmethod
-    def build_step(cls, step, args, **kwargs):
+    def build_step(
+        cls, step: str, args: argparse.Namespace, **kwargs
+    ) -> OpusPocusStep:
         """Build a specified step instance.
 
         Args:
@@ -55,21 +58,25 @@ class OpusPocusStep(object):
         return cls(step, args, **kwargs)
 
     @classmethod
-    def load_variables(cls, step_name, pipeline_dir):
+    def load_variables(
+        cls, step_name: str, pipeline_dir: Path
+    ) -> Dict[str, Any]:
         """Load existing step."""
         vars_path = Path(pipeline_dir, step_name, cls.variables_file)
-        logger.debug('Loading variables from {}'.format(vars_path))
+        logger.debug('Loading step variables from {}'.format(vars_path))
         return yaml.load(open(vars_path, 'r'))
 
     @classmethod
-    def load_dependencies(cls, step_name, pipeline_dir):
+    def load_dependencies(
+        cls, step_name: str, pipeline_dir: Path
+    ) -> Dict[str, str]:
         """Load step dependecies (directories)."""
         deps_path = Path(pipeline_dir, step_name, cls.dependencies_file)
         logger.debug('Loading dependencies from {}'.format(deps_path))
         return yaml.load(open(deps_path, 'r'))
 
     @property
-    def step_name(self):
+    def step_name(self) -> str:
         """
         We can have multiple instances of a step with different
         parametrization. Must be implemented by the derived step classes.
@@ -77,15 +84,15 @@ class OpusPocusStep(object):
         raise NotImplementedError()
 
     @property
-    def step_dir(self):
+    def step_dir(self) -> Path:
         return Path(self.pipeline_dir, self.step_name)
 
     @property
-    def output_dir(self):
+    def output_dir(self) -> Path:
         return Path(self.step_dir, 'output')
 
     @property
-    def log_dir(self):
+    def log_dir(self) -> Path:
         return Path(self.step_dir, 'logs')
 
     def init_step(self):
@@ -107,13 +114,6 @@ class OpusPocusStep(object):
         # initialize state
         logger.info('[{}.init] Step Initialized.'.format(self.step))
         self.set_state('INITED')
-
-    #def _add_dependency(self, key: str, val: OpusPocusStep):
-    #    if key in self.dependencies:
-    #        raise ValueError(
-    #            'Duplicate dependency {}: {}'.format(key, val.__name__)
-    #        )
-    #    self.dependencies[key] = val
 
     def init_dependencies(self):
         # TODO: improve the dependency representation and implement a
@@ -140,15 +140,15 @@ class OpusPocusStep(object):
         for d in [self.step_dir, self.output_dir]:
             d.mkdir(parents=True)
 
-    def get_variables(self):
+    def get_variables(self) -> Dict[str, Any]:
         vars_dict = {}
         for k, v in self.__dict__.items():
             # TODO: other variable exceptions
-            if "__" in k:
+            if '__' in k:
                 continue
-            if k == "state":
+            if k == 'state':
                 continue
-            if k == "dependencies":
+            if k == 'dependencies':
                 continue
             #if isinstance(v, OpusPocusStep):
                 # do not save dependency objects
@@ -176,10 +176,11 @@ class OpusPocusStep(object):
         logger.debug('Creating step command.')
         print(self.get_command_str(), file=open(cmd_path, 'w'))
 
-    def get_command_str(self):
+    def get_command_str(self) -> str:
         raise NotImplementedError()
 
-    def run_step(self, args):
+    def run_step(self, args: argparse.Namespace) -> int:
+        # TODO: return type (int or str?)
         # TODO: logic for rerunning/overriding failed/running steps
         if self.has_state('RUNNING'):
             jobid = open(Path(self._step_dir, self.jobid_file), 'r').readline().strip()
@@ -213,7 +214,7 @@ class OpusPocusStep(object):
 
         return sub['jobid']
 
-    def retry_step(self, args):
+    def retry_step(self, args: argparse.Namespace):
         """
         Try to recover from a failed state.
 
@@ -223,7 +224,9 @@ class OpusPocusStep(object):
         self.set_state('INITED')
         sef.run_state(args)
 
-    def traceback_step(self, level=0):
+    def traceback_step(self, level: int = 0):
+        assert level >= 0
+
         print_indented('+ {}'.format(self.step_name), level)
         for k, v in self.get_variables().items():
             print_indented('|-- {} = {}'.format(k, v))
@@ -232,10 +235,10 @@ class OpusPocusStep(object):
             dep.traceback_step(level + 1)
 
 
-    def load_state(self):
+    def load_state(self) -> Optional[str]:
         state_file = Path(self.step_dir, self.state_file)
         if state_file.exists():
-            state = open(Path(self.step_dir, self.state_file), "r").readline().strip()
+            state = open(Path(self.step_dir, self.state_file), 'r').readline().strip()
             assert state in STEP_STATES
             return state
         return None
@@ -248,7 +251,7 @@ class OpusPocusStep(object):
         self.state = state
         print(state, file=open(Path(self.step_dir, self.state_file), 'w'))
 
-    def has_state(self, state: str):
+    def has_state(self, state: str) -> bool:
         if self.state is not None and self.state == state:
             return True
         return False
