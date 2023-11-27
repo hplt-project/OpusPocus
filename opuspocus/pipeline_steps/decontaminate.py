@@ -23,12 +23,13 @@ class DecontaminateCorpusStep(OpusPocusStep):
         self,
         step,
         args,
-        clean_step: CleanCorpusStep,
+        corpus_step: OpusPocusStep,
     ):
         super().__init__(step, args)
         self.dependencies = {
-            'clean_step': clean_step,
+            'corpus_step': corpus_step,
         }
+        self.input_dir = self.dependencies['corpus_step'].output_dir
         self.min_length = getattr(args, 'decontaminte_min_length', 25)
 
         self.valid_data_dir = Path(args.valid_data_dir)
@@ -52,11 +53,11 @@ class DecontaminateCorpusParaStep(DecontaminateCorpusStep):
         self,
         step,
         args,
-        clean_step: CleanCorpusParaStep,
+        corpus_step: OpusPocusStep,
     ):
-        super().__init__(step, args, clean_step)
-        self.src_lang = self.dependencies['clean_step'].src_lang
-        self.tgt_lang = self.dependencies['clean_step'].tgt_lang
+        super().__init__(step, args, corpus_step)
+        self.src_lang = self.dependencies['corpus_step'].src_lang
+        self.tgt_lang = self.dependencies['corpus_step'].tgt_lang
 
     @property
     def step_name(self):
@@ -80,18 +81,6 @@ class DecontaminateCorpusParaStep(DecontaminateCorpusStep):
             # TODO: replace non-parallel gzip with pigz
             set -euo pipefail
 
-            fail() {
-                echo $1 >&2
-                exit 1
-            }
-
-            cleanup() {
-                # Set the step state and exit
-                echo FAILED > {state_file}
-                exit $1
-            }
-            trap cleanup ALL
-
             SRC="{src_lang}"
             TGT="{tgt_lang}"
 
@@ -99,6 +88,34 @@ class DecontaminateCorpusParaStep(DecontaminateCorpusStep):
             OUTPUT_DIR="{outdir}"
             VALID_DIR="{valdir}"
             LOG_DIR="{logdir}"
+
+            STATE_FILE="{state_file}"
+
+            MIN_LENGTH="{min_length}"
+            DECONTAMINATE="{decontaminate}"
+
+            fail() {
+                echo $1 >&2
+                exit 1
+            }
+
+            cleanup() {
+                exit_code=$?
+                if [[ $exit_code -gt 0 ]]; then
+                    exit $exit_code
+                fi
+                echo DONE > $STATE_FILE
+                exit 0
+            }
+
+            err_cleanup() {
+                # Set the step state and exit
+                echo FAILED > $STATE_FILE
+                exit $1
+            }
+
+            trap err_cleanup ERR
+            trap cleanup EXIT
 
             rm -r $OUTPUT_DIR/* $LOG_DIR/*
             for dataset in $INPUT_DIR/*.$SRC.gz; do
@@ -115,8 +132,8 @@ class DecontaminateCorpusParaStep(DecontaminateCorpusStep):
                 paste \
                     <(zcat $INPUT_DIR/$dataset.$SRC.gz) \
                     <(zcat $INPUT_DIR/$dataset.$TGT.gz) \
-                | python {decontaminate} \
-                    --min-length {min_length} \
+                | python $DECONTAMINATE \
+                    --min-length $MIN_LENGTH \
                     $VALID_DIR/*$SRC-$TGT \
                 > >(
                     tee \
@@ -135,8 +152,6 @@ class DecontaminateCorpusParaStep(DecontaminateCorpusStep):
 
             # create link to the corpus categories file
             ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
-
-            echo DONE > {state_file}
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
             src_lang=self.src_lang,
@@ -156,10 +171,10 @@ class DecontaminateCorpusMonoStep(DecontaminateCorpusStep):
         self,
         step,
         args,
-        clean_step: CleanCorpusMonoStep,
+        corpus_step: CleanCorpusMonoStep,
     ):
-        super().__init__(step, args, clean_step)
-        self.lang = self.dependencies['clean_step'].lang
+        super().__init__(step, args, corpus_step)
+        self.lang = self.dependencies['corpus_step'].lang
 
     @property
     def step_name(self):
@@ -179,19 +194,35 @@ class DecontaminateCorpusMonoStep(DecontaminateCorpusStep):
             # TODO: replace non-parallel gzip with pigz
             set -euo pipefail
 
-            cleanup() {
-                # Set the step state and exit
-                echo FAILED > {state_file}
-                exit $1
-            }
-            trap cleanup ALL
-
             LANG="{lang}"
 
             INPUT_DIR="{indir}"
             OUTPUT_DIR="{outdir}"
             VALID_DIR="{valdir}"
             LOG_DIR="{logdir}"
+
+            STATE_FILE="{state_file}"
+
+            MIN_LENGTH="{min_length}"
+            DECONTAMINATE="{decontaminate}"
+
+            cleanup() {
+                exit_code=$?
+                if [[ $exit_code -gt 0 ]]; then
+                    exit $exit_code
+                fi
+                echo DONE > $STATE_FILE
+                exit 0
+            }
+
+            err_cleanup() {
+                # Set the step state and exit
+                echo FAILED > $STATE_FILE
+                exit $1
+            }
+
+            trap err_cleanup ERR
+            trap cleanup EXIT
 
             rm -r $OUTPUT_DIR/* $LOG_DIR/*
             for dataset in $INPUT_DIR/*.$LANG.gz; do
@@ -200,8 +231,8 @@ class DecontaminateCorpusMonoStep(DecontaminateCorpusStep):
 
                 echo "Decontaminating $dataset..." >&2
                 zcat $INPUT_DIR/$dataset.$LANG.gz \
-                | python {decontaminate} \
-                    --min-length {min_length} \
+                | python $DECONTAMINATE \
+                    --min-length $MIN_LENGTH \
                     $VALID_DIR/*$LANG \
                 > >(
                     tee \
@@ -213,8 +244,6 @@ class DecontaminateCorpusMonoStep(DecontaminateCorpusStep):
 
             # create link to the corpus categories file
             ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
-
-            echo DONE > {state_file}
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
             lang=self.lang,

@@ -15,15 +15,16 @@ class GatherTrainStep(OpusPocusStep):
         step,
         args,
         suffix: str,
-        preprocessing_step: OpusPocusStep,
+        corpus_step: OpusPocusStep,
     ):
         super().__init__(step, args)
         self.dependencies = {
-            'preprocessing_step': preprocessing_step,
+            'corpus_step': corpus_step,
         }
+        self.input_dir = self.dependencies['corpus_step'].output_dir
 
-        self.src_lang = self.dependencies['preprocessing_step'].src_lang
-        self.tgt_lang = self.dependencies['preprocessing_step'].tgt_lang
+        self.src_lang = self.dependencies['corpus_step'].src_lang
+        self.tgt_lang = self.dependencies['corpus_step'].tgt_lang
 
         self.suffix = suffix
 
@@ -37,7 +38,7 @@ class GatherTrainStep(OpusPocusStep):
         )
 
     def get_command_str(self) -> str:
-        """
+        return """
             #!/usr/bin/env bash
             #SBATCH --job-name=gather_train
             #SBATCH --nodes=1
@@ -50,19 +51,6 @@ class GatherTrainStep(OpusPocusStep):
             # on the opuscleaner categories
             set -euo pipefail
 
-            fail_and_rm() {
-                echo $1 >&2
-                [[ -e $2 ]] && rm -r $2
-                exit 1
-            }
-
-            cleanup() {
-                # Set the step state and exit
-                echo FAILED > {state_file}
-                exit $1
-            }
-            trap cleanup ALL
-
             SRC="{src_lang}"
             TGT="{tgt_lang}"
 
@@ -71,6 +59,31 @@ class GatherTrainStep(OpusPocusStep):
             LOG_DIR="{logdir}"
 
             rm -r $OUTPUT_DIR/* $LOG_DIR/*
+
+            fail_and_rm() {
+                echo $1 >&2
+                [[ -e $2 ]] && rm -r $2
+                echo FAILED > $STATE_FILE
+                exit 1
+            }
+
+            cleanup() {
+                exit_code=$?
+                if [[ $exit_code -gt 0 ]]; then
+                    exit $exit_code
+                fi
+                echo DONE > $STATE_FILE
+                exit 0
+            }
+
+            err_cleanup() {
+                # Set the step state and exit
+                echo FAILED > $STATE_FILE
+                exit $1
+            }
+
+            trap err_cleanup ERR
+            trap cleanup EXIT
 
             categories_json="$INPUT_DIR/categories.json"
             categories=$(python -c "import json, sys; print(' '.join([x['name'] for x in json.load(open('$categories_json', 'r'))['categories']]))")

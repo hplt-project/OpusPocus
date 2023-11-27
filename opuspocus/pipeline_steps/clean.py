@@ -68,24 +68,39 @@ class CleanCorpusParaStep(CleanCorpusStep):
             # TODO: replace non-parallel gzip with pigz
             set -euo pipefail
 
-            fail() {
-                echo $1 >&2
-                exit 1
-            }
-
-            cleanup() {
-                # Set the step state and exit
-                echo FAILED > {state_file}
-                exit $1
-            }
-            trap cleanup ALL
-
             SRC="{src_lang}"
             TGT="{tgt_lang}"
 
             INPUT_DIR="{indir}"
             OUTPUT_DIR="{outdir}"
             LOG_DIR="{logdir}"
+
+            STATE_FILE="{state_file}"
+
+            OPUSCLEANER="{opuscleaner}"
+
+            fail() {
+                echo $1 >&2
+                exit 1
+            }
+
+            cleanup() {
+                exit_code=$?
+                if [[ $exit_code -gt 0 ]]; then
+                    exit $exit_code
+                fi
+                echo DONE > $STATE_FILE
+                exit 0
+            }
+
+            err_cleanup() {
+                # Set the step state and exit
+                echo FAILED > $STATE_FILE
+                exit $1
+            }
+
+            trap err_cleanup ERR
+            trap cleanup EXIT
 
             rm -r $OUTPUT_DIR/* $LOG_DIR/*
             for filter_file in $INPUT_DIR/*filters.json; do
@@ -94,7 +109,7 @@ class CleanCorpusParaStep(CleanCorpusStep):
 
                 ## Run OpusCleaner ##
                 echo "Cleaning $dataset..." >&2
-                {opuscleaner} \
+                $OPUSCLEANER \
                     $filter_file \
                     --parallel $SLURM_CPUS_PER_TASK \
                     -b $INPUT_DIR \
@@ -116,7 +131,7 @@ class CleanCorpusParaStep(CleanCorpusStep):
             # create link to the corpus categories file
             ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
 
-            echo DONE > {state_file}
+            echo DONE > $STATE_FILE
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
             src_lang=self.src_lang,
@@ -165,18 +180,33 @@ class CleanCorpusMonoStep(CleanCorpusStep):
             # TODO: replace non-parallel gzip with pigz
             set -euo pipefail
 
-            cleanup() {
-                # Set the step state and exit
-                echo FAILED > {state_file}
-                exit $1
-            }
-            trap cleanup ALL
-
             LANG="{lang}"
 
             INPUT_DIR="{indir}"
             OUTPUT_DIR="{outdir}"
             LOG_DIR="{logdir}"
+
+            STATE_FILE="{state_file}"
+
+            OPUSCLEANER="{opuscleaner}"
+
+            cleanup() {
+                exit_code=$?
+                if [[ $exit_code -gt 0 ]]; then
+                    exit $exit_code
+                fi
+                echo DONE > $STATE_FILE
+                exit 0
+            }
+
+            err_cleanup() {
+                # Set the step state and exit
+                echo FAILED > $STATE_FILE
+                exit $1
+            }
+
+            trap err_cleanup ERR
+            trap cleanup EXIT
 
             rm -r $OUTPUT_DIR/* $LOG_DIR/*
             for filter_file in $INPUT_DIR/*filters.json; do
@@ -185,7 +215,7 @@ class CleanCorpusMonoStep(CleanCorpusStep):
 
                 ## Run OpusCleaner ##
                 echo "Cleaning $dataset..." >&2
-                {opuscleaner} \
+                $OPUSCLEANER \
                     $filter_file \
                     --parallel $SLURM_CPUS_PER_TASK \
                     -b $INPUT_DIR \
@@ -199,8 +229,6 @@ class CleanCorpusMonoStep(CleanCorpusStep):
 
             # create link to the corpus categories file
             ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
-
-            echo DONE > {state_file}
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
             lang=self.lang,

@@ -11,7 +11,13 @@ STEP_INSTANCE_REGISTRY = {}
 STEP_CLASS_NAMES = set()
 
 __all__ = [
-    "GenerateVocabStep"
+    'CleanCorpusMonoStep',
+    'CleanCorpusParaStep',
+    'DecontaminateCorpusMonoStep',
+    'DecontaminateCorpusParaStep',
+    'GatherTrainStep',
+    'GenerateVocabStep',
+    'TrainModelStep',
 ]
 
 
@@ -20,7 +26,7 @@ def build_step(step, args, step_name: str = None, **kwargs):
         return STEP_INSTANCE_REGISTRY[step_name]
 
     step_instance = STEP_REGISTRY[step].build_step(
-        step, args
+        step, args, **kwargs
     )
 
     # sanity check (TODO: make this test into a warning)
@@ -44,7 +50,7 @@ def load_step(step_name, args):
     step = step_vars['step']
     del step_vars['step']
     step_args = update_args(args, step_vars)
-    return build_step(step, step_args, step_name, **step_deps_inst)
+    return build_step(step, step_args, **step_deps_inst)
 
 
 def register_step(name):
