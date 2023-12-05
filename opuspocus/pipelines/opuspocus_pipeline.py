@@ -95,9 +95,6 @@ class OpusPocusPipeline(object):
             open(Path(self.pipeline_dir, self.variables_file), 'w')
         )
 
-    def check_argument_values(self):
-        pass
-
     def get_variables(self) -> Dict[str, Any]:
         vars_dict = {}
         for k,v in self.__dict__.items():
