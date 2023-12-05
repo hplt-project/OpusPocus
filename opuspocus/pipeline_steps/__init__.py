@@ -1,4 +1,5 @@
 import argparse
+import inspect
 import importlib
 from pathlib import Path
 
@@ -10,23 +11,13 @@ STEP_REGISTRY = {}
 STEP_INSTANCE_REGISTRY = {}
 STEP_CLASS_NAMES = set()
 
-__all__ = [
-    'CleanCorpusMonoStep',
-    'CleanCorpusParaStep',
-    'DecontaminateCorpusMonoStep',
-    'DecontaminateCorpusParaStep',
-    'GatherTrainStep',
-    'GenerateVocabStep',
-    'TrainModelStep',
-]
 
-
-def build_step(step, args, step_name: str = None, **kwargs):
+def build_step(step, pipeline_dir, step_name: str = None, **kwargs):
     if step_name is not None and step_name in STEP_INSTANCE_REGISTRY:
         return STEP_INSTANCE_REGISTRY[step_name]
 
     step_instance = STEP_REGISTRY[step].build_step(
-        step, args, **kwargs
+        step, pipeline_dir, **kwargs
     )
 
     # sanity check (TODO: make this test into a warning)
@@ -38,19 +29,20 @@ def build_step(step, args, step_name: str = None, **kwargs):
 
 
 def load_step(step_name, args):
-    # recursively load and instantiate the dependencies first
-    step_deps = OpusPocusStep.load_dependencies(step_name, args.pipeline_dir)
-    step_deps_inst = {}
-    for dep, dep_name in step_deps.items():
-        dep_inst = load_step(dep_name, args)
-        step_deps_inst[dep] = dep_inst
+    step_params = OpusPocusStep.load_parameters(step_name, args.pipeline_dir)
 
-    # now we load the current step
-    step_vars = OpusPocusStep.load_variables(step_name, args.pipeline_dir)
-    step = step_vars['step']
-    del step_vars['step']
-    step_args = update_args(args, step_vars)
-    return build_step(step, step_args, **step_deps_inst)
+    step = step_params['step']  
+    del step_params['step']
+
+    pipeline_dir = step_params['pipeline_dir']
+    assert pipeline_dir == args.pipeline_dir
+    del step_params['pipeline_dir']
+
+    step_deps = OpusPocusStep.load_dependencies(step_name, args.pipeline_dir)
+    for k, v in step_deps.items():
+        step_params[k] = load_step(v, args)
+
+    return build_step(step, pipeline_dir, step_name, **step_params)
 
 
 def register_step(name):
@@ -106,15 +98,3 @@ for file in steps_dir.iterdir():
             else file
         )
         importlib.import_module('opuspocus.pipeline_steps.' + str(step_name))
-
-        # expose `step_parser` for sphinx
-        if step_name in STEP_REGISTRY:
-            parser = argparse.ArgumentParser(add_help=False)
-            #group_step = parser.add_argument_group('Step name')
-            # fmt: off
-            #group_step.add_argument('--step', metavar=step_name,
-            #                        help='Enable this step with: ``--step=' + task_name + '``')
-            # fmt: on
-            step_args_group = parser.add_argument_group('Additional command-line arguments')
-            STEP_REGISTRY[step_name].add_args(step_args_group)
-            globals()[step_name + '_parser'] = parser

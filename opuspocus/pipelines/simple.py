@@ -1,71 +1,160 @@
 from typing import Dict, List, Tuple
 
 import argparse
+from pathlib import Path
 
+from opuspocus import pipeline_steps
 from opuspocus.pipelines import OpusPocusPipeline, register_pipeline
-from opuspocus.pipelines.opuspocus_pipeline import STATE_T, TARGET_T
-from opuspocus.pipeline_steps import OpusPocusStep, build_step
-
+from opuspocus.utils import file_path
 
 @register_pipeline('simple')
 class SimplePipeline(OpusPocusPipeline):
+
+    @staticmethod
+    def add_args(parser):
+        super(SimplePipeline, SimplePipeline).add_args(parser)
+        # All arguments must have default value (e.g. None) to enable
+        # parametrization via config file.
+        # The pipeline __init__ method should check for the correctly set
+        # argument values.
+        # TODO: is there a better way to do this?
+
+        parser.add_argument(
+            '--src-lang', type=str, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--tgt-lang', type=str, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--raw-data-dir', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--valid-data-dir', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--test-data-dir', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--opuscleaner-cmd', type=str, default='opuscleaner-clean',
+            help='TODO'
+        )
+        parser.add_argument(
+            '--decontaminate-path', type=file_path,
+            default=Path('scripts/decontaminate.py'),
+            help='TODO'
+        )
+        parser.add_argument(
+            '--python-venv-dir', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--marian-dir', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--marian-config', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--opustrainer-config', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--decontaminate-min-length', type=int, default=25,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--seed', type=int, default=42,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--vocab-size', type=int, default=64000,
+            help='TODO'
+        )
+
     """Simple training pipeline. No backtranslation."""
     def __init__(
         self,
         pipeline: str,
         args: argparse.Namespace,
-        steps: STATE_T = None,
-        targets: TARGET_T = None,
+        steps = None,
+        targets = None,
     ):
         super().__init__(pipeline, args, steps, targets)
 
-    def build_pipeline_graph(
-        self, args: argparse.Namespace
-    ) -> Tuple[STATE_T, TARGET_T]:
+    def build_pipeline_graph(self, args: argparse.Namespace):
         steps = {}
+        targets = []
 
         # Clean para
-        steps['clean_para'] = build_step(
+        steps['clean_para'] = pipeline_steps.build_step(
             'clean_para',
-            args,
+            pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
-            tgt_lang=args.tgt_lang
+            tgt_lang=args.tgt_lang,
+            python_venv_dir=args.python_venv_dir,
+            raw_data_dir=args.raw_data_dir,
+            opuscleaner_cmd=args.opuscleaner_cmd,
         )
 
         # Decontaminate para using test
-        steps['decontaminate_para'] = build_step(
+        steps['decontaminate_para'] = pipeline_steps.build_step(
             'decontaminate_para',
-            args,
-            corpus_step=steps['clean_para']
+            pipeline_dir=args.pipeline_dir,
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            python_venv_dir=args.python_venv_dir,
+            valid_data_dirs=[args.valid_data_dir, args.test_data_dir],
+            corpus_step=steps['clean_para'],
+            decontaminate_path=args.decontaminate_path,
+            min_length=args.decontaminate_min_length,
         )
 
         # Gather para
-        steps['gather_train.0'] = build_step(
+        steps['gather_train'] = pipeline_steps.build_step(
             'gather_train',
-            args,
-            suffix='iter-0',
-            corpus_step=steps['decontaminate_para']
+            pipeline_dir=args.pipeline_dir,
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            corpus_step=steps['decontaminate_para'],
         )
 
         # Train BPE
-        steps['generate_vocab'] = build_step(
+        steps['generate_vocab'] = pipeline_steps.build_step(
             'generate_vocab',
-            args,
-            corpus_step=steps['gather_train_0']
+            pipeline_dir=args.pipeline_dir,
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            marian_dir=args.marian_dir,
+            corpus_step=steps['gather_train'],
+            seed=args.seed,
+            vocab_size=args.vocab_size
         )
 
-        # Iter 0 training (no BT data)
-        for (src, tgt) in [(args.src, args.tgt), (args.tgt, args.src)]:
-            steps['train.{}-{}.{}'.format(src, tgt, 0)] = build_step(
+        # Training (no BT data)
+        for (src, tgt) in [(args.src_lang, args.tgt_lang), (args.tgt_lang, args.src_lang)]:
+            step_label = 'train.{}-{}'.format(src, tgt)
+            steps[step_label] = pipeline_steps.build_step(
                 'train_model',
-                args,
-                iteration=0,
+                pipeline_dir=args.pipeline_dir,
+                src_lang=src,
+                tgt_lang=tgt,
+                marian_dir=args.marian_dir,
+                valid_data_dir=args.valid_data_dir,
+                marian_config=args.marian_config,
+                opustrainer_config=args.opustrainer_config,
                 vocab_step=steps['generate_vocab'],
-                train_corpus_step=steps['gather_train.0'],
+                train_corpus_step=steps['gather_train'],
                 model_init_step=None,
+                seed=args.seed,
+                valid_dataset=args.valid_dataset,
             )
 
-            targets = [steps['train.{}-{}.0'.format(args.src, args.tgt)],
-            steps['train.{}-{}.0'.format(args.tgt, args.src)]]
+            targets.append(steps[step_label])
 
         return steps, targets

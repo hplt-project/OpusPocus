@@ -1,0 +1,20 @@
+#pipeline: simple
+seed: 42
+
+src_lang: en
+tgt_lang: eu
+raw_data_dir: "data/en-eu/raw/para"
+valid_data_dir: "data/en-eu/valid"
+test_data_dir: "data/en-eu/test"
+
+valid_dataset: "flores200.dev"
+
+opuscleaner_cmd: "opuscleaner-clean"
+decontaminate_path: "scripts/decontaminate.py"
+python_venv_dir: "/project/project_465000574/software/opuspocus-env"
+marian_dir: "/project/project_465000574/software/marian-320dd390"
+marian_config: "config/marian.train.teacher.base.yml"
+opustrainer_config: "config/opustrainer.teacher.base.yml"
+
+decontaminate-min-length: 25
+vocab_size: 64000

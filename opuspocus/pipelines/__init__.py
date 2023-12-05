@@ -8,20 +8,15 @@ from .opuspocus_pipeline import OpusPocusPipeline
 PIPELINE_REGISTRY = {}
 PIPELINE_CLASS_NAMES = set()
 
-__all__ = [
-    'BasePipeline',
-    'SimplePipeline'
-]
-
 
 def build_pipeline(pipeline, args, steps=None, targets=None):
-    return PIPELINE_REGISTRY[pipelines].build_pipeline(
+    return PIPELINE_REGISTRY[pipeline].build_pipeline(
         pipeline, args, steps, targets
     )
 
 
 def load_pipeline(args):
-    steps, targets, vars_dict = OpusPocusPipeline.load_variabes(args)
+    steps, targets, vars_dict = OpusPocusPipeline.load_variables(args)
     return build_pipeline(vars_dict['pipeline'], args, steps, targets)
 
 
@@ -80,14 +75,14 @@ for file in pipelines_dir.iterdir():
         importlib.import_module('opuspocus.pipelines.' + str(pipeline_name))
 
         # expose `pipeline_parser` for sphinx
-        if pipeline_name in PIPELINE_REGISTRY:
-            parser = argparse.ArgumentParser(add_help=False)
-            group_pipeline = parser.add_argument_group('Pipeline name')
-            group_pipeline.add_argument(
-                '--pipeline', metavar=pipeline_name,
-                help='Enable this pipeline with: '
-                '``--pipeline={}``'.format(pipeline_name)
-            )
-            pipeline_args_group = parser.add_argument_group('Additional command-line arguments')
-            PIPELINE_REGISTRY[pipeline_name].add_args(pipeline_args_group)
-            globals()[pipeline_name + '_parser'] = parser
+        #if pipeline_name in PIPELINE_REGISTRY:
+        #    parser = argparse.ArgumentParser(add_help=False)
+        #    group_pipeline = parser.add_argument_group('Pipeline name')
+        #    group_pipeline.add_argument(
+        #        '--pipeline', metavar=pipeline_name,
+        #        help='Enable this pipeline with: '
+        #        '``--pipeline={}``'.format(pipeline_name)
+        #    )
+        #    pipeline_args_group = parser.add_argument_group('Additional command-line arguments')
+        #    PIPELINE_REGISTRY[pipeline_name].add_args(pipeline_args_group)
+        #    globals()[pipeline_name + '_parser'] = parser

@@ -3,8 +3,7 @@ from typing import Dict, List, Tuple
 import argparse
 
 from opuspocus.pipelines import OpusPocusPipeline, register_pipeline
-from opuspocus.pipelines.opuspocus_pipeline import STATE_T, TARGET_T
-from opuspocus.pipeline_steps import OpusPocusStep, build_step
+from opuspocus.pipeline_steps import build_step
 
 
 @register_pipeline('base')
@@ -14,14 +13,12 @@ class BasePipeline(OpusPocusPipeline):
         self,
         pipeline: str,
         args: argparse.Namespace,
-        steps: STATE_T = None,
-        targets: TARGET_T = None,
+        steps = None,
+        targets = None,
     ):
         super().__init__(pipeline, args, steps, targets)
 
-    def build_pipeline_graph(
-        self, args: argparse.Namespace
-    ) -> Tuple[STATE_T, TARGET_T]:
+    def build_pipeline_graph(self, args: argparse.Namespace):
         steps = {}
 
         # Clean para

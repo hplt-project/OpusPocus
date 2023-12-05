@@ -43,3 +43,6 @@ bash go.sh <source_lang> <target_lang> <experiment_label>
 - strict separation of the main steps (data preparation, training, distillation...)
 - ...
 
+## Encountered Issues (LUMI) - Move this to git issues ##
+- marian can hang during validation (SLURM job still running) - reproducible?
+- issues with pigz in `clean_para.sh` which can result in unexpected EOF

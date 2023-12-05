@@ -13,11 +13,13 @@ def build_subprocess(cmd_path, args, jid_deps):
     else:
         raise NotImplementedError()
     sub = {
-        'process': subprocess.Popen(cmd),
+        'process': subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ),
         'jobid' : None,
     }
     if args.runner == 'sbatch':
-        sub['jobid'] = sub['process'].stdout
+        sub['jobid'] = int(sub['process'].stdout.readline())
 
     return sub
 
