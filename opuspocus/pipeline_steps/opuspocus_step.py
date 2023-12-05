@@ -258,17 +258,18 @@ class OpusPocusStep(object):
         self.set_state('INITED')
         self.run_step(args)
 
-    def traceback_step(self, level: int = 0):
+    def traceback_step(self, level: int = 0, full: bool = False):
         assert level >= 0
         print_indented('+ {}: {}'.format(self.step_name, self.state), level)
-        for param in self.list_parameters():
-            print_indented('|-- {} = {}'.format(param, getattr(self, param)))
-        for name, dep in self.dependencies.values():
+        if full:
+            for param in self.list_parameters():
+                print_indented('|-- {} = {}'.format(param, getattr(self, param)), level)
+        for name, dep in self.dependencies.items():
             print_indented('└-+ {}'.format(name), level)
             if dep is None:
-                print_indented()
-            dep.traceback_step(level + 1)
-
+                print_indented('+ None', level + 1)
+                continue
+            dep.traceback_step(level + 1, full)
 
     def load_state(self) -> Optional[str]:
         state_file = Path(self.step_dir, self.state_file)

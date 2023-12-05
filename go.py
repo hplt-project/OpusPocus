@@ -36,7 +36,7 @@ def main_run(args, parser):
 
 def main_traceback(args, parser):
     pipeline = pipelines.load_pipeline(args)
-    pipeline.traceback()
+    pipeline.traceback(args.full_trace)
 
 
 def main_list_commands(args, parser):

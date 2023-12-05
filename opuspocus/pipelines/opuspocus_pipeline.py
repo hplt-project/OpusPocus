@@ -125,8 +125,8 @@ class OpusPocusPipeline(object):
         for _, v in self.steps.items():
             v.run_step(args)
 
-    def traceback(self):
+    def traceback(self, full: bool = False):
         for i, v in enumerate(self.targets):
             print('Target {}: {}'.format(i, v.step_name))
-            v.traceback_step(level=0)
+            v.traceback_step(level=0, full=full)
             print('')
