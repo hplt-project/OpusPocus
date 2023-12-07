@@ -148,13 +148,13 @@ trap cleanup EXIT
 
 for dataset in $INPUT_DIR/*.$SRC.gz; do
     dataset=$(basename $dataset)
-    dataset=${{dataset/.$SRC.gz}}
+    dataset=${{dataset%%.$SRC.gz}}
 
     echo "Decontaminating $dataset..." >&2
     valid_dsets=""
     for valid_dir in $VALID_DIRS; do
         for dset in $valid_dir/*$SRC; do
-            path_prefix=${{dset/.$SRC/}}
+            path_prefix=${{dset%%.$SRC}}
             [[ -e $path_prefix.$SRC-$TGT ]] \\
                 || paste $path_prefix.$SRC $path_prefix.$TGT \\
                     > $path_prefix.$SRC-$TGT

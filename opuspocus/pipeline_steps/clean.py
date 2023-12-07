@@ -241,7 +241,7 @@ trap cleanup EXIT
 
 for filter_file in $INPUT_DIR/*filters.json; do
     dataset=$(basename $filter_file)
-    dataset=${{dataset/.filters.json/}}
+    dataset=${{dataset%%.filters.json}}
 
     ## Run OpusCleaner ##
     echo "Cleaning $dataset..." >&2

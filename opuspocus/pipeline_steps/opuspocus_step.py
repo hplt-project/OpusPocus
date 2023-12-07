@@ -218,7 +218,7 @@ class OpusPocusStep(object):
             return jobid
         elif self.has_state('DONE'):
             logger.info(
-                'Step {} already finished. Skipping...'.format(self.stepstep_name)
+                'Step {} already finished. Skipping...'.format(self.step_name)
             )
             return None
         elif self.has_state('FAILED'):
