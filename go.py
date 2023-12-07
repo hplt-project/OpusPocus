@@ -5,15 +5,14 @@ import sys
 from pathlib import Path
 
 from opuspocus import pipelines
-from opuspocus.utils import load_config_defaults
+from opuspocus.utils import load_config_defaults, update_args
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def main_init(args, parser):
+def main_init(args, unparsed_args, parser):
     # Add pipeline args and parse again
-    args = parse_init_args(args, parser)
+    args = parse_init_args(args, unparsed_args, parser)
 
     logger.info('Building pipeline...')
     pipeline = pipelines.build_pipeline(args.pipeline, args)
@@ -28,18 +27,18 @@ def main_init(args, parser):
         pass
 
 
-def main_run(args, parser):
+def main_run(args, *_):
     print(args.pipeline_dir)
     pipeline = pipelines.load_pipeline(args)
     pipeline.run(args)
 
 
-def main_traceback(args, parser):
+def main_traceback(args, *_):
     pipeline = pipelines.load_pipeline(args)
     pipeline.traceback(args.full_trace)
 
 
-def main_list_commands(args, parser):
+def main_list_commands(args, *_):
     print(
        'Error: No command specified.\n\n'
        'Available commands:\n'
@@ -123,23 +122,25 @@ def create_args_parser():
     return parser
 
 
-def parse_init_args(args, parser):
+def parse_init_args(args, unparsed_args, parser):
     from opuspocus.pipelines import PIPELINE_REGISTRY
     PIPELINE_REGISTRY[args.pipeline].add_args(parser)
 
     parser = load_config_defaults(parser, args.pipeline_config)
 
     # Parse second time to get pipeline options
-    args, _ = parser.parse_known_args()
+    additional_args, _ = parser.parse_known_args(unparsed_args)
 
-    return args
+    return update_args(args, additional_args)
 
 if __name__ == '__main__':
     parser = create_args_parser()
-    args, _ = parser.parse_known_args()
+
+    # Parse the main command
+    args, unparsed_args = parser.parse_known_args()
 
     logging.basicConfig(level=logging.INFO)
     if args.log_level == 'debug':
         logging.basicConfig(level=logging.DEBUG)
 
-    args.fn(args, parser)
+    args.fn(args, unparsed_args, parser)

@@ -1,11 +1,11 @@
 #pipeline: simple
 seed: 42
 
-src_lang: en
-tgt_lang: eu
-raw_data_dir: "data/en-eu/raw/para"
-valid_data_dir: "data/en-eu/valid"
-test_data_dir: "data/en-eu/test"
+#src_lang: en
+#tgt_lang: eu
+#raw_data_dir: "data/en-eu/raw/v0/para"
+#valid_data_dir: "data/en-eu/valid"
+#test_data_dir: "data/en-eu/test"
 
 valid_dataset: "flores200.dev"
 

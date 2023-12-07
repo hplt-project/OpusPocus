@@ -120,6 +120,7 @@ LOG_DIR="{logdir}"
 
 STATE_FILE="{state_file}"
 
+SCRIPT_DIR="scripts"
 MARIAN_DIR="{marian_dir}"
 SEED="{seed}"
 
@@ -188,7 +189,7 @@ $MARIAN_DIR/bin/marian \\
 pid=$!
 
 # Wait for the time limit to run out
-# while [[ $(python $SCRIPTS/slurm_time_to_seconds.py $(squeue -h -j $SLURM_JOBID -o %L)) -gt $RESUBMIT_TIME_LEFT ]]; do
+# while [[ $(python $SCRIPT_DIR/slurm_time_to_seconds.py $(squeue -h -j $SLURM_JOBID -o %L)) -gt $RESUBMIT_TIME_LEFT ]]; do
     sleep 60s
     # Exit if Marian finished
     # ps -p $pid > /dev/null || exit 0

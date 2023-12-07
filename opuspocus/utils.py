@@ -1,7 +1,6 @@
 from typing import Any, Callable, Dict
-from types import SimpleNamespace
 
-import argparse
+from argparse import Namespace
 import yaml
 from pathlib import Path
 
@@ -28,27 +27,13 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
     return parser
 
 
-def update_args(
-    args: argparse.Namespace,
-    parser
-) ->SimpleNamespace:
-    if args.command == 'init' and args.config is not None:
-        config_path = Path(args.config).resolve()
-        if not config_path.exists():
-            raise ValueError('File {} not found.'.format(config_path))
-        config = yaml.safe_load(open(str(config_path), 'r'))
-
-        type_map = get_action_type_map(parser)
-        for key, val in config.items():
-            if isinstance(val, list):
-                val_list = []
-                for v in val:
-                    val_list.extend(v)
-                setattr(args, key, type_map[key](val_list))
-            else:
-                setattr(args, key, type_map[key](val))
-        return args
-    return args
+def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
+    orig_vars = vars(orig_args)
+    updt_vars = vars(updt_args)
+    for k in orig_vars.keys():
+        if k in updt_vars:
+            del updt_vars[k]
+    return Namespace(**orig_vars, **updt_vars)
 
 
 def print_indented(text, level=0):
@@ -61,4 +46,4 @@ def file_path(path_str):
     if path.exists():
         return path.absolute()
     else:
-        raise FileNotFoundError()
+        raise FileNotFoundError(path)
