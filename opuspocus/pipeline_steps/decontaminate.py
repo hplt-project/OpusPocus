@@ -140,7 +140,7 @@ err_cleanup() {{
     # Set the step state and exit
     echo FAILED > $STATE_FILE
     rm -r $OUTPUT_DIR/*
-    exit $1
+    exit $exit_code
 }}
 
 trap err_cleanup ERR
@@ -157,6 +157,7 @@ for dataset in $INPUT_DIR/*.$SRC.gz; do
             path_prefix=${{dset%%.$SRC}}
             [[ -e $path_prefix.$SRC-$TGT ]] \\
                 || paste $path_prefix.$SRC $path_prefix.$TGT \\
+                    | tr -d $'\\r' \\
                     > $path_prefix.$SRC-$TGT
             valid_dsets="$path_prefix.$SRC-$TGT $valid_dsets"
         done
