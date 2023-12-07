@@ -33,7 +33,8 @@ def main(args):
             src_test_samples[src] = Counter()
             tgt_test_samples[tgt] = Counter()
 
-    for i, line in enumerate(sys.stdin, 1):
+    i = 1
+    for line in sys.stdin:
         if args.mono:
             src = hash_mono(line)
             tgt = None
@@ -70,6 +71,7 @@ def main(args):
                 if not args.mono and tgt in tgt_test_samples:
                     tgt_test_samples[tgt].kept += 1
                 retained += 1
+        i += 1
 
         # We never stripped the original newline
         print(line, end="")
