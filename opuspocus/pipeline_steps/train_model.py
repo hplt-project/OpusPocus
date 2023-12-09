@@ -30,6 +30,7 @@ class TrainModelStep(OpusPocusStep):
         train_corpus_step: OpusPocusStep,
         model_init_step: Optional[OpusPocusStep] = None,
         seed: int = 42,
+        train_dataset: str = 'clean.para',
         valid_dataset: str = 'flores200.dev',
         suffix: str = None
     ):
@@ -46,6 +47,7 @@ class TrainModelStep(OpusPocusStep):
             train_corpus_step=train_corpus_step,
             model_init_step=model_init_step,
             seed=seed,
+            train_dataset=train_dataset,
             valid_dataset=valid_dataset,
             suffix=suffix
         )
@@ -53,7 +55,6 @@ class TrainModelStep(OpusPocusStep):
             self.model_init_path = self.dependencies['model_init_step'].model_path
         self.input_dir = self.dependencies['train_corpus_step'].output_dir
 
-        self.vocab_path = self.get_vocab_path()
         self.vocab_size = self.dependencies['vocab_step'].vocab_size
 
         # Check existence of the valid dataset
@@ -68,14 +69,15 @@ class TrainModelStep(OpusPocusStep):
                 )
             )
             if not valid_dataset_path.exists():
-                raise ValueError(
+                raise FileNotFoundError(
                     'Dataset file {} does not exist'.format(valid_dataset_path)
                 )
 
         self.model_path = Path(self.output_dir, 'model.npz')
         self.tmp_dir = Path(self.step_dir, 'tmp.d')
 
-    def get_vocab_path(self):
+    @property
+    def vocab_path(self) -> Path:
         vocab_dir = self.dependencies['vocab_step'].output_dir
 
         # TODO: this should be fetched from the dependency in case that
@@ -83,6 +85,7 @@ class TrainModelStep(OpusPocusStep):
         vocab_path = Path(
             vocab_dir, 'model.{}-{}.spm'.format(self.src_lang, self.tgt_lang)
         )
+        return vocab_path
 
     @property
     def step_name(self):
@@ -116,6 +119,7 @@ TGT="{tgt_lang}"
 
 TRAIN_DIR="{indir}"
 OUTPUT_DIR="{outdir}"
+VALID_DIR="{valdir}"
 LOG_DIR="{logdir}"
 
 STATE_FILE="{state_file}"
@@ -135,8 +139,8 @@ VALID_OUT_FILE="$LOG_DIR/model.valid.out"
 TRAIN_LOG_FILE="$LOG_DIR/model.train.log"
 VALID_LOG_FILE="$LOG_DIR/model.valid.log"
 
-TRAIN_PREFIX="$TRAIN_DIR/clean.para"
-VALID_PREFIX="$VALID_DIR/flores-200.dev"
+TRAIN_PREFIX="$TRAIN_DIR/{train_dset}"
+VALID_PREFIX="$VALID_DIR/{valid_dset}"
 RESUBMIT_TIME_LEFT={resubmit_time}
 
 TEMP_DIR="{tmpdir}/$SLURM_JOBID"
@@ -149,18 +153,19 @@ fail() {{
 
 cleanup() {{
     exit_code=$?
+    rm -r $TEMP_DIR
     if [[ $exit_code -gt 0 ]]; then
         exit $exit_code
     fi
-    rm -r $TEMP_DIR
     echo DONE > $STATE_FILE
     exit 0
 }}
 
 err_cleanup() {{
+    exit_code=$?
     # Set the step state and exit
     echo FAILED > $STATE_FILE
-    exit $1
+    exit $exit_code
 }}
 
 trap err_cleanup ERR
@@ -180,7 +185,7 @@ $MARIAN_DIR/bin/marian \\
     --dim-vocabs $VOCAB_SIZE \\
     --tempdir $TEMP_DIR \\
     --train-sets $TRAIN_PREFIX.{{$SRC,$TGT}}.gz \\
-    --valid-sets $VALID_PREFIX.{{$SRC,$TGT}} \\
+    --valid-sets $VALID_PREFIX.$SRC-$TGT.{{$SRC,$TGT}} \\
     --valid-translation-output $VALID_OUT_FILE \\
     --log-level info \\
     --log $TRAIN_LOG_FILE \\
@@ -189,10 +194,10 @@ $MARIAN_DIR/bin/marian \\
 pid=$!
 
 # Wait for the time limit to run out
-# while [[ $(python $SCRIPT_DIR/slurm_time_to_seconds.py $(squeue -h -j $SLURM_JOBID -o %L)) -gt $RESUBMIT_TIME_LEFT ]]; do
+while [[ $(python $SCRIPT_DIR/slurm_time_to_seconds.py $(squeue -h -j $SLURM_JOBID -o %L)) -gt $RESUBMIT_TIME_LEFT ]]; do
     sleep 60s
     # Exit if Marian finished
-    # ps -p $pid > /dev/null || exit 0
+    ps -p $pid > /dev/null || exit 0
 done
 
 echo "Training termination due to SLURM time limit." >&2
@@ -220,17 +225,23 @@ for job in `sqeueu --me --format "%i $E" | grep ":$SLURM_JOBID" | grep -v ^$new_
     )
     scontrol update JobId=$job dependency=$update_str
 done
+
+# Explicitly exit with non-zero status
+exit 0
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
             src_lang=self.src_lang,
             tgt_lang=self.tgt_lang,
             indir=str(self.input_dir),
             outdir=str(self.output_dir),
+            valdir=str(self.valid_data_dir),
             logdir=str(self.log_dir),
             marian_dir=str(self.marian_dir),
             seed=self.seed,
             opustrainer_config='TODO',
             marian_config=str(self.marian_config),
+            train_dset=self.train_dataset,
+            valid_dset=self.valid_dataset,
             model_file=str(self.model_path),
             vocab_file=str(self.vocab_path),
             vocab_size=self.vocab_size,

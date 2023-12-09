@@ -130,6 +130,7 @@ class SimplePipeline(OpusPocusPipeline):
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
+            datasets=['clean.para'],
             marian_dir=args.marian_dir,
             corpus_step=steps['gather_train'],
             seed=args.seed,

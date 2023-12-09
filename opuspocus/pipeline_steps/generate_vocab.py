@@ -1,3 +1,5 @@
+from typing import List
+
 import logging
 from pathlib import Path
 from opuspocus.pipeline_steps import (
@@ -17,6 +19,7 @@ class GenerateVocabStep(OpusPocusStep):
         pipeline_dir: Path,
         src_lang: str,
         tgt_lang: str,
+        datasets: List[str],
         marian_dir: Path,
         corpus_step: OpusPocusStep,
         seed: int = 42,
@@ -28,6 +31,7 @@ class GenerateVocabStep(OpusPocusStep):
             pipeline_dir=pipeline_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
+            datasets=datasets,
             marian_dir=marian_dir,
             corpus_step=corpus_step,
             seed=seed,
@@ -41,6 +45,10 @@ class GenerateVocabStep(OpusPocusStep):
         return 's.{}.{}-{}'.format(self.step, self.src_lang, self.tgt_lang)
 
     def get_command_str(self) -> str:
+        datasets=','.join(self.datasets)
+        if ',' in datasets:
+            datasets = '{' + datasets + '}'
+
         return """#!/usr/bin/env bash
 #SBATCH --job-name=generate_vocab
 #SBATCH --nodes=1
@@ -75,9 +83,10 @@ cleanup() {{
 }}
 
 err_cleanup() {{
-     # Set the step state and exit
-     echo FAILED > $STATE_FILE
-     exit $1
+    exit_code=$?
+    # Set the step state and exit
+    echo FAILED > $STATE_FILE
+    exit $exit_code
 }}
 
 trap err_cleanup ERR
@@ -92,19 +101,22 @@ $MARIAN_DIR/bin/spm_train \\
     --unk_id=1 \\
     --model_prefix=$OUTPUT_DIR/model.$SRC-$TGT \\
     --vocab_size=$VOCAB_SIZE \\
-    --input=<(cat $TRAIN_DIR/clean.{{$SRC,$TGT}}.gz | pigz -dc) \\
+    --input=<(cat $TRAIN_DIR/{datasets}.{{$SRC,$TGT}}.gz | pigz -dc) \\
     --input_sentence_size=1000000000 \\
     --train_extremely_large_corpus \\
     --byte_fallback \\
     --num_threads $SLURM_CPUS_PER_TASK
 
-mv $MODEL_DIR/model.$SRC-$TGT.model \\
-    $MODEL_DIR/model.$SRC-$TGT.spm
+mv $OUTPUT_DIR/model.$SRC-$TGT.model \\
+    $OUTPUT_DIR/model.$SRC-$TGT.spm
 # Create links for the backtranslation
-ln -s model.$SRC-$TGT.spm $MODEL_DIR/model.$TGT-$SRC.spm
-ln -s model.$SRC-$TGT.vocab $MODEL_DIR/model.$TGT-$SRC.vocab
+ln -s model.$SRC-$TGT.spm $OUTPUT_DIR/model.$TGT-$SRC.spm
+ln -s model.$SRC-$TGT.vocab $OUTPUT_DIR/model.$TGT-$SRC.vocab
+
+# Explicitly exit with non-zero status
+exit 0
         """.format(
-            state_file=self.state_file,
+            state_file=str(Path(self.step_dir, self.state_file)),
             src_lang=self.src_lang,
             tgt_lang=self.tgt_lang,
             indir=str(self.input_dir),
@@ -113,4 +125,5 @@ ln -s model.$SRC-$TGT.vocab $MODEL_DIR/model.$TGT-$SRC.vocab
             marian_dir=self.marian_dir,
             seed=self.seed,
             vocab_size=self.vocab_size,
+            datasets=datasets,
         )

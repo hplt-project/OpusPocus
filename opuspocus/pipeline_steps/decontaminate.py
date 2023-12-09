@@ -139,7 +139,6 @@ err_cleanup() {{
     exit_code=$?
     # Set the step state and exit
     echo FAILED > $STATE_FILE
-    rm -r $OUTPUT_DIR/*
     exit $exit_code
 }}
 
@@ -185,6 +184,9 @@ done
 
 # create link to the corpus categories file
 ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
+
+# Explicitly exit with non-zero status
+exit 0
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
             python_venv=str(self.python_venv_dir),
@@ -271,7 +273,6 @@ err_cleanup() {{
     exit_code=$?
     # Set the step state and exit
     echo FAILED > $STATE_FILE
-    rm -r $OUTPUT_DIR/*
     exit $exit_code
 }}
 
@@ -302,6 +303,9 @@ done
 
 # create link to the corpus categories file
 ln $INPUT_DIR/categories.json $OUTPUT_DIR/categories.json
+
+# Explicitly exit with non-zero status
+exit 0
         """.format(
             state_file=str(Path(self.step_dir, self.state_file)),
             python_venv=str(self.python_venv_dir),
