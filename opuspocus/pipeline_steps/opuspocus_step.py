@@ -46,7 +46,7 @@ class OpusPocusStep(object):
         self.state = self.load_state()
 
     @classmethod
-    def build_step(cls, step: str, pipeline_dir: Path, **kwargs):
+    def build_step(cls, step: str, pipeline_dir: Path, **kwargs) -> 'OpusPocusStep':
         """Build a specified step instance.
 
         Args:
@@ -78,7 +78,7 @@ class OpusPocusStep(object):
         logger.debug('Loading step variables from {}'.format(vars_path))
         return yaml.safe_load(open(vars_path, 'r'))
 
-    def save_parameters(self):
+    def save_parameters(self) -> None:
         logger.debug('Saving step variables.')
         param_dict ={}
         for param in self.list_parameters():
@@ -93,8 +93,7 @@ class OpusPocusStep(object):
             open(Path(self.step_dir, self.parameter_file), 'w')
         )
 
-    
-    def register_parameters(self, **kwargs):
+    def register_parameters(self, **kwargs) -> None:
         """
         Pre-described setting of the class attributes that are set using
         the __init__ method parameters.
@@ -126,7 +125,7 @@ class OpusPocusStep(object):
         logger.debug('Loading dependencies from {}'.format(deps_path))
         return yaml.safe_load(open(deps_path, 'r'))
 
-    def save_dependencies(self):
+    def save_dependencies(self) -> None:
         deps_dict = {
             k: v.step_name 
             for k, v in self.dependencies.items()
@@ -157,7 +156,7 @@ class OpusPocusStep(object):
     def log_dir(self) -> Path:
         return Path(self.step_dir, 'logs')
 
-    def init_step(self):
+    def init_step(self) -> None:
         self.state = self.load_state()
         if self.state is not None:
             if self.has_state('INITED'):
@@ -178,7 +177,7 @@ class OpusPocusStep(object):
         logger.info('[{}.init] Step Initialized.'.format(self.step))
         self.set_state('INITED')
 
-    def init_dependencies(self):
+    def init_dependencies(self) -> None:
         # TODO: improve the dependency representation and implement a
         # child-agnostic init deps method
         for dep in self.dependencies.values():
@@ -187,7 +186,7 @@ class OpusPocusStep(object):
             if not dep.has_state('INITED'):
                 dep.init_step()
 
-    def create_directories(self):
+    def create_directories(self) -> None:
         # create step dir
         logger.debug('Creating step dir.')
         if self.step_dir.is_dir():
@@ -198,7 +197,7 @@ class OpusPocusStep(object):
         for d in [self.step_dir, self.log_dir, self.output_dir]:
             d.mkdir(parents=True)
 
-    def create_command(self):
+    def create_command(self) -> None:
         # TODO: add start-end command boilerplate, slurm-related (or other)
         cmd_path = Path(self.step_dir, self.command_file)
         if cmd_path.exists():
@@ -258,7 +257,7 @@ class OpusPocusStep(object):
         self.set_state('INITED')
         self.run_step(args)
 
-    def traceback_step(self, level: int = 0, full: bool = False):
+    def traceback_step(self, level: int = 0, full: bool = False) -> None:
         assert level >= 0
         print_indented('+ {}: {}'.format(self.step_name, self.state), level)
         if full:
@@ -279,7 +278,7 @@ class OpusPocusStep(object):
             return state
         return None
 
-    def set_state(self, state: str):
+    def set_state(self, state: str) -> None:
         """Whenever we change the Step state we also need to update the state
         file for the purpose of recovery failure."""
         assert state in STEP_STATES
