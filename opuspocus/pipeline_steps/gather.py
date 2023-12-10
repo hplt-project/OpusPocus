@@ -9,7 +9,7 @@ from opuspocus.pipeline_steps import (
 logger = logging.getLogger(__name__)
 
 
-@register_step('gather_train')
+@register_step('gather')
 class GatherStep(OpusPocusStep):
     def __init__(
         self,
@@ -44,7 +44,7 @@ class GatherStep(OpusPocusStep):
 
     def get_command_str(self) -> str:
         return """#!/usr/bin/env bash
-#SBATCH --job-name=gather_train
+#SBATCH --job-name=gather
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
