@@ -10,7 +10,7 @@ from opuspocus.command_utils import build_subprocess
 from opuspocus.utils import print_indented
 
 
-STEP_STATES = ['INITED', 'RUNNING', 'FAILED', 'DONE']
+STEP_STATES = ['INITED', 'RUNNING', 'FAILED', 'DONE', 'INIT_INCOMPLETE']
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +166,8 @@ class OpusPocusStep(object):
                 raise ValueError(
                     'Trying to initialize step in a {} state.'.format(self.state)
                 )
+        # Set state to incomplete until finished initializing.
+        self.set_state('INIT_INCOMPLETE')
 
         self.create_directories()
         self.init_dependencies()

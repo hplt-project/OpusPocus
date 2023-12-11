@@ -2,11 +2,8 @@ from typing import List
 
 import logging
 from pathlib import Path
-from opuspocus.pipeline_steps import (
-    OpusPocusStep,
-    build_step,
-    register_step
-)
+from opuspocus.pipeline_steps import register_step
+from opuspocus.pipeline_steps.corpus_step import CorpusStep
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +18,7 @@ class GenerateVocabStep(OpusPocusStep):
         tgt_lang: str,
         datasets: List[str],
         marian_dir: Path,
-        corpus_step: OpusPocusStep,
+        corpus_step: CorpusStep,
         seed: int = 42,
         vocab_size: int = 64000,
         suffix: str = None

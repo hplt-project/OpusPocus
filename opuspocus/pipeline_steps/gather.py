@@ -1,48 +1,74 @@
 import logging
 from pathlib import Path
-from opuspocus.pipeline_steps import (
-    OpusPocusStep,
-    build_step,
-    register_step
-)
+from opuspocus.pipeline_steps import register_step
+from opuspocus.pipeline_steps.corpus_step import CorpusStep
+
 
 logger = logging.getLogger(__name__)
 
 
 @register_step('gather')
-class GatherStep(OpusPocusStep):
+class GatherStep(CorpusStep):
+    """Gather the input corpora and merge them into datasets based
+    on the OpusCleaner categories labels.
+
+    TODO: Monolingual dataset support (?)
+    """
+
     def __init__(
         self,
         step: str,
         pipeline_dir: Path,
+        previous_corpus_step: CorpusStep,
         src_lang: str,
-        tgt_lang: str,
-        corpus_step: OpusPocusStep,
+        tgt_lang: str = None,
         suffix: str = None,
     ):
         super().__init__(
             step=step,
             pipeline_dir=pipeline_dir,
+            previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
-            corpus_step=corpus_step,
             suffix=suffix
         )
 
-        self.input_dir = self.dependencies['corpus_step'].output_dir
+    def init_dataset_list(self) -> None:
+        """Extract the dataset names.
 
-    @property
-    def step_name(self):
-        name = 's.{}.{}-{}'.format(
-            self.step,
-            self.src_lang,
-            self.tgt_lang,
-        )
-        if self.suffix is not None:
-            name += '.{}'.format(self.suffix)
-        return name
+        Dataset names are extracted using the mapping labels
+        in the categories.json input file. After this step,
+        categories.json is dropped.
+        """
+        if not self.previous_corpus_step.categories_path.exists():
+            raise FileNotFoundError(
+                self.previous_corpus_step.categories_path()
+            )
+        datasets = [
+            '{}.{}-{}'.format(cat, self.src_lang, self.tgt_lang)
+            if self.tgt_lang is not None
+            else '{}.{}'.format(cat, self.src_lang)
+        ] for cat in self.previous_corpus_step.categories
+        yaml.dump(datasets, open(self.dataset_list_path, 'w'))
 
     def get_command_str(self) -> str:
+        # TODO: refactor using self.compose_cmd method
+
+        # Conditional parts of the command
+        tgt_def_str = ''
+        sanity_check_str = ''
+        if self.tgt_lang is not None:
+            tgt_def_str = 'TGT="{}"'.format(self.tgt_lang)
+            sanity_check_str = """    # Sanity Check
+    src_lines=$(zcat $OUTPUT_DIR/$category*.$SRC.gz | wc -l)
+    tgt_lines=$(zcat $OUTPUT_DIR/$category*.$TGT.gz | wc -l)
+    [[ $src_lines -ne $tgt_lines ]] \\
+        && echo "Lines in the output files (dataset $category) do not match ($src_lines != $tgt_lines)" >&2 \\
+        && rm $OUTPUT_DIR/$category*.gz \\
+        && exit 1
+"""
+
+        # Step Command
         return """#!/usr/bin/env bash
 #SBATCH --job-name=gather
 #SBATCH --nodes=1
@@ -56,11 +82,14 @@ class GatherStep(OpusPocusStep):
 set -euo pipefail
 
 SRC="{src_lang}"
-TGT="{tgt_lang}"
+{tgt_def_str}
 
 INPUT_DIR="{indir}"
 OUTPUT_DIR="{outdir}"
 LOG_DIR="{logdir}"
+
+CATEGORIES_PATH="{categories_path}"
+CATEGORIES="{categories}"
 
 STATE_FILE="{state_file}"
 
@@ -88,33 +117,39 @@ err_cleanup() {{
 trap err_cleanup ERR
 trap cleanup EXIT
 
-categories_json="$INPUT_DIR/categories.json"
-categories=$(python -c "import json, sys; print(' '.join([x['name'] for x in json.load(open('$categories_json', 'r'))['categories']]))")
-for category in $categories; do
-    for l in $SRC $TGT; do
-        datasets=$(python -c "import json, sys; print(' '.join(json.load(open('$categories_json', 'r'))['mapping']['$category']))")
-        f_out="$OUTPUT_DIR/$category.para.$l.gz"
+for category in $CATEGORIES; do
+    for l in {languages}; do
+        datasets=$(python -c "import json; print(' '.join(json.load(open('$CATEGORIES_PATH', 'r'))['mapping']['$category']))")
+        f_out="$OUTPUT_DIR/$category{langpair}.$l.gz"
         for dset in $datasets; do
             ds_file=$INPUT_DIR/$dset.$l.gz
             [[ ! -e "$ds_file" ]] \\
-                && fail_and_rm "Missing $ds_file..." $f_out
+                && echo "Missing $ds_file..." >&2 \\
+                && rm $f_out \\
+                && exit 1
             echo "Adding $ds_file" >&2
             cat $ds_file
         done > $f_out
     done
-    src_lines=$(zcat $OUTPUT_DIR/$category.para.$SRC.gz | wc -l)
-    tgt_lines=$(zcat $OUTPUT_DIR/$category.para.$TGT.gz | wc -l)
-    [[ $src_lines -ne $tgt_lines ]] \\
-        && fail_and_rm "Lines in the output files (dataset $category) do not match ($src_lines != $tgt_lines)"
+    {sanity_check_str}
 done
 
 # Explicitly exit with non-zero status
 exit 0
         """.format(
+            tgt_def_str=tgt_def_str,
+            sanity_check_str=sanity_check_str,
             state_file=str(Path(self.step_dir, self.state_file)),
             src_lang=self.src_lang,
             tgt_lang=self.tgt_lang,
             indir=str(self.input_dir),
             outdir=str(self.output_dir),
-            logdir=str(self.log_dir)
+            logdir=str(self.log_dir),
+            categories_path=str(self.previous_corpus_step.categories_path),
+            categories=' '.join(self.previous_corpus_step.categories),
+            languages=' '.join(self.languages),
+            langpair=(
+                '.{}-{}'.format(self.src_lang, self.tgt_lang)
+                if self.tgt_lang is not None else ''
+            )
         )

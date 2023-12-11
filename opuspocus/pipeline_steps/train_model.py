@@ -3,8 +3,8 @@ from typing import Optional
 import logging
 from pathlib import Path
 from opuspocus.pipeline_steps import (
-    OpusPocusStep,
-    build_step,
+    CorpusStep,
+    GenerateVocabStep,
     register_step
 )
 
@@ -15,7 +15,6 @@ SLURM_RESUBMIT_TIME=600  # resubmit N seconds before job finishes
 
 @register_step('train_model')
 class TrainModelStep(OpusPocusStep):
-
     def __init__(
         self,
         step: str,
@@ -26,9 +25,9 @@ class TrainModelStep(OpusPocusStep):
         tgt_lang: str,
         marian_config: Path,
         opustrainer_config: Path,
-        vocab_step: OpusPocusStep,
-        train_corpus_step: OpusPocusStep,
-        model_init_step: Optional[OpusPocusStep] = None,
+        vocab_step: GenerateVocabStep,
+        train_corpus_step: CorpusStep,
+        model_init_step: Optional['TrainModelStep'] = None,
         seed: int = 42,
         train_dataset: str = 'clean.para',
         valid_dataset: str = 'flores200.dev',
