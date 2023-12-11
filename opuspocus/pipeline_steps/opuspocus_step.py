@@ -190,7 +190,7 @@ class OpusPocusStep(object):
         # create step dir
         logger.debug('Creating step dir.')
         if self.step_dir.is_dir():
-            raise ValueError(
+            raise FileExistsError(
                 'Cannot create {}. Directory already exists.'
                 .format(self.step_dir)
             )
@@ -201,7 +201,7 @@ class OpusPocusStep(object):
         # TODO: add start-end command boilerplate, slurm-related (or other)
         cmd_path = Path(self.step_dir, self.command_file)
         if cmd_path.exists():
-            raise ValueError('File {} already exists.'.format(cmd_path))
+            raise FileExistsError('File {} already exists.'.format(cmd_path))
 
         logger.debug('Creating step command.')
         print(self.get_command_str(), file=open(cmd_path, 'w'))
@@ -290,3 +290,68 @@ class OpusPocusStep(object):
         if self.state is not None and self.state == state:
             return True
         return False
+
+    def compose_cmd(self) -> str:
+        """Compose the step command.
+
+        We define a general step.command structure here to reduce code
+        duplication. The respective parts can be overwritten/reused if
+        necessary.
+
+        More fine-grained structure should be defined through cmd_body_str
+        method.
+        """
+
+        return """{cmd_header}
+{cmd_vars}
+{cmd_traps}
+{cmd_body}
+{cmd_exit}
+""".format(
+            cmd_header=self._cmd_header_str(),
+            cmd_vars=self._cmd_vars_str(),
+            cmd_traps=self._cmd_traps_str(),
+            cmd_body=self._cmd_body_str(),
+            cmd_exit=self._cmd_exit_str()
+        )
+
+    def _cmd_header_str(self) -> str:
+        """Produces scripts header code.
+
+        Should contain stuff like shebang, sbatch-related defaults, etc.
+        """
+        raise NotImplementedError()
+
+    def _cmd_vars_str(self) -> str:
+        """Produces code with variable definitions.
+
+        To increase readability and simplify the Python string replacements
+        (using the step parameters),
+        script variables should be defined at this place. Later parts should
+        use the variables defined here.
+        """
+        raise NotImplementedError()
+
+    def _cmd_traps_str(self) -> str:
+        """
+        Produces code that can catch exceptions, exectue cleanup
+        (and recover from them).
+
+        Mainly to define behavior at a (un)successful execution of the script,
+        i.e. setting the DONE/FAILED step.state at the end of execution.
+        """
+        raise NotImplementedError()
+
+    def _cmd_body_str(self) -> str:
+        """Get the step specific code.
+
+        This method must be overridden by the derived classes.
+        """
+        raise NotImplementedError()
+
+    def _cmd_exit_str(self) -> str:
+        """Code executed at the end of the scripts."""
+
+        return """# Explicitly exit with a non-zero status
+exit 0
+"""
