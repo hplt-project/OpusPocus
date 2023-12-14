@@ -104,6 +104,7 @@ class OpusPocusStep(object):
         This strict parameter registration enables 
         """
         type_hints = get_type_hints(self.__init__)
+        logger.debug('Class type hints: {}'.format(type_hints))
 
         self.dependencies = {}
         for param, val in kwargs.items():
@@ -167,9 +168,9 @@ class OpusPocusStep(object):
                     'Trying to initialize step in a {} state.'.format(self.state)
                 )
         # Set state to incomplete until finished initializing.
+        self.create_directories()
         self.set_state('INIT_INCOMPLETE')
 
-        self.create_directories()
         self.init_dependencies()
         self.save_parameters()
         self.save_dependencies()

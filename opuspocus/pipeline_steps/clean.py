@@ -19,6 +19,7 @@ class CleanCorpusStep(CorpusStep):
         tgt_lang: str,
         python_venv_dir: Path,
         opuscleaner_cmd: str = 'opuscleaner-clean',
+        gzipped: bool = True,
         suffix: str = None
     ):
         super().__init__(
@@ -29,6 +30,7 @@ class CleanCorpusStep(CorpusStep):
             tgt_lang=tgt_lang,
             python_venv_dir=python_venv_dir,
             opuscleaner_cmd=opuscleaner_cmd,
+            gzipped=gzipped,
             suffix=suffix
         )
 
@@ -43,18 +45,18 @@ class CleanCorpusStep(CorpusStep):
         import yaml
 
         # Sanity check: categories.json exists
-        if not self.previous_corpus_step.categories_path.exists():
+        if not self.prev_corpus_step.categories_path.exists():
             raise FileNotFoundError(
-                self.previous_corpus_step.categories_path.exists()
+                self.prev_corpus_step.categories_path.exists()
             )
         shutil.copy(
-            self.previous_corpus_step.categories_path,
+            self.prev_corpus_step.categories_path,
             self.categories_path
         )
 
         datasets = [
-            dset for dset in mapping_values
-            for mapping_values in self.category_mapping.values()
+            dset for mapping_values in self.category_mapping.values()
+            for dset in mapping_values
         ]
 
         # Sanity check: filters.json files extist

@@ -91,37 +91,46 @@ class SimplePipeline(OpusPocusPipeline):
         steps = {}
         targets = []
 
-        # Clean para
-        steps['clean_para'] = pipeline_steps.build_step(
-            'clean_para',
+        # Load data
+        steps['raw_para'] = pipeline_steps.build_step(
+            'raw',
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
-            python_venv_dir=args.python_venv_dir,
             raw_data_dir=args.raw_data_dir,
+        )
+
+        # Clean para
+        steps['clean_para'] = pipeline_steps.build_step(
+            'clean',
+            pipeline_dir=args.pipeline_dir,
+            src_lang=args.src_lang,
+            tgt_lang=args.tgt_lang,
+            previous_corpus_step=steps['raw_para'],
+            python_venv_dir=args.python_venv_dir,
             opuscleaner_cmd=args.opuscleaner_cmd,
         )
 
         # Decontaminate para using test
         steps['decontaminate_para'] = pipeline_steps.build_step(
-            'decontaminate_para',
+            'decontaminate',
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
             python_venv_dir=args.python_venv_dir,
             valid_data_dirs=[args.valid_data_dir, args.test_data_dir],
-            corpus_step=steps['clean_para'],
+            previous_corpus_step=steps['clean_para'],
             decontaminate_path=args.decontaminate_path,
             min_length=args.decontaminate_min_length,
         )
 
         # Gather para
         steps['gather_train'] = pipeline_steps.build_step(
-            'gather_train',
+            'gather',
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
-            corpus_step=steps['decontaminate_para'],
+            previous_corpus_step=steps['decontaminate_para'],
         )
 
         # Train BPE
@@ -130,7 +139,7 @@ class SimplePipeline(OpusPocusPipeline):
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
-            datasets=['clean.para'],
+            datasets=['clean.{}-{}'.format(self.src_lang, self.tgt_lang)],
             marian_dir=args.marian_dir,
             corpus_step=steps['gather_train'],
             seed=args.seed,
@@ -153,6 +162,9 @@ class SimplePipeline(OpusPocusPipeline):
                 train_corpus_step=steps['gather_train'],
                 model_init_step=None,
                 seed=args.seed,
+                train_dataset=steps[
+                    'clean.{}-{}'.format(self.src_lang, self.tgt_lang)
+                ],
                 valid_dataset=args.valid_dataset,
             )
 

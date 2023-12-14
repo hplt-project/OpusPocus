@@ -22,6 +22,7 @@ class GatherStep(CorpusStep):
         previous_corpus_step: CorpusStep,
         src_lang: str,
         tgt_lang: str = None,
+        gzipped: bool = True,
         suffix: str = None,
     ):
         super().__init__(
@@ -30,6 +31,7 @@ class GatherStep(CorpusStep):
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
+            gzipped=gzipped,
             suffix=suffix
         )
 
@@ -40,15 +42,17 @@ class GatherStep(CorpusStep):
         in the categories.json input file. After this step,
         categories.json is dropped.
         """
-        if not self.previous_corpus_step.categories_path.exists():
+        import yaml
+        if not self.prev_corpus_step.categories_path.exists():
             raise FileNotFoundError(
-                self.previous_corpus_step.categories_path()
+                self.prev_corpus_step.categories_path()
             )
         datasets = [
             '{}.{}-{}'.format(cat, self.src_lang, self.tgt_lang)
             if self.tgt_lang is not None
             else '{}.{}'.format(cat, self.src_lang)
-        ] for cat in self.previous_corpus_step.categories
+            for cat in self.prev_corpus_step.categories
+        ]
         yaml.dump(datasets, open(self.dataset_list_path, 'w'))
 
     def get_command_str(self) -> str:
@@ -145,8 +149,8 @@ exit 0
             indir=str(self.input_dir),
             outdir=str(self.output_dir),
             logdir=str(self.log_dir),
-            categories_path=str(self.previous_corpus_step.categories_path),
-            categories=' '.join(self.previous_corpus_step.categories),
+            categories_path=str(self.prev_corpus_step.categories_path),
+            categories=' '.join(self.prev_corpus_step.categories),
             languages=' '.join(self.languages),
             langpair=(
                 '.{}-{}'.format(self.src_lang, self.tgt_lang)

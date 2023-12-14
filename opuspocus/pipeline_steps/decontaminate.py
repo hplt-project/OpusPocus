@@ -24,6 +24,7 @@ class DecontaminateCorpusStep(CorpusStep):
         valid_data_dirs: List[Path],
         decontaminate_path: Path = Path('scripts/decontaminate.py'),
         min_length: int = 25,
+        gzipped: bool = True,
         suffix: str = None
     ):
         super().__init__(
@@ -36,6 +37,7 @@ class DecontaminateCorpusStep(CorpusStep):
             valid_data_dirs=valid_data_dirs,
             decontaminate_path=decontaminate_path,
             min_length=min_length,
+            gzipped=gzipped,
             suffix=suffix
         )
         for valid_dir in self.valid_data_dirs:
@@ -54,30 +56,30 @@ class DecontaminateCorpusStep(CorpusStep):
 
         # Carry over the datasets from the previous step
         shutil.copy(
-            self.previous_corpus_step.dataset_list_path,
+            self.prev_corpus_step.dataset_list_path,
             self.dataset_list_path
         )
 
         # Use and carry over categories.json if available.
-        if self.previous_corpus_step.categories_path.exists():
+        if self.prev_corpus_step.categories_path.exists():
             # Use and carry over categories.json when available.
             shutil.copy(
-                self.previous_corpus_step.categories_path,
+                self.prev_corpus_step.categories_path,
                 self.categories_path
             )
 
             # Sanity check: the dataset_list and categories.json should contain
             # same datasets
             datasets = [
-                dset for dset in mapping_values
-                for mapping_values in self.category_mapping.values()
+                dset for mapping_values in self.category_mapping.values()
+                for dset in mapping_values
             ]
             for dset in self.dataset_list:
                 if dset not in datasets:
                     raise ValueError(
                         'Dataset listed in the {} but not in {} file.'.format(
                             self.dataset_list_path,
-                            self.previous_corpus_step.categories_path
+                            self.prev_corpus_step.categories_path
                         )
                     )
            
@@ -99,7 +101,7 @@ class DecontaminateCorpusStep(CorpusStep):
             valid_data_str = """valid_dsets=""
     for valid_dir in $VALID_DIRS; do
         for dset in $valid_dir/*$SRC; do
-            path_prefix=${{dset%%.$SRC}}
+            path_prefix=${dset%%.$SRC}
             [[ -e $path_prefix.$SRC-$TGT ]] \\
                 || paste $path_prefix.$SRC $path_prefix.$TGT \\
                     | tr -d $'\\r' \\
@@ -179,7 +181,7 @@ for dataset in $INPUT_DIR/*.$SRC.gz; do
     {decontaminate_in_str} \\
     | python $DECONTAMINATE \\
         --min-length $MIN_LENGTH \\
-        ${valid_dsets%% } \\
+        ${{valid_dsets%% }} \\
     > >( \\
         tee \\
             >(cut -f1 | gzip -c > $OUTPUT_DIR/$dataset.$SRC.gz) \\

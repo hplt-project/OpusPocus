@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
+from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+
 
 logger = logging.getLogger(__name__)
 

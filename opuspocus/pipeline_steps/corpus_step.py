@@ -2,9 +2,10 @@ from typing import Any, Dict, List, Optional, get_type_hints
 
 import json
 import logging
+import yaml
 from pathlib import Path
 
-from opuspocus.pipelines_steps.opuspocus_step import OpusPocusStep
+from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.command_utils import build_subprocess
 from opuspocus.utils import print_indented
 
@@ -20,11 +21,11 @@ class CorpusStep(OpusPocusStep):
         self,
         step: str,
         pipeline_dir: Path,
-        previous_corpus_step: 'CorpusStep',
         src_lang: str,
-        tgt_lang: str = None,
+        tgt_lang: Optional[str] = None,
+        previous_corpus_step: Optional['CorpusStep'] = None,
         gzipped: bool = True,
-        suffix: str = None,
+        suffix: Optional[str] = None,
         **kwargs
     ):
         super().__init__(
@@ -37,7 +38,13 @@ class CorpusStep(OpusPocusStep):
             suffix=suffix,
             **kwargs,
         )
-        self.input_dir = self.dependencies['previous_corpus_step'].output_dir
+        if self.prev_corpus_step is not None:
+            self.input_dir = self.prev_corpus_step.output_dir
+
+    @property
+    def prev_corpus_step(self) -> Path:
+        # Alternative to calling the prev corpus depencency
+        return self.dependencies['previous_corpus_step']
 
     @property
     def categories_path(self) -> Path:
@@ -57,13 +64,13 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def category_mapping(self) -> Optional[Dict[str, List[str]]]:
-        if self.categories_dict is None
+        if self.categories_dict is None:
             return None
         return self.categories_dict['mapping']
 
     @property
     def dataset_list_path(self) -> Path:
-        return Path(self.output_dir, self.categories_file)
+        return Path(self.output_dir, self.dataset_list_file)
 
     @property
     def dataset_list(self) -> List[str]:
@@ -83,7 +90,7 @@ class CorpusStep(OpusPocusStep):
     @property
     def step_name(self) -> str:
         name = 's.{}'.format(self.step)
-        if tgt_lang is not None:
+        if self.tgt_lang is not None:
             name += '.{}-{}'.format(self.src_lang, self.tgt_lang)
         else:
             name += '.{}'.format(self.src_lang)

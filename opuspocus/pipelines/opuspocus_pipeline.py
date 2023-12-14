@@ -5,7 +5,7 @@ import logging
 import yaml
 from pathlib import Path
 
-from opuspocus import pipeline_steps
+from opuspocus.pipeline_steps import load_step
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class OpusPocusPipeline(object):
 
         steps = {}
         for pipeline_key, step_name in step_names.items():
-            steps[pipeline_key] = pipeline_steps.load_step(step_name, args)
+            steps[pipeline_key] = load_step(step_name, args)
 
         target_path = Path(pipeline_dir, cls.target_file)
         logger.debug('Loading pipeline targets from {}'.format(target_path))
@@ -69,7 +69,7 @@ class OpusPocusPipeline(object):
 
         targets = []
         for step_name in target_keys:
-            targets.append(pipeline_steps.load_step(step_name, args))
+            targets.append(load_step(step_name, args))
 
         vars_path = Path(pipeline_dir, cls.variables_file)
         logger.debug('Loading pipeline variables from {}'.format(vars_path))

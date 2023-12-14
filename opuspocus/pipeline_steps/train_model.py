@@ -2,11 +2,11 @@ from typing import Optional
 
 import logging
 from pathlib import Path
-from opuspocus.pipeline_steps import (
-    CorpusStep,
-    GenerateVocabStep,
-    register_step
-)
+from opuspocus.pipeline_steps import register_step
+from opuspocus.pipeline_steps.corpus_step import CorpusStep
+from opuspocus.pipeline_steps.generate_vocab import GenerateVocabStep
+from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,9 @@ class TrainModelStep(OpusPocusStep):
         opustrainer_config: Path,
         vocab_step: GenerateVocabStep,
         train_corpus_step: CorpusStep,
+        train_dataset: str,
         model_init_step: Optional['TrainModelStep'] = None,
         seed: int = 42,
-        train_dataset: str = 'clean.para',
         valid_dataset: str = 'flores200.dev',
         suffix: str = None
     ):
@@ -196,7 +196,7 @@ pid=$!
 while [[ $(python $SCRIPT_DIR/slurm_time_to_seconds.py $(squeue -h -j $SLURM_JOBID -o %L)) -gt $RESUBMIT_TIME_LEFT ]]; do
     sleep 60s
     # Exit if Marian finished
-    ps -p $pid > /dev/null || exit 0
+    ps -p $pid > /dev/null || (wait $pid; exit $?)
 done
 
 echo "Training termination due to SLURM time limit." >&2
