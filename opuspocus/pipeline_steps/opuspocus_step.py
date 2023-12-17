@@ -207,10 +207,7 @@ class OpusPocusStep(object):
             raise FileExistsError('File {} already exists.'.format(cmd_path))
 
         logger.debug('Creating step command.')
-        print(self.get_command_str(), file=open(cmd_path, 'w'))
-
-    def get_command_str(self) -> str:
-        raise NotImplementedError()
+        print(self.compose_command(), file=open(cmd_path, 'w'))
 
     def run_step(self, args: argparse.Namespace) -> int:
         # TODO: return type (int or str?)
@@ -294,7 +291,7 @@ class OpusPocusStep(object):
             return True
         return False
 
-    def compose_cmd(self) -> str:
+    def compose_command(self) -> str:
         """Compose the step command.
 
         We define a general step.command structure here to reduce code
@@ -304,7 +301,6 @@ class OpusPocusStep(object):
         More fine-grained structure should be defined through cmd_body_str
         method.
         """
-
         return """{cmd_header}
 {cmd_vars}
 {cmd_traps}
@@ -318,12 +314,40 @@ class OpusPocusStep(object):
             cmd_exit=self._cmd_exit_str()
         )
 
-    def _cmd_header_str(self) -> str:
+    def _cmd_header_str(
+        self,
+        n_nodes: int = 1,
+        n_tasks: int = 1,
+        n_cpus: int = 1,
+        n_gpus: int = None,
+        mem: int = 1,
+    ) -> str:
         """Produces scripts header code.
 
         Should contain stuff like shebang, sbatch-related defaults, etc.
         """
-        raise NotImplementedError()
+        sbatch_gpu = ''
+        if n_gpus is not None:
+            sbatch_gpu = '\n#SBATCH --gpus-per-node={}'.format(n_gpus)
+
+        return """#!/usr/bin/env bash
+#SBATCH --job-name={jobname}
+#SBATCH --nodes={n_nodes}
+#SBATCH --ntasks={n_tasks}
+#SBATCH --cpus-per-task={n_cpus}{sbatch_gpu}
+#SBATCH --mem={mem}G
+#SBATCH -o {logdir}/slurm.%j.log
+#SBATCH -e {logdir}/slurm.%j.log
+set -euo pipefail
+        """.format(
+            jobname=self.step,
+            n_nodes=n_nodes,
+            n_tasks=n_tasks,
+            n_cpus=n_cpus,
+            mem=mem,
+            logdir=self.log_dir,
+            sbatch_gpu=sbatch_gpu,
+        )
 
     def _cmd_vars_str(self) -> str:
         """Produces code with variable definitions.
@@ -343,7 +367,26 @@ class OpusPocusStep(object):
         Mainly to define behavior at a (un)successful execution of the script,
         i.e. setting the DONE/FAILED step.state at the end of execution.
         """
-        raise NotImplementedError()
+
+        return """cleanup() {{
+    exit_code=$?
+    if [[ $exit_code -gt 0 ]]; then
+        exit $exit_code
+    fi
+    echo DONE > {state_file}
+    exit 0
+}}
+
+err_cleanup() {{
+    exit_code=$?
+    # Set the step state and exit
+    echo FAILED > {state_file}
+    exit $exit_code
+}}
+
+trap err_cleanup ERR
+trap cleanup EXIT
+        """.format(state_file=str(Path(self.step_dir, self.state_file)))
 
     def _cmd_body_str(self) -> str:
         """Get the step specific code.

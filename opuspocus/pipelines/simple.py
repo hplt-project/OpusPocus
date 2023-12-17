@@ -92,7 +92,8 @@ class SimplePipeline(OpusPocusPipeline):
         targets = []
 
         # Load data
-        steps['raw_para'] = pipeline_steps.build_step(
+        step_label = 'raw.{}-{}'.format(args.src_lang, args.tgt_lang)
+        steps[step_label] = pipeline_steps.build_step(
             'raw',
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
@@ -101,36 +102,46 @@ class SimplePipeline(OpusPocusPipeline):
         )
 
         # Clean para
-        steps['clean_para'] = pipeline_steps.build_step(
+        step_label = 'clean.{}-{}'.format(args.src_lang, args.tgt_lang)
+        steps[step_label] = pipeline_steps.build_step(
             'clean',
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
-            previous_corpus_step=steps['raw_para'],
+            previous_corpus_step=steps[
+                'raw.{}-{}'.format(args.src_lang, args.tgt_lang)
+            ],
             python_venv_dir=args.python_venv_dir,
             opuscleaner_cmd=args.opuscleaner_cmd,
         )
 
         # Decontaminate para using test
-        steps['decontaminate_para'] = pipeline_steps.build_step(
+        step_label = 'decontaminate.{}-{}'.format(args.src_lang, args.tgt_lang)
+        steps[step_label] = pipeline_steps.build_step(
             'decontaminate',
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
             python_venv_dir=args.python_venv_dir,
             valid_data_dirs=[args.valid_data_dir, args.test_data_dir],
-            previous_corpus_step=steps['clean_para'],
+            previous_corpus_step=steps[
+                'clean.{}-{}'.format(args.src_lang, args.tgt_lang)
+            ],
             decontaminate_path=args.decontaminate_path,
             min_length=args.decontaminate_min_length,
         )
 
         # Gather para
-        steps['gather_train'] = pipeline_steps.build_step(
+        step_label = 'gather.{}-{}'.format(args.src_lang, args.tgt_lang)
+        steps[step_label] = pipeline_steps.build_step(
             'gather',
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
-            previous_corpus_step=steps['decontaminate_para'],
+            python_venv_dir=args.python_venv_dir,
+            previous_corpus_step=steps[
+                'decontaminate.{}-{}'.format(args.src_lang, args.tgt_lang)
+            ],
         )
 
         # Train BPE
@@ -139,9 +150,11 @@ class SimplePipeline(OpusPocusPipeline):
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
-            datasets=['clean.{}-{}'.format(self.src_lang, self.tgt_lang)],
+            datasets=['clean.{}-{}'.format(args.src_lang, args.tgt_lang)],
             marian_dir=args.marian_dir,
-            corpus_step=steps['gather_train'],
+            corpus_step=steps[
+                'gather.{}-{}'.format(args.src_lang, args.tgt_lang)
+            ],
             seed=args.seed,
             vocab_size=args.vocab_size
         )
@@ -157,14 +170,17 @@ class SimplePipeline(OpusPocusPipeline):
                 marian_dir=args.marian_dir,
                 valid_data_dir=args.valid_data_dir,
                 marian_config=args.marian_config,
+                python_venv_dir=args.python_venv_dir,
                 opustrainer_config=args.opustrainer_config,
                 vocab_step=steps['generate_vocab'],
-                train_corpus_step=steps['gather_train'],
+                train_corpus_step=steps[
+                    'gather.{}-{}'.format(args.src_lang, args.tgt_lang)
+                ],
                 model_init_step=None,
                 seed=args.seed,
-                train_dataset=steps[
-                    'clean.{}-{}'.format(self.src_lang, self.tgt_lang)
-                ],
+                train_dataset='clean.{}-{}'.format(
+                    args.src_lang, args.tgt_lang
+                ),
                 valid_dataset=args.valid_dataset,
             )
 

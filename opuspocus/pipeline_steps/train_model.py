@@ -21,6 +21,7 @@ class TrainModelStep(OpusPocusStep):
         pipeline_dir: Path,
         marian_dir: Path,
         valid_data_dir: Path,
+        python_venv_dir: Path,
         src_lang: str,
         tgt_lang: str,
         marian_config: Path,
@@ -38,6 +39,7 @@ class TrainModelStep(OpusPocusStep):
             pipeline_dir=pipeline_dir,
             marian_dir=marian_dir,
             valid_data_dir=valid_data_dir,
+            python_venv_dir=python_venv_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             marian_config=marian_config,
@@ -50,11 +52,7 @@ class TrainModelStep(OpusPocusStep):
             valid_dataset=valid_dataset,
             suffix=suffix
         )
-        if self.dependencies['model_init_step'] is not None:
-            self.model_init_path = self.dependencies['model_init_step'].model_path
         self.input_dir = self.dependencies['train_corpus_step'].output_dir
-
-        self.vocab_size = self.dependencies['vocab_step'].vocab_size
 
         # Check existence of the valid dataset
         for lang in [self.src_lang, self.tgt_lang]:
@@ -72,8 +70,11 @@ class TrainModelStep(OpusPocusStep):
                     'Dataset file {} does not exist'.format(valid_dataset_path)
                 )
 
-        self.model_path = Path(self.output_dir, 'model.npz')
-        self.tmp_dir = Path(self.step_dir, 'tmp.d')
+    @property
+    def model_init_path(self) -> Path:
+        if self.dependencies['model_init_step'] is not None:
+            return self.dependencies['model_init_step'].model_path
+        return None
 
     @property
     def vocab_path(self) -> Path:
@@ -87,6 +88,18 @@ class TrainModelStep(OpusPocusStep):
         return vocab_path
 
     @property
+    def vocab_size(self) -> int:
+        return self.dependencies['vocab_step'].vocab_size
+
+    @property
+    def model_path(self) -> Path:
+        return Path(self.output_dir, 'model.npz')
+
+    @property
+    def tmp_dir(self) -> Path:
+        return Path(self.step_dir, 'tmp.d')
+
+    @property
     def step_name(self):
         name = 's.{}.{}-{}'.format(
             self.step, self.src_lang, self.tgt_lang
@@ -95,23 +108,15 @@ class TrainModelStep(OpusPocusStep):
             name += '.{}'.format(self.suffix)
         return name
 
-    def get_command_str(self) -> str:
-        model_init = ''
-        if hasattr(self, 'model_init_path'):
-            model_init = '--pretrained-model {}'.format(self.model_init_path)
+    def _cmd_header_str(self) -> str:
+        return super()._cmd_header_str(
+            n_cpus=8,
+            n_gpus=8,
+            mem=20
+        )
 
-        return """#!/usr/bin/env bash
-#SBATCH --job-name=train_model
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --gpus-per-node=8
-#SBATCH --mem=20G
-#SBATCH -o {logdir}/slurm.%j.log
-#SBATCH -e {logdir}/slurm.%j.log
-# TODO: training recovery
-# TODO: replace the hardwired flores-200
-set -euo pipefail
+    def _cmd_vars_str(self) -> str:
+        return """export PATH="{python_venv}/bin:$PATH"
 
 SRC="{src_lang}"
 TGT="{tgt_lang}"
@@ -121,13 +126,12 @@ OUTPUT_DIR="{outdir}"
 VALID_DIR="{valdir}"
 LOG_DIR="{logdir}"
 
-STATE_FILE="{state_file}"
-
+STEP_DIR="{step_dir}"
 SCRIPT_DIR="scripts"
 MARIAN_DIR="{marian_dir}"
 SEED="{seed}"
 
-#OPUSTRAINER_CONFIG_FILE="{opustrainer_config}"
+OPUSTRAINER_CONFIG_FILE="{opustrainer_config}"
 MARIAN_CONFIG_FILE="{marian_config}"
 
 MODEL_FILE="{model_file}"
@@ -144,32 +148,34 @@ RESUBMIT_TIME_LEFT={resubmit_time}
 
 TEMP_DIR="{tmpdir}/$SLURM_JOBID"
 mkdir -p $TEMP_DIR
+        """.format(
+            python_venv=self.python_venv_dir,
+            src_lang=self.src_lang,
+            tgt_lang=self.tgt_lang,
+            indir=self.input_dir,
+            outdir=self.output_dir,
+            valdir=self.valid_data_dir,
+            logdir=self.log_dir,
+            step_dir=self.step_dir,
+            marian_dir=self.marian_dir,
+            seed=self.seed,
+            opustrainer_config='TODO',
+            marian_config=self.marian_config,
+            model_file=self.model_path,
+            vocab_file=self.vocab_path,
+            vocab_size=self.vocab_size,
+            train_dset=self.train_dataset,
+            valid_dset=self.valid_dataset,
+            resubmit_time=SLURM_RESUBMIT_TIME,
+            tmpdir=self.tmp_dir
+        )
 
-fail() {{
-    echo $1 >&2
-    exit 1
-}}
+    def _cmd_body_str(self) -> str:
+        model_init = ''
+        if self.model_init_path is not None:
+            model_init = '--pretrained-model {}'.format(self.model_init_path)
 
-cleanup() {{
-    exit_code=$?
-    rm -r $TEMP_DIR
-    if [[ $exit_code -gt 0 ]]; then
-        exit $exit_code
-    fi
-    echo DONE > $STATE_FILE
-    exit 0
-}}
-
-err_cleanup() {{
-    exit_code=$?
-    # Set the step state and exit
-    echo FAILED > $STATE_FILE
-    exit $exit_code
-}}
-
-trap err_cleanup ERR
-trap cleanup EXIT
-
+        return """
 compute_opt="--cpu-threads 1"
 [[ $SLURM_GPUS_PER_NODE -gt 0 ]] \\
     && compute_opt="--devices $(seq 0 1 $(expr $SLURM_GPUS_PER_NODE - 1))"
@@ -210,7 +216,7 @@ new_jid=$(sbatch \\
     --account=$SLURM_JOB_ACCOUNT \\
     --partition=$SLURM_JOB_PARTITION \\
     --time=$(squeue -h -j $SLURM_JOBID -o %l) \\
-    `pwd`/step.command \\
+    $STEP_DIR/step.command \\
 )
 echo $jid > `pwd`/step.jobid
 
@@ -224,27 +230,4 @@ for job in `sqeueu --me --format "%i $E" | grep ":$SLURM_JOBID" | grep -v ^$new_
     )
     scontrol update JobId=$job dependency=$update_str
 done
-
-# Explicitly exit with non-zero status
-exit 0
-        """.format(
-            state_file=str(Path(self.step_dir, self.state_file)),
-            src_lang=self.src_lang,
-            tgt_lang=self.tgt_lang,
-            indir=str(self.input_dir),
-            outdir=str(self.output_dir),
-            valdir=str(self.valid_data_dir),
-            logdir=str(self.log_dir),
-            marian_dir=str(self.marian_dir),
-            seed=self.seed,
-            opustrainer_config='TODO',
-            marian_config=str(self.marian_config),
-            train_dset=self.train_dataset,
-            valid_dset=self.valid_dataset,
-            model_file=str(self.model_path),
-            vocab_file=str(self.vocab_path),
-            vocab_size=self.vocab_size,
-            resubmit_time=SLURM_RESUBMIT_TIME,
-            tmpdir=str(self.tmp_dir),
-            model_init=model_init,
-        )
+        """.format(model_init=model_init)

@@ -95,7 +95,8 @@ class RawCorpusStep(CorpusStep):
             ]
         yaml.dump(datasets, open(self.dataset_list_path, 'w'))
 
-    def get_command_str(self) -> str:
-        return """#!/usr/bin/env bash
-echo DONE > {state_file}
-        """.format(state_file=str(Path(self.step_dir, self.state_file)))
+    def _cmd_vars_str(self) -> str:
+        return ''
+
+    def _cmd_body_str(self) -> str:
+        return ''

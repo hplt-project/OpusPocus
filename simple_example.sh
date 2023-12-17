@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 SRC=$1
 TGT=$2
-DATA_VERSION=${3:="v0"}
+DATA_VERSION=${3:-"v0"}
 
 PIPELINE_DIR=experiments/$SRC-$TGT/simple/$DATA_VERSION
 mkdir -p $PIPELINE_DIR
