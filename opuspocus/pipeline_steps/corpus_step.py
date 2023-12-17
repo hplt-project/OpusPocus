@@ -77,6 +77,32 @@ class CorpusStep(OpusPocusStep):
         dataset_list = yaml.safe_load(open(self.dataset_list_path, 'r'))
         return dataset_list
 
+    def init_step(self) -> None:
+        # TODO: refactor opuscleaner_step.init_step to reduce code duplication
+
+        self.state = self.load_state()
+        if self.state is not None:
+            if self.has_state('INITED'):
+                logger.info('Step already initialized. Skipping...')
+                return
+            else:
+                raise ValueError(
+                    'Trying to initialize step in a {} state.'.format(self.state)
+                )
+        # Set state to incomplete until finished initializing.
+        self.create_directories()
+        self.set_state('INIT_INCOMPLETE')
+
+        self.init_dependencies()
+        self.init_dataset_list()
+        self.save_parameters()
+        self.save_dependencies()
+        self.create_command()
+
+        # Initialize state
+        logger.info('[{}.init] Step Initialized.'.format(self.step))
+        self.set_state('INITED')
+
     def init_dataset_list(self) -> None:
         """Step-specific code for listing its available datasets."""
         NotImplementedError()
@@ -98,15 +124,6 @@ class CorpusStep(OpusPocusStep):
             name += '.{}'.format(self.suffix)
         return name
    
-    def init_step(self) -> None:
-        super().init_step()
-
-        # Set state to incomplete again until finished initializing.
-        self.set_state('INIT_INCOMPLETE')
-
-        self.init_dataset_list()
-        self.set_state('INITED')
-
     def _cmd_exit_str(self) -> str:
         """
         Check whether all the datasets files are present and are not empty.
@@ -114,6 +131,7 @@ class CorpusStep(OpusPocusStep):
 
         return """# Sanity check: Check the dataset existence and whether
 # they are not empty
+OUTPUT_DIR="{outdir}"
 for dset in {datasets}; do
     for lang in {languages}; do
         dset_path="$OUTPUT_DIR/$dset.$lang{gzip_suf}"
@@ -122,7 +140,7 @@ for dset in {datasets}; do
             && exit 1 \\
         )
 
-        [[ `zcat $dset_path | wc -l` -eq 0]] && ( \\
+        [[ `zcat $dset_path | wc -l` -eq 0 ]] && ( \\
             echo "Datset $dset_path is empty." >&2 \\
             && exit 1 \\
         )
@@ -132,6 +150,7 @@ done
 # By default, return zero code.
 exit 0
 """.format(
+            outdir=self.output_dir,
             datasets=' '.join(self.dataset_list),
             languages=' '.join(self.languages),
             gzip_suf=('.gz' if self.gzipped else '')
