@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional, get_type_hints
+from typing_extensions import TypedDict
 
 import json
 import logging
@@ -11,6 +12,21 @@ from opuspocus.utils import print_indented
 
 
 logger = logging.getLogger(__name__)
+
+# TODO: can we future-proof this against type changes in OpusCleaner?
+CategoryEntry = TypedDict(
+    'CategoryEntry',
+    {
+        'name': str
+    }
+)
+CategoriesDict = TypedDict(
+    'CategoriesDict',
+    {
+        'categories': List[CategoryEntry],
+        'mapping': Dict[str, List[str]],
+    }
+)
 
 
 class CorpusStep(OpusPocusStep):
@@ -42,7 +58,7 @@ class CorpusStep(OpusPocusStep):
             self.input_dir = self.prev_corpus_step.output_dir
 
     @property
-    def prev_corpus_step(self) -> Path:
+    def prev_corpus_step(self) -> 'CorpusStep':
         # Alternative to calling the prev corpus depencency
         return self.dependencies['previous_corpus_step']
 
@@ -51,10 +67,10 @@ class CorpusStep(OpusPocusStep):
         return Path(self.output_dir, self.categories_file)
 
     @property
-    def categories_dict(self) -> Optional[Dict[str, Any]]:
+    def categories_dict(self) -> Optional[CategoriesDict]:
         if not self.categories_path.exists():
             return None
-        return json.load(open(self.categories_path, 'r'))
+        return self.load_categories_dict()
 
     @property
     def categories(self) -> Optional[List[str]]:
@@ -74,8 +90,21 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def dataset_list(self) -> List[str]:
-        dataset_list = yaml.safe_load(open(self.dataset_list_path, 'r'))
-        return dataset_list
+        return self.load_dataset_list()
+
+    # Loading and Saving abstractions
+    # (if we want to change the file format in the future)
+    def load_categories_dict(self) -> CategoriesDict:
+        return json.load(open(self.categories_path, 'r'))
+
+    def load_dataset_list(self) -> List[str]:
+        return yaml.safe_load(open(self.dataset_list_path, 'r'))
+
+    def save_categories_dict(self, categories_dict: CategoriesDict) -> None:
+        json.dump(categories_dict, open(self.categories_path, 'w'))
+
+    def save_dataset_list(self, dataset_list: List[str]) -> None:
+        yaml.dump(dataset_list, open(self.dataset_list_path, 'w'))
 
     def init_step(self) -> None:
         # TODO: refactor opuscleaner_step.init_step to reduce code duplication

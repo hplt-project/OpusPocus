@@ -42,8 +42,6 @@ class RawCorpusStep(CorpusStep):
         for corpus files.
         """
         import os
-        import yaml
-
         categories_path = Path(self.raw_data_dir, self.categories_file)
         if categories_path.exists():
             import shutil
@@ -56,10 +54,10 @@ class RawCorpusStep(CorpusStep):
             logger.info(
                 'Copying datasets\' .filter.json files.'
             )            
-            datasets = [
+            dataset_list = [
                 d for d_list in self.category_mapping.values() for d in d_list
             ]
-            for dset in datasets:
+            for dset in dataset_list:
                 filt = Path(self.raw_data_dir, '{}.filters.json'.format(dset))
                 if not filt.exists():
                     FileNotFoundError(filt)
@@ -68,7 +66,7 @@ class RawCorpusStep(CorpusStep):
             logger.info(
                 'Creating links to the datasets\' corpora.'
             )
-            for dset in datasets:
+            for dset in dataset_list:
                 for lang in self.languages:
                     corpus_path = Path(
                         self.raw_data_dir, '{}.{}.gz'.format(dset, lang)
@@ -89,11 +87,11 @@ class RawCorpusStep(CorpusStep):
                         corpus_path.resolve(),
                         Path(self.output_dir, corpus_path.name)
                     )
-            datasets = [
+            dataset_list = [
                 '.'.join(c.name.split('.')[:-2])
                 for c in self.output_dir.glob('*.{}.gz'.format(self.src_lang))
             ]
-        yaml.dump(datasets, open(self.dataset_list_path, 'w'))
+        self.save_dataset_list(dataset_list)
 
     def _cmd_vars_str(self) -> str:
         return ''

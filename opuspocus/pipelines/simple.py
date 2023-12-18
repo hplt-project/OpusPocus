@@ -13,11 +13,6 @@ class SimplePipeline(OpusPocusPipeline):
     @staticmethod
     def add_args(parser):
         super(SimplePipeline, SimplePipeline).add_args(parser)
-        # All arguments must have default value (e.g. None) to enable
-        # parametrization via config file.
-        # The pipeline __init__ method should check for the correctly set
-        # argument values.
-        # TODO: is there a better way to do this?
 
         parser.add_argument(
             '--src-lang', type=str, required=True,
@@ -168,9 +163,9 @@ class SimplePipeline(OpusPocusPipeline):
                 src_lang=src,
                 tgt_lang=tgt,
                 marian_dir=args.marian_dir,
+                python_venv_dir=args.python_venv_dir,
                 valid_data_dir=args.valid_data_dir,
                 marian_config=args.marian_config,
-                python_venv_dir=args.python_venv_dir,
                 opustrainer_config=args.opustrainer_config,
                 vocab_step=steps['generate_vocab'],
                 train_corpus_step=steps[

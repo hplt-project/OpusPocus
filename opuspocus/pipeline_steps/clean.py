@@ -41,9 +41,6 @@ class CleanCorpusStep(CorpusStep):
         available datasets and their user-specified categorization.
         """
         import shutil
-        import json
-        import yaml
-
         # Sanity check: categories.json exists
         if not self.prev_corpus_step.categories_path.exists():
             raise FileNotFoundError(
@@ -54,20 +51,19 @@ class CleanCorpusStep(CorpusStep):
             self.categories_path
         )
 
-        datasets = [
+        dataset_list = [
             dset for mapping_values in self.category_mapping.values()
             for dset in mapping_values
         ]
 
         # Sanity check: filters.json files extist
-        for dset in datasets:
+        for dset in dataset_list:
             dset_filter_path = Path(
                 self.input_dir, '{}.filters.json'.format(dset)
             )
             if not dset_filter_path.exists():
                 raise FileNotFoundError(dset_filter_path)
-
-        yaml.dump(datasets, open(self.dataset_list_path, 'w'))
+        self.save_dataset_list(dataset_list)
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(

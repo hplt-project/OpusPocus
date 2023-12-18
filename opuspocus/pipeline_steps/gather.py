@@ -49,13 +49,13 @@ class GatherStep(CorpusStep):
             raise FileNotFoundError(
                 self.prev_corpus_step.categories_path()
             )
-        datasets = [
+        dataset_list = [
             '{}.{}-{}'.format(cat, self.src_lang, self.tgt_lang)
             if self.tgt_lang is not None
             else '{}.{}-'.format(cat, self.src_lang)
             for cat in self.prev_corpus_step.categories
         ]
-        yaml.dump(datasets, open(self.dataset_list_path, 'w'))
+        self.save_dataset_list(dataset_list)
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(
