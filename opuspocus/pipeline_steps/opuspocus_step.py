@@ -116,7 +116,7 @@ class OpusPocusStep(object):
             if '_step' in param:
                 self.dependencies[param] = val
             else:
-                if type_hints[param] == Path:
+                if type_hints[param] == Path and val is not None:
                     val = Path(val)
                 if type_hints[param] == List[Path]:
                     val = [Path(v) for v in val]

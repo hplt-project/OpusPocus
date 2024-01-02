@@ -32,6 +32,7 @@ CategoriesDict = TypedDict(
 class CorpusStep(OpusPocusStep):
     dataset_list_file = 'dataset_list.yaml'
     categories_file = 'categories.json'
+    shard_dirname = 'shards'
 
     def __init__(
         self,
@@ -40,7 +41,7 @@ class CorpusStep(OpusPocusStep):
         src_lang: str,
         tgt_lang: Optional[str] = None,
         previous_corpus_step: Optional['CorpusStep'] = None,
-        gzipped: bool = True,
+        output_shard_size: Optional[int] = None,
         suffix: Optional[str] = None,
         **kwargs
     ):
@@ -50,12 +51,36 @@ class CorpusStep(OpusPocusStep):
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
-            gzipped=gzipped,
+            output_shard_size=output_shard_size,
             suffix=suffix,
             **kwargs,
         )
+
+    @property
+    def input_dir(self) -> Optional[Path]:
         if self.prev_corpus_step is not None:
-            self.input_dir = self.prev_corpus_step.output_dir
+            return self.prev_corpus_step.output_dir
+        return None
+
+    @property
+    def is_sharded(self) -> bool:
+        return self.output_shard_size is not None
+
+    @property
+    def shard_dir(self) -> Path:
+        if self.is_sharded:
+            return Path(self.output_dir, self.shard_dirname)
+        return None
+
+    @property
+    def shard_size(self) -> int:
+        """Shortcut for output_shard_size."""
+        return self.output_shard_size
+
+    def create_directories(self) -> None:
+        super().create_directories()
+        if self.shard_dir is not None:
+            self.shard_dir.mkdir()
 
     @property
     def prev_corpus_step(self) -> 'CorpusStep':
@@ -101,14 +126,13 @@ class CorpusStep(OpusPocusStep):
         return yaml.safe_load(open(self.dataset_list_path, 'r'))
 
     def save_categories_dict(self, categories_dict: CategoriesDict) -> None:
-        json.dump(categories_dict, open(self.categories_path, 'w'))
+        json.dump(categories_dict, open(self.categories_path, 'w'), indent=2)
 
     def save_dataset_list(self, dataset_list: List[str]) -> None:
         yaml.dump(dataset_list, open(self.dataset_list_path, 'w'))
 
     def init_step(self) -> None:
         # TODO: refactor opuscleaner_step.init_step to reduce code duplication
-
         self.state = self.load_state()
         if self.state is not None:
             if self.has_state('INITED'):
@@ -157,22 +181,41 @@ class CorpusStep(OpusPocusStep):
         """
         Check whether all the datasets files are present and are not empty.
         """
+        sharding_str = ''
+        if self.is_sharded:
+            sharding_str = """
+        # Shard the output for the future steps
+        SHARD_DIR="{shard_dir}"
+        zcat $dset_path \\
+            | split -a4 -dl {shard_size} --filter='gzip -c > $FILE.gz' - $SHARD_DIR/$dset_file.
+
+        [[ $dset_lines -ne $($zcat $SHARD_DIR/$dset_file.* | wc -l) ]] && ( \\
+            echo "Original file and sum of shards $SHARD_DIR/$dset_file contain different number of lines" >&2 \\
+            && exit 1
+        )
+            """.format(
+                    shard_size=self.shard_size,
+                    shard_dir=self.shard_dir,
+                )
 
         return """# Sanity check: Check the dataset existence and whether
 # they are not empty
 OUTPUT_DIR="{outdir}"
 for dset in {datasets}; do
     for lang in {languages}; do
-        dset_path="$OUTPUT_DIR/$dset.$lang{gzip_suf}"
+        dset_file="$dset.$lang.gz"
+        dset_path="$OUTPUT_DIR/$dset_file"
         [[ -e $dset_path ]] || ( \\
             echo "Dataset $dset_path does not exist." >&2 \\
             && exit 1 \\
         )
 
-        [[ `zcat $dset_path | wc -l` -eq 0 ]] && ( \\
+        dset_lines=$(zcat $dset_path | wc -l)
+        [[ $dset_lines -eq 0 ]] && ( \\
             echo "Datset $dset_path is empty." >&2 \\
             && exit 1 \\
         )
+        {sharding_str}
     done
 done
 
@@ -182,5 +225,5 @@ exit 0
             outdir=self.output_dir,
             datasets=' '.join(self.dataset_list),
             languages=' '.join(self.languages),
-            gzip_suf=('.gz' if self.gzipped else '')
+            sharding_str=sharding_str,
         )

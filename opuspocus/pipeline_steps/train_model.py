@@ -28,7 +28,7 @@ class TrainModelStep(OpusPocusStep):
         opustrainer_config: Path,
         vocab_step: GenerateVocabStep,
         train_corpus_step: CorpusStep,
-        train_dataset: str,
+        train_category: str = 'clean',
         model_init_step: Optional['TrainModelStep'] = None,
         seed: int = 42,
         valid_dataset: str = 'flores200.dev',
@@ -48,7 +48,7 @@ class TrainModelStep(OpusPocusStep):
             train_corpus_step=train_corpus_step,
             model_init_step=model_init_step,
             seed=seed,
-            train_dataset=train_dataset,
+            train_category=train_category,
             valid_dataset=valid_dataset,
             suffix=suffix
         )
@@ -69,6 +69,10 @@ class TrainModelStep(OpusPocusStep):
                 raise FileNotFoundError(
                     'Dataset file {} does not exist'.format(valid_dataset_path)
                 )
+
+    @property
+    def train_corpus_step(self) -> CorpusStep:
+        return self.dependencies['train_corpus_step']
 
     @property
     def model_init_path(self) -> Path:
@@ -121,7 +125,6 @@ class TrainModelStep(OpusPocusStep):
 SRC="{src_lang}"
 TGT="{tgt_lang}"
 
-TRAIN_DIR="{indir}"
 OUTPUT_DIR="{outdir}"
 VALID_DIR="{valdir}"
 LOG_DIR="{logdir}"
@@ -142,7 +145,6 @@ VALID_OUT_FILE="$LOG_DIR/model.valid.out"
 TRAIN_LOG_FILE="$LOG_DIR/model.train.log"
 VALID_LOG_FILE="$LOG_DIR/model.valid.log"
 
-TRAIN_PREFIX="$TRAIN_DIR/{train_dset}"
 VALID_PREFIX="$VALID_DIR/{valid_dset}"
 RESUBMIT_TIME_LEFT={resubmit_time}
 
@@ -152,7 +154,6 @@ mkdir -p $TEMP_DIR
             python_venv=self.python_venv_dir,
             src_lang=self.src_lang,
             tgt_lang=self.tgt_lang,
-            indir=self.input_dir,
             outdir=self.output_dir,
             valdir=self.valid_data_dir,
             logdir=self.log_dir,
@@ -164,7 +165,6 @@ mkdir -p $TEMP_DIR
             model_file=self.model_path,
             vocab_file=self.vocab_path,
             vocab_size=self.vocab_size,
-            train_dset=self.train_dataset,
             valid_dset=self.valid_dataset,
             resubmit_time=SLURM_RESUBMIT_TIME,
             tmpdir=self.tmp_dir
@@ -174,6 +174,16 @@ mkdir -p $TEMP_DIR
         model_init = ''
         if self.model_init_path is not None:
             model_init = '--pretrained-model {}'.format(self.model_init_path)
+
+        dset_list = self.train_corpus_step.category_mapping[self.train_category]
+        train_data_opt = '--train-sets '
+        train_data_opt += ' '.join([
+            '<(zcat {})'.format(' '.join([
+                '{}/{}.{}.gz'.format(self.input_dir, dset, lang)
+                for dset in dset_list
+            ]))
+            for lang in [self.src_lang, self.tgt_lang]
+        ])
 
         return """
 compute_opt="--cpu-threads 1"
@@ -189,7 +199,7 @@ $MARIAN_DIR/bin/marian \\
     --vocabs $VOCAB_FILE $VOCAB_FILE \\
     --dim-vocabs $VOCAB_SIZE \\
     --tempdir $TEMP_DIR \\
-    --train-sets $TRAIN_PREFIX.{{$SRC,$TGT}}.gz \\
+    {train_data_opt} \\
     --valid-sets $VALID_PREFIX.$SRC-$TGT.{{$SRC,$TGT}} \\
     --valid-translation-output $VALID_OUT_FILE \\
     --log-level info \\
@@ -230,4 +240,7 @@ for job in `sqeueu --me --format "%i $E" | grep ":$SLURM_JOBID" | grep -v ^$new_
     )
     scontrol update JobId=$job dependency=$update_str
 done
-        """.format(model_init=model_init)
+        """.format(
+            model_init=model_init,
+            train_data_opt=train_data_opt
+        )

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import logging
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
@@ -22,6 +24,7 @@ class RawCorpusStep(CorpusStep):
         raw_data_dir: Path,
         src_lang: str,
         tgt_lang: str = None,
+        output_shard_size: Optional[int] = None,
         gzipped: bool = True,
         suffix: str = None,
     ):
@@ -31,6 +34,7 @@ class RawCorpusStep(CorpusStep):
             raw_data_dir=raw_data_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
+            output_shard_size=output_shard_size,
             gzipped=gzipped,
             suffix=suffix
         )
@@ -59,9 +63,8 @@ class RawCorpusStep(CorpusStep):
             ]
             for dset in dataset_list:
                 filt = Path(self.raw_data_dir, '{}.filters.json'.format(dset))
-                if not filt.exists():
-                    FileNotFoundError(filt)
-                shutil.copy(filt, Path(self.output_dir, filt.name))
+                if filt.exists():
+                    shutil.copy(filt, Path(self.output_dir, filt.name))
 
             logger.info(
                 'Creating links to the datasets\' corpora.'

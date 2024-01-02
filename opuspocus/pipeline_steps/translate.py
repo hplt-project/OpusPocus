@@ -23,6 +23,7 @@ class TranslateStep(CorpusStep):
         tgt_lang: str,
         previous_corpus_step: CorpusStep,
         model_step: TrainModelStep,
+        output_shard_size: Optional[int] = None,
         model_suffix: str = 'best-chrf',
         suffix: str = None
     ):
@@ -30,13 +31,32 @@ class TranslateStep(CorpusStep):
             step=step,
             pipeline_dir=pipeline_dir,
             marian_dir=marian_dir,
-            python_venv_dir=python_venv_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             previous_corpus_step=previous_corpus_step,
             model_step=model_step,
+            output_shard_size=output_shard_size,
             model_suffix=model_suffix,
             suffix=suffix
+        )
+
+    @property
+    def input_dir(self) -> Path:
+        if self.prev_corpus_step.is_sharded:
+            return self.prev_corpus_step.output_shard_dir
+        return self.prev_corpus_step.output_dir
+
+    def init_dataset_list(self) -> None:
+        import shutil
+        print(self.prev_corpus_step.categories_path)
+        if self.prev_corpus_step.categories_path.exists():
+            shutil.copy(
+                self.prev_corpus_step.categories_path,
+                self.categories_path
+            )
+        shutil.copy(
+            self.prev_corpus_step.dataset_list_path,
+            self.dataset_list_path
         )
 
     @property
@@ -46,8 +66,8 @@ class TranslateStep(CorpusStep):
     @property
     def model_config_path(self) -> Path:
         return Path(
-            self.model_step.model_path
-            + '{}.npz.decoder.yml'.format(self.model_suffix)
+            self.model_step.model_path,
+            '{}.npz.decoder.yml'.format(self.model_suffix)
         )
 
     @property
@@ -84,7 +104,7 @@ CONFIG_FILE="{marian_config}"
             outdir=self.output_dir,
             logdir=self.log_dir,
             marian_dir=self.marian_dir,
-            marian_config=self.marian_config_path,
+            marian_config=self.model_config_path,
         )
 
     def _cmd_body_str(self) -> str:
@@ -136,6 +156,8 @@ for f_in in $INPUT_DIR/*$SRC.gz; do
         echo "Terminating..." >&2
         exit 1
     fi
+
+    ln $f_in $OUTPUT_DIR/$fname
 done
 
 # TODO: script resubmission loop?

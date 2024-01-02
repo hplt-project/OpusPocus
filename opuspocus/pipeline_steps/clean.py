@@ -1,3 +1,5 @@
+from typing import Optional
+
 import logging
 from pathlib import Path
 
@@ -18,6 +20,7 @@ class CleanCorpusStep(CorpusStep):
         python_venv_dir: Path,
         src_lang: str,
         tgt_lang: str = None,
+        output_shard_size: Optional[int] = None,
         opuscleaner_cmd: str = 'opuscleaner-clean',
         gzipped: bool = True,
         suffix: str = None
@@ -29,6 +32,7 @@ class CleanCorpusStep(CorpusStep):
             python_venv_dir=python_venv_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
+            output_shard_size=output_shard_size,
             opuscleaner_cmd=opuscleaner_cmd,
             gzipped=gzipped,
             suffix=suffix

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import logging
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
@@ -23,6 +25,7 @@ class GatherStep(CorpusStep):
         python_venv_dir: Path,
         src_lang: str,
         tgt_lang: str = None,
+        output_shard_size: Optional[int] = None,
         gzipped: bool = True,
         suffix: str = None,
     ):
@@ -33,6 +36,7 @@ class GatherStep(CorpusStep):
             python_venv_dir=python_venv_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
+            output_shard_size=output_shard_size,
             gzipped=gzipped,
             suffix=suffix
         )
@@ -44,15 +48,21 @@ class GatherStep(CorpusStep):
         in the categories.json input file. After this step,
         categories.json is dropped.
         """
-        import yaml
-        if not self.prev_corpus_step.categories_path.exists():
-            raise FileNotFoundError(
-                self.prev_corpus_step.categories_path()
-            )
+        categories_dict = {
+            'categories' : self.prev_corpus_step.categories_dict['categories'],
+            'mapping': {}
+        }
+        for cat in self.prev_corpus_step.categories:
+            dset_name = '{}.{}'.format(cat, self.src_lang)
+            if self.tgt_lang is not None:
+                dset_name = '{}.{}-{}'.format(cat, self.src_lang, self.tgt_lang)
+            categories_dict['mapping'][cat] = [dset_name]
+        self.save_categories_dict(categories_dict)
+
         dataset_list = [
             '{}.{}-{}'.format(cat, self.src_lang, self.tgt_lang)
             if self.tgt_lang is not None
-            else '{}.{}-'.format(cat, self.src_lang)
+            else '{}.{}'.format(cat, self.src_lang)
             for cat in self.prev_corpus_step.categories
         ]
         self.save_dataset_list(dataset_list)

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import os
 import glob
@@ -22,6 +22,7 @@ class DecontaminateCorpusStep(CorpusStep):
         valid_data_dirs: List[Path],
         src_lang: str,
         tgt_lang: str = None,
+        output_shard_size: Optional[int] = None,
         decontaminate_path: Path = Path('scripts/decontaminate.py'),
         min_length: int = 25,
         gzipped: bool = True,
@@ -33,6 +34,7 @@ class DecontaminateCorpusStep(CorpusStep):
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
+            output_shard_size=output_shard_size,
             python_venv_dir=python_venv_dir,
             valid_data_dirs=valid_data_dirs,
             decontaminate_path=decontaminate_path,
@@ -161,6 +163,11 @@ DECONTAMINATE="{decontaminate}"
             > /dev/null \\
     )"""
 
+        # decontaminate.py --mono option
+        mono_opt_str = ''
+        if self.tgt_lang is not None:
+            mono_opt_str = '--mono'
+
         # Sanity check of the decontaminate.py output
         sanity_check_str = ''
         if self.tgt_lang is not None:
@@ -181,7 +188,7 @@ for dataset in $INPUT_DIR/*.$SRC.gz; do
     echo "Decontaminating $dataset..." >&2
     {valid_data_str}
     {decontaminate_in_str} \\
-    | python $DECONTAMINATE \\
+    | python $DECONTAMINATE {mono_opt_str} \\
         --min-length $MIN_LENGTH \\
         ${{valid_dsets%% }} \\
     > {decontaminate_out_str} \\
@@ -193,5 +200,6 @@ done
             valid_data_str=valid_data_str,
             decontaminate_in_str=decontaminate_in_str,
             decontaminate_out_str=decontaminate_out_str,
+            mono_opt_str=mono_opt_str,
             sanity_check_str=sanity_check_str,
         )
