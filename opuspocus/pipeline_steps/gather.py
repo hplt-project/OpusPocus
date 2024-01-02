@@ -41,7 +41,7 @@ class GatherStep(CorpusStep):
             suffix=suffix
         )
 
-    def init_dataset_list(self) -> None:
+    def register_categories(self) -> None:
         """Extract the dataset names.
 
         Dataset names are extracted using the mapping labels
@@ -53,19 +53,11 @@ class GatherStep(CorpusStep):
             'mapping': {}
         }
         for cat in self.prev_corpus_step.categories:
-            dset_name = '{}.{}'.format(cat, self.src_lang)
+            dset_name = cat
             if self.tgt_lang is not None:
                 dset_name = '{}.{}-{}'.format(cat, self.src_lang, self.tgt_lang)
             categories_dict['mapping'][cat] = [dset_name]
         self.save_categories_dict(categories_dict)
-
-        dataset_list = [
-            '{}.{}-{}'.format(cat, self.src_lang, self.tgt_lang)
-            if self.tgt_lang is not None
-            else '{}.{}'.format(cat, self.src_lang)
-            for cat in self.prev_corpus_step.categories
-        ]
-        self.save_dataset_list(dataset_list)
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(

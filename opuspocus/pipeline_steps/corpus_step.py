@@ -30,7 +30,6 @@ CategoriesDict = TypedDict(
 
 
 class CorpusStep(OpusPocusStep):
-    dataset_list_file = 'dataset_list.yaml'
     categories_file = 'categories.json'
     shard_dirname = 'shards'
 
@@ -110,26 +109,19 @@ class CorpusStep(OpusPocusStep):
         return self.categories_dict['mapping']
 
     @property
-    def dataset_list_path(self) -> Path:
-        return Path(self.output_dir, self.dataset_list_file)
-
-    @property
     def dataset_list(self) -> List[str]:
-        return self.load_dataset_list()
+        return [
+            dset for dset_list in self.category_mapping.values()
+            for dset in dset_list
+        ]
 
     # Loading and Saving abstractions
     # (if we want to change the file format in the future)
     def load_categories_dict(self) -> CategoriesDict:
         return json.load(open(self.categories_path, 'r'))
 
-    def load_dataset_list(self) -> List[str]:
-        return yaml.safe_load(open(self.dataset_list_path, 'r'))
-
     def save_categories_dict(self, categories_dict: CategoriesDict) -> None:
         json.dump(categories_dict, open(self.categories_path, 'w'), indent=2)
-
-    def save_dataset_list(self, dataset_list: List[str]) -> None:
-        yaml.dump(dataset_list, open(self.dataset_list_path, 'w'))
 
     def init_step(self) -> None:
         # TODO: refactor opuscleaner_step.init_step to reduce code duplication
@@ -147,7 +139,7 @@ class CorpusStep(OpusPocusStep):
         self.set_state('INIT_INCOMPLETE')
 
         self.init_dependencies()
-        self.init_dataset_list()
+        self.init_categories_file()
         self.save_parameters()
         self.save_dependencies()
         self.create_command()
@@ -156,8 +148,20 @@ class CorpusStep(OpusPocusStep):
         logger.info('[{}.init] Step Initialized.'.format(self.step))
         self.set_state('INITED')
 
-    def init_dataset_list(self) -> None:
-        """Step-specific code for listing its available datasets."""
+    def init_categories_file(self) -> None:
+        self.register_categories()
+        if not self.categories_path.exists():
+            raise FileNotFoundError(
+                '{} not found after initialization. Perhaps there is an issue '
+                'with the register_categories derived method implementation? '
+                ''.format(self.categories_file)
+            )
+
+    def register_categories(self) -> None:
+        """Step-specific code for listing corpora available in the step output.
+
+        Produces categories.json
+        """
         NotImplementedError()
 
     @property

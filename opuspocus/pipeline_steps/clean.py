@@ -38,36 +38,25 @@ class CleanCorpusStep(CorpusStep):
             suffix=suffix
         )
 
-    def init_dataset_list(self) -> None:
+    def register_categories(self) -> None:
         """Create a dataset list using the datasets listed in categories.json file.
 
         OpusCleaner server app creates a categories.json file listing locally
         available datasets and their user-specified categorization.
         """
         import shutil
-        # Sanity check: categories.json exists
-        if not self.prev_corpus_step.categories_path.exists():
-            raise FileNotFoundError(
-                self.prev_corpus_step.categories_path.exists()
-            )
         shutil.copy(
             self.prev_corpus_step.categories_path,
             self.categories_path
         )
 
-        dataset_list = [
-            dset for mapping_values in self.category_mapping.values()
-            for dset in mapping_values
-        ]
-
-        # Sanity check: filters.json files extist
-        for dset in dataset_list:
+        # Sanity check: .filters.json files exist
+        for dset in self.dataset_list:
             dset_filter_path = Path(
                 self.input_dir, '{}.filters.json'.format(dset)
             )
             if not dset_filter_path.exists():
                 raise FileNotFoundError(dset_filter_path)
-        self.save_dataset_list(dataset_list)
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(

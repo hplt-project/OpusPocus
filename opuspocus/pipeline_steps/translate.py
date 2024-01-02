@@ -46,17 +46,11 @@ class TranslateStep(CorpusStep):
             return self.prev_corpus_step.output_shard_dir
         return self.prev_corpus_step.output_dir
 
-    def init_dataset_list(self) -> None:
+    def register_categories(self) -> None:
         import shutil
-        print(self.prev_corpus_step.categories_path)
-        if self.prev_corpus_step.categories_path.exists():
-            shutil.copy(
-                self.prev_corpus_step.categories_path,
-                self.categories_path
-            )
         shutil.copy(
-            self.prev_corpus_step.dataset_list_path,
-            self.dataset_list_path
+            self.prev_corpus_step.categories_path,
+            self.categories_path
         )
 
     @property

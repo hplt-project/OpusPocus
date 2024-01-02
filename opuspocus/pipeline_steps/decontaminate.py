@@ -53,37 +53,12 @@ class DecontaminateCorpusStep(CorpusStep):
                 'File {} does not exist'.format(self.decontaminate_path)
             )
 
-    def init_dataset_list(self) -> None:
+    def register_categories(self) -> None:
         import shutil
-
-        # Carry over the datasets from the previous step
         shutil.copy(
-            self.prev_corpus_step.dataset_list_path,
-            self.dataset_list_path
+            self.prev_corpus_step.categories_path,
+            self.categories_path
         )
-
-        # Use and carry over categories.json if available.
-        if self.prev_corpus_step.categories_path.exists():
-            # Use and carry over categories.json when available.
-            shutil.copy(
-                self.prev_corpus_step.categories_path,
-                self.categories_path
-            )
-
-            # Sanity check: the dataset_list and categories.json should contain
-            # same datasets
-            datasets = [
-                dset for mapping_values in self.category_mapping.values()
-                for dset in mapping_values
-            ]
-            for dset in self.dataset_list:
-                if dset not in datasets:
-                    raise ValueError(
-                        'Dataset listed in the {} but not in {} file.'.format(
-                            self.dataset_list_path,
-                            self.prev_corpus_step.categories_path
-                        )
-                    )
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(
@@ -165,7 +140,7 @@ DECONTAMINATE="{decontaminate}"
 
         # decontaminate.py --mono option
         mono_opt_str = ''
-        if self.tgt_lang is not None:
+        if self.tgt_lang is None:
             mono_opt_str = '--mono'
 
         # Sanity check of the decontaminate.py output

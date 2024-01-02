@@ -53,34 +53,13 @@ class MergeStep(CorpusStep):
     def other_corpus_step(self) -> CorpusStep:
         return self.dependencies['other_corpus_step']
 
-    def init_dataset_list(self) -> None:
-        """Extract the dataset names.
-
-        Dataset names are extracted using the mapping labels
-        in the categories.json input file.
-        """
-        import yaml
-        dataset_list = []
-
-        # register previous_corpus_step datasets
-        for dset_list, corpus_label in [
-            (self.prev_corpus_step.dataset_list, self.previous_corpus_label),
-            (self.other_corpus_step.dataset_list, self.other_corpus_label)
-        ]:
-            for dset_name in dset_list:
-                # Dataset name should be a '.' separated name with last element
-                # contains the language/langpair identification.
-                dataset_list.append(extend_dataset_name(dset_name, corpus_label))
-        self.save_dataset_list(dataset_list)
-        self.merge_categories()
-
-    def merge_categories(self) -> None:
+    def register_categories(self) -> None:
         categories_dict = self.prev_corpus_step.categories_dict
 
         # Merge the category lists
         for cat in self.other_corpus_step.categories:
             if cat not in self.prev_corpus_step.categories:
-                categories_dict['categories'].append({'name': cat})
+                categories_dict['categories'].append({ 'name': cat })
 
         # Extend the filenames of the datasets in prev_corpus_step
         categories_dict['mapping'] = {
@@ -93,12 +72,11 @@ class MergeStep(CorpusStep):
         # Add the datasets from the other_corpus_step
         for cat, dset_list in self.other_corpus_step.category_mapping.items():
             if cat not in categories_dict['mapping']:
-                categories_dict['mapping'][cat] = dset_list
-            else:
-                for dset_name in dset_list:
-                    categories_dict['mapping'][cat].append(
-                        extend_dataset_name(dset_name, self.other_corpus_label)
-                    )
+                categories_dict['mapping'][cat] = []
+            for dset_name in dset_list:
+                categories_dict['mapping'][cat].append(
+                    extend_dataset_name(dset_name, self.other_corpus_label)
+                )
         self.save_categories_dict(categories_dict)
 
     def _cmd_vars_str(self) -> str:

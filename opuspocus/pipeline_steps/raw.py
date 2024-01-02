@@ -16,6 +16,7 @@ class RawCorpusStep(CorpusStep):
     The resulting CorpusStep can be later processed by other CorpusStep steps
     or used as an input for OpusPocusSteps.
     """
+    default_category = 'clean'
 
     def __init__(
         self,
@@ -39,7 +40,7 @@ class RawCorpusStep(CorpusStep):
             suffix=suffix
         )
 
-    def init_dataset_list(self) -> None:
+    def register_categories(self) -> None:
         """Extract the dataset names from the raw_data_dir.
 
         Use categories.json, if available. Otherwise, scan the input direcotory
@@ -54,47 +55,43 @@ class RawCorpusStep(CorpusStep):
                 'OpusCleaner\'s categories.json found. Copying.'
             )
             shutil.copy(categories_path, self.categories_path)
-
-            logger.info(
-                'Copying datasets\' .filter.json files.'
-            )            
-            dataset_list = [
-                d for d_list in self.category_mapping.values() for d in d_list
-            ]
-            for dset in dataset_list:
-                filt = Path(self.raw_data_dir, '{}.filters.json'.format(dset))
-                if filt.exists():
-                    shutil.copy(filt, Path(self.output_dir, filt.name))
-
-            logger.info(
-                'Creating links to the datasets\' corpora.'
-            )
-            for dset in dataset_list:
-                for lang in self.languages:
-                    corpus_path = Path(
-                        self.raw_data_dir, '{}.{}.gz'.format(dset, lang)
-                    )
-                    if not corpus_path.exists():
-                        FileNotFoundError(corpus_path)
-                    os.link(
-                        corpus_path.resolve(),
-                        Path(self.output_dir, '{}.{}.gz'.format(dset, lang))
-                    )
         else:
             logger.info(
                 'categories.json not found. Scanning for datasets.'
             )
+            categories_dict = {
+                'categories': [{ 'name' : self.default_category }],
+                'mapping': { self.default_category : [] }
+            }
+            # TODO: support other than .gz files
             for lang in self.languages:
                 for corpus_path in self.raw_data_dir.glob('*.{}.gz'.format(lang)):
-                    os.link(
-                        corpus_path.resolve(),
-                        Path(self.output_dir, corpus_path.name)
+                    categories_dict['mapping'][self.default_category].append(
+                        '.'.join(corpus_path.name.split('.')[:-2])
                     )
-            dataset_list = [
-                '.'.join(c.name.split('.')[:-2])
-                for c in self.output_dir.glob('*.{}.gz'.format(self.src_lang))
-            ]
-        self.save_dataset_list(dataset_list)
+            self.save_categories_dict(categories_dict)
+        for dset in self.dataset_list:
+            # Hardlink corpus files
+            for lang in self.languages:
+                corpus_path = Path(
+                    self.raw_data_dir, '{}.{}.gz'.format(dset, lang)
+                )
+                if not corpus_path.exists():
+                    FileNotFoundError(corpus_path)
+                os.link(
+                    corpus_path.resolve(),
+                    Path(self.output_dir, '{}.{}.gz'.format(dset, lang))
+                )
+
+            # Copy .filters.json files, if available
+            filters_path = Path(
+                self.raw_data_dir, '{}.filters.json'.format(dset)
+            )
+            if filters_path.exists():
+                shutil.copy(
+                    filters_path, 
+                    Path(self.output_dir, '{}.filters.json'.format(dset))
+                )
 
     def _cmd_vars_str(self) -> str:
         return ''
