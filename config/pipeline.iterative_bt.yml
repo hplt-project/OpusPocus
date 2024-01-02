@@ -2,18 +2,23 @@ seed: 42
 
 #src_lang: en
 #tgt_lang: eu
-#raw_data_dir: "data/en-eu/raw/v0/para"
+#raw_data_parallel_dir: "data/en-eu/raw/v0"
+#raw_data_src_dir: "data/en/raw"
+#raw_data_tgt_dir: "data/eu/raw"
 #valid_data_dir: "data/en-eu/valid"
 #test_data_dir: "data/en-eu/test"
 
 valid_dataset: "flores200.dev"
+
+skip-src-clean: True
+skip-tgt-clean: True
 
 python-venv-dir: "venv"
 marian-dir: "marian"
 
 opuscleaner_cmd: "opuscleaner-clean"
 decontaminate_path: "scripts/decontaminate.py"
-marian_config: "config/marian.train.teacher.12x6.yml"
+marian_config: "config/marian.train.teacher.12x12.yml"
 opustrainer_config: null
 
 decontaminate-min-length: 25
