@@ -52,7 +52,12 @@ class OpusPocusStep(object):
         Args:
             args (argparse.Namespace): parsed command-line arguments
         """
-        return cls(step, pipeline_dir, **kwargs)
+        try:
+            cls_inst = cls(step, pipeline_dir, **kwargs)
+        except TypeError as err:
+            logger.error('Error occured while building step {}.'.format(step))
+            raise err
+        return cls_inst
 
     @classmethod
     def list_parameters(cls) -> List[str]:
