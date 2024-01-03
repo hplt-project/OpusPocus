@@ -11,7 +11,7 @@ def hash_mono(line):
     return line.strip().lower()
 
 def make_hashes(line):
-    src, tgt = line.split("\t", 2)
+    src, tgt = line.split('\t', 2)
     # maybe we want to translate(str.maketrans("", "", string.punctuation))
     return hash_mono(src), hash_mono(tgt)
 
@@ -24,7 +24,11 @@ def main(args):
 
     for testfile in args.testfiles:
         for line in testfile:
-            src, tgt = make_hashes(line)
+            if args.mono:
+                src = hash_mono(line)
+                tgt = 'null'
+            else:
+                src, tgt = make_hashes(line)
             # if src in src_test_samples:
             #     print(f"'{src}' already appears on source-side", file=sys.stderr)
             # if tgt in tgt_test_samples:
@@ -74,38 +78,38 @@ def main(args):
         i += 1
 
         # We never stripped the original newline
-        print(line, end="")
+        print(line, end='')
 
-    print(f"Removed {removed:,} lines out of {i:,}. Retained {retained:,} below length threshold", file=sys.stderr)
+    print(f'Removed {removed:,} lines out of {i:,}. Retained {retained:,} below length threshold', file=sys.stderr)
 
     for side, samples in [('Src', src_test_samples), ('Trg', tgt_test_samples)]:
         total_seen = sum(v.seen for v in samples.values())
         was_seen = sum(1 if v.seen > 0 else 0 for v in samples.values())
 
-        print("Seen", file=sys.stderr)
-        print(f"{side} total: {total_seen}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_seen/len(samples):%}", file=sys.stderr)
+        print('Seen', file=sys.stderr)
+        print(f'{side} total: {total_seen}/{i}', file=sys.stderr)
+        print(f'{side} was: {was_seen/len(samples):%}', file=sys.stderr)
 
         total_removed = sum(v.removed for v in samples.values())
         was_removed = sum(1 if v.removed > 0 else 0 for v in samples.values())
 
-        print("Removed", file=sys.stderr)
-        print(f"{side} total: {total_removed}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_removed/len(samples):%}", file=sys.stderr)
+        print('Removed', file=sys.stderr)
+        print(f'{side} total: {total_removed}/{i}', file=sys.stderr)
+        print(f'{side} was: {was_removed/len(samples):%}', file=sys.stderr)
 
         total_kept = sum(v.kept for v in samples.values())
         was_kept = sum(1 if v.kept > 0 else 0 for v in samples.values())
 
-        print("Kept", file=sys.stderr)
-        print(f"{side} total: {total_kept}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_kept/len(samples):%}", file=sys.stderr)
+        print('Kept', file=sys.stderr)
+        print(f'{side} total: {total_kept}/{i}', file=sys.stderr)
+        print(f'{side} was: {was_kept/len(samples):%}', file=sys.stderr)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser("decontamination script")
-    parser.add_argument("testfiles", nargs="+", type=argparse.FileType('r'))
-    parser.add_argument("--min-length", required=False, type=int, default=0)
-    parser.add_argument("--mono", action="store_true")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser('decontamination script')
+    parser.add_argument('testfiles', nargs='+', type=argparse.FileType('r'))
+    parser.add_argument('--min-length', required=False, type=int, default=0)
+    parser.add_argument('--mono', action='store_true')
     args = parser.parse_args()
 
     main(args)
