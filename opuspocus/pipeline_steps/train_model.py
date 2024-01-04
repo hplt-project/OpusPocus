@@ -177,7 +177,7 @@ mkdir -p $TEMP_DIR
         )
 
     def _cmd_traps_str(self) -> str:
-        return """cleunup() {{
+        return """cleanup() {{
     exit_code=$?
     if [[ $exit_code -gt 0 ]]; then
         exit $exit_code
@@ -237,7 +237,7 @@ $MARIAN_DIR/bin/marian \\
     --vocabs $VOCAB_FILE $VOCAB_FILE \\
     --dim-vocabs $VOCAB_SIZE \\
     --tempdir $TEMP_DIR \\
-    --train-sets $TEMP_DIR/train.${{$SRC,$TGT}}.gz \\
+    --train-sets $TEMP_DIR/train.{{$SRC,$TGT}}.gz \\
     --valid-sets $VALID_PREFIX.$SRC-$TGT.{{$SRC,$TGT}} \\
     --valid-translation-output $VALID_OUT_FILE \\
     --log-level info \\
