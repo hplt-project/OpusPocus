@@ -168,9 +168,9 @@ mkdir -p $TEMP_DIR
             model_file=self.model_path,
             vocab_file=self.vocab_path,
             vocab_size=self.vocab_size,
-            train_dsets=self.train_corpus_step.category_mapping[
-                self.train_category
-            ],
+            train_dsets=' '.join(
+                self.train_corpus_step.category_mapping[self.train_category]
+            ),
             valid_dset=self.valid_dataset,
             resubmit_time=SLURM_RESUBMIT_TIME,
             tmpdir=self.tmp_dir
