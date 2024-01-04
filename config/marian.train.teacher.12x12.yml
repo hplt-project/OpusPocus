@@ -2,7 +2,6 @@ authors: false
 cite: false
 build-info: ""
 workspace: 25000
-log: /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/opusTCv20230926+bibles+bt.spm32k-spm32k.transformer-12x12.train1.log
 log-level: info
 log-time-zone: ""
 quiet: false
@@ -13,7 +12,6 @@ interpolate-env-vars: false
 relative-paths: false
 dump-config: ""
 sigterm: save-and-exit
-model: /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/opusTCv20230926+bibles+bt.spm32k-spm32k.transformer-12x12.model1.npz
 pretrained-model: ""
 ignore-model-config: false
 type: transformer
@@ -101,12 +99,6 @@ multi-loss-type: sum
 unlikelihood-loss: false
 overwrite: true
 no-reload: false
-train-sets:
-  - /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/train/opusTCv20230926+bibles+bt.src.clean.spm32k.gz
-  - /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/train/opusTCv20230926+bibles+bt.trg.clean.spm32k.gz
-vocabs:
-  - /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/opusTCv20230926+bibles+bt.spm32k-spm32k.vocab.yml
-  - /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/opusTCv20230926+bibles+bt.spm32k-spm32k.vocab.yml
 sentencepiece-alphas: []
 sentencepiece-options: ""
 sentencepiece-max-lines: 2000000
@@ -126,7 +118,6 @@ tsv: false
 tsv-fields: 0
 shuffle: batches
 no-restore-corpus: false
-tempdir: /scratch/project_462000088/tmp
 sqlite: ""
 sqlite-drop: false
 devices:
@@ -218,9 +209,6 @@ ulr-trainable-transformation: false
 ulr-dim-emb: 0
 ulr-dropout: 0
 ulr-softmax-temperature: 1
-valid-sets:
-  - /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/val/Tatoeba-dev-v2023-09-26.src.spm32k
-  - /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/val/Tatoeba-dev-v2023-09-26.trg.spm32k
 valid-freq: 5000
 valid-metrics:
   - perplexity
@@ -240,4 +228,3 @@ valid-script-path: ""
 valid-script-args: []
 valid-translation-output: ""
 keep-best: true
-valid-log: /pfs/lustrep1/scratch/project_462000088/members/tiedeman/OPUS-MT-train/tatoeba/work/eng-mul/opusTCv20230926+bibles+bt.spm32k-spm32k.transformer-12x12.valid1.log
