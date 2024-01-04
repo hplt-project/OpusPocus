@@ -49,7 +49,10 @@ class GatherStep(CorpusStep):
         categories.json is dropped.
         """
         categories_dict = {
-            'categories' : self.prev_corpus_step.categories_dict['categories'],
+            'categories': [
+                c_dict for c_dict in self.prev_corpus_step.categories_dict['categories']
+                if c_dict['name'] in self.prev_corpus_step.category_mapping
+            ],
             'mapping': {}
         }
         for cat in self.prev_corpus_step.categories:
@@ -62,7 +65,7 @@ class GatherStep(CorpusStep):
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(
             n_cpus=1,
-            mem=1,
+            mem=10,
         )
 
     def _cmd_vars_str(self) -> str:
@@ -89,7 +92,7 @@ CATEGORIES="{categories}"
             outdir=self.output_dir,
             logdir=self.log_dir,
             categories_path=self.prev_corpus_step.categories_path,
-            categories=' '.join(self.prev_corpus_step.categories),
+            categories=' '.join(self.categories),
         )
 
     def _cmd_body_str(self) -> str:
@@ -111,7 +114,7 @@ CATEGORIES="{categories}"
         return """
 for category in $CATEGORIES; do
     for l in {languages}; do
-        datasets=$(python -c "import json; print(' '.join(json.load(open('$CATEGORIES_PATH', 'r'))['mapping']['$category']))")
+        datasets=$(python -c "import json; print(' '.join(json.load(open('$CATEGORIES_PATH', 'r'))['mapping']['$category'] ))")
         f_out="$OUTPUT_DIR/$category{langpair}.$l.gz"
         for dset in $datasets; do
             ds_file=$INPUT_DIR/$dset.$l.gz

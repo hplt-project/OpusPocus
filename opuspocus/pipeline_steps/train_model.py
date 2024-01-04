@@ -125,6 +125,7 @@ class TrainModelStep(OpusPocusStep):
 SRC="{src_lang}"
 TGT="{tgt_lang}"
 
+TRAIN_DATA_DIR="{indir}"
 OUTPUT_DIR="{outdir}"
 VALID_DIR="{valdir}"
 LOG_DIR="{logdir}"
@@ -145,6 +146,7 @@ VALID_OUT_FILE="$LOG_DIR/model.valid.out"
 TRAIN_LOG_FILE="$LOG_DIR/model.train.log"
 VALID_LOG_FILE="$LOG_DIR/model.valid.log"
 
+TRAIN_DATASETS="{train_dsets}"
 VALID_PREFIX="$VALID_DIR/{valid_dset}"
 RESUBMIT_TIME_LEFT={resubmit_time}
 
@@ -154,6 +156,7 @@ mkdir -p $TEMP_DIR
             python_venv=self.python_venv_dir,
             src_lang=self.src_lang,
             tgt_lang=self.tgt_lang,
+            indir=self.input_dir,
             outdir=self.output_dir,
             valdir=self.valid_data_dir,
             logdir=self.log_dir,
@@ -165,9 +168,38 @@ mkdir -p $TEMP_DIR
             model_file=self.model_path,
             vocab_file=self.vocab_path,
             vocab_size=self.vocab_size,
+            train_dsets=self.train_corpus_step.category_mapping[
+                self.train_category
+            ],
             valid_dset=self.valid_dataset,
             resubmit_time=SLURM_RESUBMIT_TIME,
             tmpdir=self.tmp_dir
+        )
+
+    def _cmd_traps_str(self) -> str:
+        return """cleunup() {{
+    exit_code=$?
+    if [[ $exit_code -gt 0 ]]; then
+        exit $exit_code
+    fi
+
+    rm {tmpdir}/train.*.gz
+    echo DONE > {state_file}
+    exit 0
+}}
+
+err_cleanup() {{
+    exit_code=$?
+    # Set the step state and exit
+    echo FAILED > {state_file}
+    exit $exit_code
+}}
+
+trap err_cleanup ERR
+trap cleanup EXIT
+        """.format(
+            tmpdir=self.tmp_dir,
+            state_file=Path(self.step_dir, self.state_file)
         )
 
     def _cmd_body_str(self) -> str:
@@ -186,6 +218,12 @@ mkdir -p $TEMP_DIR
         ])
 
         return """
+for lang in $SRC $TGT; do
+    for dset in $TRAIN_DATASETS; do
+        cat $TRAIN_DATA_DIR/$dset.$lang.gz
+    done > $TEMP_DIR/train.$lang.gz
+done
+
 compute_opt="--cpu-threads 1"
 [[ $SLURM_GPUS_PER_NODE -gt 0 ]] \\
     && compute_opt="--devices $(seq 0 1 $(expr $SLURM_GPUS_PER_NODE - 1))"
@@ -199,7 +237,7 @@ $MARIAN_DIR/bin/marian \\
     --vocabs $VOCAB_FILE $VOCAB_FILE \\
     --dim-vocabs $VOCAB_SIZE \\
     --tempdir $TEMP_DIR \\
-    {train_data_opt} \\
+    --train-sets $TEMP_DIR/train.${{$SRC,$TGT}}.gz \\
     --valid-sets $VALID_PREFIX.$SRC-$TGT.{{$SRC,$TGT}} \\
     --valid-translation-output $VALID_OUT_FILE \\
     --log-level info \\

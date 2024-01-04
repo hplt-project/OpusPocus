@@ -391,7 +391,7 @@ err_cleanup() {{
 
 trap err_cleanup ERR
 trap cleanup EXIT
-        """.format(state_file=str(Path(self.step_dir, self.state_file)))
+        """.format(state_file=Path(self.step_dir, self.state_file))
 
     def _cmd_body_str(self) -> str:
         """Get the step specific code.
