@@ -211,6 +211,8 @@ ulr-dropout: 0
 ulr-softmax-temperature: 1
 valid-freq: 5000
 valid-metrics:
+  - chrf
+  - bleu
   - perplexity
 valid-reset-stalled: false
 early-stopping: 10
