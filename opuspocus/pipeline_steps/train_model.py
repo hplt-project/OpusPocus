@@ -116,7 +116,7 @@ class TrainModelStep(OpusPocusStep):
         return super()._cmd_header_str(
             n_cpus=8,
             n_gpus=8,
-            mem=20
+            mem=40
         )
 
     def _cmd_vars_str(self) -> str:
