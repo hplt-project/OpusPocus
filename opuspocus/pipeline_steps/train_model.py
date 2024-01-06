@@ -266,7 +266,7 @@ new_jid=$(sbatch \\
     --time=$(squeue -h -j $SLURM_JOBID -o %l) \\
     $STEP_DIR/step.command \\
 )
-echo $jid > `pwd`/step.jobid
+echo $new_jid > `pwd`/step.jobid
 
 # Update the job dependencies
 for job in `sqeueu --me --format "%i $E" | grep ":$SLURM_JOBID" | grep -v ^$new_jid | cut -d" " -f1`; do
