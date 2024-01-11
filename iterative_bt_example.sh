@@ -34,7 +34,9 @@ mkdir -p $PIPELINE_DIR
     --test-data-dir $TEST_DIR \
     --marian-config $MARIAN_CONFIG \
     --n-iterations $NUM_ITER \
+    --backtranslation-shard-size 100000 \
     --log-level $LOG_LEVEL
+exit 0
 ./go.py run \
     --runner sbatch \
     --runner-opts '--account=project_465000574 --partition=small-g --time=24:00:00' \

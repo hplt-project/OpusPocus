@@ -98,6 +98,10 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
             '--n-iterations', type=int, default=1,
             help='TODO'
         )
+        parser.add_argument(
+            '--backtranslation-shard-size', type=int, default=None,
+            help='TODO'
+        )
 
     """Simple training pipeline. No backtranslation."""
     def __init__(
@@ -243,6 +247,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                 tgt_lang=None,
                 python_venv_dir=args.python_venv_dir,
                 previous_corpus_step=steps['decontaminate.{}'.format(lang)],
+                output_shard_size=args.backtranslation_shard_size
             )
 
         ## Training ##

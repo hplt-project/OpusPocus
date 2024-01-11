@@ -14,7 +14,7 @@ def get_action_type_map(parser) -> Dict[str, Callable]:
 
 def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
     if config_path is None:
-        return {}
+        return parser
     if not Path(config_path).exists():
         raise ValueError('File {} not found.'.format(config_path))
     config = yaml.safe_load(open(config_path, 'r'))

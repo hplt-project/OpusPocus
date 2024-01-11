@@ -43,7 +43,7 @@ class TranslateStep(CorpusStep):
     @property
     def input_dir(self) -> Path:
         if self.prev_corpus_step.is_sharded:
-            return self.prev_corpus_step.output_shard_dir
+            return self.prev_corpus_step.shard_dir
         return self.prev_corpus_step.output_dir
 
     def register_categories(self) -> None:
