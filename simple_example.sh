@@ -22,7 +22,7 @@ mkdir -p $PIPELINE_DIR
     --pipeline-config config/pipeline.simple.yml\
     --src-lang $SRC \
     --tgt-lang $TGT \
-    --raw-data-dir $RAW_DATA_DIR/para \
+    --raw-data-dir $RAW_DATA_DIR \
     --valid-data-dir $VALID_DIR \
     --test-data-dir $TEST_DIR \
     --marian-config $MARIAN_CONFIG \

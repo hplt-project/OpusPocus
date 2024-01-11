@@ -173,9 +173,7 @@ class SimplePipeline(OpusPocusPipeline):
                 ],
                 model_init_step=None,
                 seed=args.seed,
-                train_dataset='clean.{}-{}'.format(
-                    args.src_lang, args.tgt_lang
-                ),
+                train_category='clean',
                 valid_dataset=args.valid_dataset,
             )
 
