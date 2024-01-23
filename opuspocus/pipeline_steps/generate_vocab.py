@@ -46,7 +46,7 @@ class GenerateVocabStep(OpusPocusStep):
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(
             n_cpus=8,
-            mem=20
+            mem=80
         )
 
     def _cmd_vars_str(self) -> str:

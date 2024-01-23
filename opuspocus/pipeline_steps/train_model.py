@@ -269,7 +269,7 @@ new_jid=$(sbatch \\
 echo $new_jid > `pwd`/step.jobid
 
 # Update the job dependencies
-for job in `sqeueu --me --format "%i $E" | grep ":$SLURM_JOBID" | grep -v ^$new_jid | cut -d" " -f1`; do
+for job in `sqeueu --me --format "%i %E" | grep ":$SLURM_JOBID" | grep -v ^$new_jid | cut -d" " -f1`; do
     echo Updating dependencies of job $job... >&2
     update_str=$(squeue --me --format "%i %E" \\
         | grep ^$job \\
