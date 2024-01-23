@@ -44,6 +44,10 @@ class SimplePipeline(OpusPocusPipeline):
             help='TODO'
         )
         parser.add_argument(
+            '--opuscleaner-python-venv-dir', type=file_path, required=True,
+            help='TODO'
+        )
+        parser.add_argument(
             '--python-venv-dir', type=file_path, required=True,
             help='TODO'
         )
@@ -61,6 +65,10 @@ class SimplePipeline(OpusPocusPipeline):
         )
         parser.add_argument(
             '--decontaminate-min-length', type=int, default=25,
+            help='TODO'
+        )
+        parser.add_argument(
+            '--train_category', type=str, default='clean',
             help='TODO'
         )
         parser.add_argument(
@@ -106,7 +114,7 @@ class SimplePipeline(OpusPocusPipeline):
             previous_corpus_step=steps[
                 'raw.{}-{}'.format(args.src_lang, args.tgt_lang)
             ],
-            python_venv_dir=args.python_venv_dir,
+            python_venv_dir=args.opuscleaner_python_venv_dir,
             opuscleaner_cmd=args.opuscleaner_cmd,
         )
 
@@ -173,7 +181,7 @@ class SimplePipeline(OpusPocusPipeline):
                 ],
                 model_init_step=None,
                 seed=args.seed,
-                train_category='clean',
+                train_category=args.train_category,
                 valid_dataset=args.valid_dataset,
             )
 

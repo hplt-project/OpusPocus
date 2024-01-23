@@ -9,6 +9,7 @@ seed: 42
 valid_dataset: "flores200.dev"
 
 python_venv_dir: "venv"
+opuscleaner_python_venv_dir: "opuscleaner-venv"
 marian_dir: "marian"
 
 opuscleaner_cmd: "opuscleaner-clean"

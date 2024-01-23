@@ -51,7 +51,10 @@ class GatherStep(CorpusStep):
         categories_dict = {
             'categories': [
                 c_dict for c_dict in self.prev_corpus_step.categories_dict['categories']
-                if c_dict['name'] in self.prev_corpus_step.category_mapping
+                if (
+                    c_dict['name'] in self.prev_corpus_step.category_mapping
+                    and self.prev_corpus_step.category_mapping[c_dict['name']]
+                )
             ],
             'mapping': {}
         }
