@@ -1,48 +1,65 @@
 # OpusPocus on LUMI
 
-This branch is an implementation of the machine translation (MT) training pipeline for LUMI HPC cluster.
-It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for data preparation and [OpusTrainer](https://github.com/hplt-project/OpusTrainer) for training scheduling.
+This branch is an implementation of the machine translation (MT) training pipeline manager for LUMI HPC cluster.
+It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for data preparation and [OpusTrainer](https://github.com/hplt-project/OpusTrainer) for training scheduling (in progress).
 
 
 ## Structure
 
-- `go.sh` - main pipeline script
-- `pipeline.*.sh` - pipeline configuration (paths, helper functions)]
-- `config/` - configuration scripts (pipeline configuration, model settings,...)
-- `scripts/` - smaller scripts
-- `scripts/slurm/` - sbatch scripts substituting individual steps, should be run from the go.sh using sbatch and contain default SLURM parameters
+- `go.py` - pipeline manager entry script
+- `opuspocus/` - OpusPocus modules
+- `config/` - default configuration files (pipeline config, marian training config, ...)
+- `examples/` - pipeline manager usage examples
+- `scripts/` - helper scripts, at this moment not directly implemented in OpusPocus
 
 
-## Usage
+## Installation
 
-1. Modify the config/* files (directory structure, SLURM account/project number, model/training parameters, etc.)
+1. Install [MarianNMT](https://marian-nmt.github.io/docs/).
 
-2. Setup the experiment directory
+2. Prepare the OpusCleaner and OpusTrainer Python virtual environments.
+
+3. Install the OpusPocus requirements.
 ```
-sbatch bash get_data.sh <source_lang> <target_lang> <experiment_label>  # should be handled by this script
-
-# Download (mono, para) corpora to data/raw/* directories.
-# Download testsets to data/valid and data/test.
-# Prepare the opuscleaner *.filters.json files in data/raw/para
-```
-
-3. Run the pipeline
-```
-bash go.sh <source_lang> <target_lang> <experiment_label>
+pip install -r requirements.txt
 ```
 
 
-## Current Status
+## Usage (Simple Pipeline)
 
-- setting up individual pipeline steps as isolated scripts for manual execution (no fully working pipeline yet)
+You can see the example of the pipeline manager usage in examples directory.
+Alternatively, you can follow these steps:
+
+1. Initialize the pipeline.
+```
+python go.py init \
+    --pipeline simple \
+    --pipeline-dir pipeline/destination/directory \
+    --pipeline-config path/to/pipeline/config/file \
+    --src-lang en \
+    --tgt-lang fr \
+    --raw-data-dir training/corpora/directory \
+    --valid-data-dir validation/data/directory \
+    --test-data-dir test/data/directory \
+    --marian-config path/to/marian/config/file \
+```
+
+(
+The <training-corpora-dir> should contain the corpus .gz files, categories.json listing the corpora and their categories and (optional) the OpusCleaners .filter.json files.
+The valid and test data dir should contain the parrallel validation corpora (plaintext).
+Other pipeline parameters can be overwritten either by modifying the the pipeline config file (see the config/pipeline.* files) or by passing the parameter dicretly to the go.py command as a named argument.
+)
 
 
-## TODO (Suggestions)
-- semi-automate the corpus download, valid/test datasets dir setup
-- skip steps that already produced their desired output
-- strict separation of the main steps (data preparation, training, distillation...)
-- ...
+2. Execute the pipeline.
+```
+python go.py run \
+    --pipeline-dir pipeline/destination/directory \
+    --runner sbatch \
+    --runner-opts <options-for-runner> \
+```
 
-## Encountered Issues (LUMI) - Move this to git issues ##
-- marian can hang during validation (SLURM job still running) - reproducible?
-- issues with pigz in `clean_para.sh` which can result in unexpected EOF
+3. Check the pipeline status.
+```
+python go.py traceback --pipeline-dir pipeline/destination/directory
+```
