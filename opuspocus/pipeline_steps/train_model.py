@@ -183,7 +183,7 @@ mkdir -p $TEMP_DIR
         exit $exit_code
     fi
 
-    rm {tmpdir}/train.*.gz
+    rm $TEMP_DIR/train.*.gz
     echo DONE > {state_file}
     exit 0
 }}
@@ -198,7 +198,6 @@ err_cleanup() {{
 trap err_cleanup ERR
 trap cleanup EXIT
         """.format(
-            tmpdir=self.tmp_dir,
             state_file=Path(self.step_dir, self.state_file)
         )
 
@@ -218,6 +217,9 @@ trap cleanup EXIT
         ])
 
         return """
+# We need to set state to running due to resubmission logic
+echo RUNNING > {state_file}
+
 for lang in $SRC $TGT; do
     for dset in $TRAIN_DATASETS; do
         cat $TRAIN_DATA_DIR/$dset.$lang.gz
@@ -269,7 +271,7 @@ new_jid=$(sbatch \\
 echo $new_jid > `pwd`/step.jobid
 
 # Update the job dependencies
-for job in `sqeueu --me --format "%i %E" | grep ":$SLURM_JOBID" | grep -v ^$new_jid | cut -d" " -f1`; do
+for job in `squeue --me --format "%i %E" | grep ":$SLURM_JOBID" | grep -v ^$new_jid | cut -d" " -f1`; do
     echo Updating dependencies of job $job... >&2
     update_str=$(squeue --me --format "%i %E" \\
         | grep ^$job \\
@@ -279,6 +281,7 @@ for job in `sqeueu --me --format "%i %E" | grep ":$SLURM_JOBID" | grep -v ^$new_
     scontrol update JobId=$job dependency=$update_str
 done
         """.format(
+            state_file=Path(self.step_dir, self.state_file),
             model_init=model_init,
             train_data_opt=train_data_opt
         )
