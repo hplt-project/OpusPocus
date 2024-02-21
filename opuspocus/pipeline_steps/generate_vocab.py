@@ -89,7 +89,8 @@ $MARIAN_DIR/bin/spm_train \\
     --model_prefix=$OUTPUT_DIR/model.$SRC-$TGT \\
     --vocab_size=$VOCAB_SIZE \\
     --input=<(cat $TRAIN_DIR/{datasets}.{{$SRC,$TGT}}.gz | pigz -dc) \\
-    --input_sentence_size=1000000000 \\
+    --input_sentence_size=10000000 \\
+    --shuffle_input_sentence=true \\
     --train_extremely_large_corpus \\
     --byte_fallback \\
     --num_threads $SLURM_CPUS_PER_TASK
