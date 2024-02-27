@@ -13,6 +13,7 @@ def get_action_type_map(parser) -> Dict[str, Callable]:
 
 
 def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
+    '''Loads default values from a config file.'''
     if config_path is None:
         return parser
     if not Path(config_path).exists():
@@ -28,6 +29,8 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
 
 
 def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
+    '''Updates an original Namespace using a provided update Namespace.'''
+
     orig_vars = vars(orig_args)
     updt_vars = vars(updt_args)
     for k in orig_vars.keys():
@@ -37,11 +40,13 @@ def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
 
 
 def print_indented(text, level=0):
+    '''A function wrapper for indented printing (of traceback).'''
     indent = ' ' * (2 * level)
     print(indent + text)
 
 
 def file_path(path_str):
+    '''File_path type definition for argparse.'''
     path = Path(path_str)
     if path.exists():
         return path.absolute()

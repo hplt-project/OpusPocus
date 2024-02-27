@@ -11,6 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 def main_init(args, unparsed_args, parser):
+    '''Pipeline initialization sub-command.
+
+    Builds the pipeline step objects and initializes the steps,
+    creating the respective directories and saving the step parameters.
+    '''
+
     # Add pipeline args and parse again
     args = parse_init_args(args, unparsed_args, parser)
 
@@ -28,34 +34,44 @@ def main_init(args, unparsed_args, parser):
 
 
 def main_run(args, *_):
+    '''Pipeline execution sub-command.
+
+    Submits the pipeline steps, respecting their dependencies, using
+    the specified runner (bash, slurm, ...)
+    '''
     print(args.pipeline_dir)
     pipeline = pipelines.load_pipeline(args)
     pipeline.run(args)
 
 
 def main_traceback(args, *_):
+    '''Pipeline structure analysis subcommand.
+
+    Prints the simplified dependency graph of the pipeline steps
+    with their current status.
+    '''
     pipeline = pipelines.load_pipeline(args)
     pipeline.traceback(args.full_trace)
 
 
 def main_list_commands(args, *_):
     print(
-       'Error: No command specified.\n\n'
+       'Error: No sub-command specified.\n\n'
        'Available commands:\n'
-       '  init      initialize the pipeline\n'
-       '  run       execute the pipeline\n'
-       '  traceback print the pipeline graph\n'
+       '  init      Initialize the pipeline.\n'
+       '  run       Execute the pipeline.\n'
+       '  traceback Print the pipeline graph.\n'
        '', file=sys.stderr
     )
     sys.exit(1)
 
 
 def create_args_parser():
-    parser = argparse.ArgumentParser(description='TODO')
+    parser = argparse.ArgumentParser(description='OpusPocus NMT Pipeline Manager')
     parser.set_defaults(fn=main_list_commands)
     parser.add_argument(
         '--log-level', choices=['info', 'debug'], default='info',
-        help='TODO'
+        help='Indicates current logging level.'
     )
     subparsers = parser.add_subparsers(help='command', dest='command')
 
@@ -65,21 +81,17 @@ def create_args_parser():
     parser_init = subparsers.add_parser('init')
     parser_init.add_argument(
         '--pipeline-dir', type=str, required=True,
-        help='TODO'
+        help='Pipeline root directory.'
     )
     parser_init.add_argument(
         '--pipeline-config', type=str, default=None,
-        help='Pipeline configuration JSON.'
-    )
-    parser_init.add_argument(
-        '--dry-run', action='store_true',
-        help='TODO'
+        help='Pipeline configuration YAML.'
     )
     from opuspocus.pipelines import PIPELINE_REGISTRY
     parser_init.add_argument(
         '--pipeline', '-p', type=str, default='simple', metavar='PIPELINE',
         choices=PIPELINE_REGISTRY.keys(),
-        help='Training Pipeline'
+        help='Training pipeline type.'
     )
     parser_init.set_defaults(fn=main_init)
 
@@ -87,23 +99,15 @@ def create_args_parser():
     parser_run = subparsers.add_parser('run')
     parser_run.add_argument(
         '--pipeline-dir', type=str, required=True,
-        help='TODO'
+        help='Pipeline root directory.'
     )
     parser_run.add_argument(
         '--runner', choices=['sbatch'], default='sbatch',
-        help='TODO'
+        help='Pipeline step execution command.'
     )
     parser_run.add_argument(
         '--runner-opts', type=str, default=None,
-        help='TODO'
-    )
-    parser_run.add_argument(
-        '--overwrite', action='store_true',
-        help='TODO'
-    )
-    parser_run.add_argument(
-        '--rerun-failed', action='store_true',
-        help='TODO'
+        help='Additional options for the pipeline step execution.'
     )
     parser_run.set_defaults(fn=main_run)
 
@@ -111,11 +115,12 @@ def create_args_parser():
     parser_traceback = subparsers.add_parser('traceback')
     parser_traceback.add_argument(
         '--pipeline-dir', type=str, required=True,
-        help='TODO'
+        help='Pipeline root directory.'
     )
     parser_traceback.add_argument(
         '--full-trace', action='store_true',
-        help='TODO'
+        help='Also print the parameters of the individual '
+             'pipeline steps.'
     )
     parser_traceback.set_defaults(fn=main_traceback)
 

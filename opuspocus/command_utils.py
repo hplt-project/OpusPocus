@@ -9,6 +9,16 @@ logger = logging.getLogger(__name__)
 
 
 def build_subprocess(cmd_path, args, jid_deps):
+    '''Builds a function for step execution specified in `args`.
+
+    Args:
+        cmd_path: path to the step.command
+        args: OpusPocus arguments
+        jid_deps: list of IDs (pid, job_id) of the executed step prerequisities
+
+    Returns:
+        `subprocess` dict containing the `process` object and its `jobid`
+    '''
     if args.runner == 'bash':
         logger.warn(
             '{} is currently experimental. Use at your own risk.'
@@ -46,58 +56,14 @@ def build_subprocess(cmd_path, args, jid_deps):
 
 
 def build_bash(cmd_path, args, jid_deps):
+    '''(Experimental) Builds function for local Bash execution.'''
     cmd = ['bash', str(BASH_WRAPPER), ' '.join(jid_deps), str(cmd_path)]
     return cmd
 
 
 def build_sbatch(cmd_path, args, jid_deps):
+    '''Builds function for execution on SLURM using sbatch.'''
     cmd = ['sbatch', '--parsable']
-
-    if jid_deps:
-        cmd.append('--dependency')
-        cmd.append(','.join(['afterok:{}'.format(jid) for jid in jid_deps]))
-
-    runner_opts = args.runner_opts
-    if runner_opts is not None:
-        cmd += runner_opts.split(' ')
-
-    cmd.append(str(cmd_path))
-    return cmd
-
-
-def build_sbatch_hq(cmd_path, args, jid_deps):
-    # TODO: needs to be finished/tested on machines that support this
-    # see: https://docs.csc.fi/apps/hyperqueue/
-    """Sbatch hyperqueue support for LUMI HPC."""
-    cmd = ['sbatch_hq', '--parsable']
-
-    if jid_deps:
-        cmd.append('--dependency')
-        cmd.append(','.join(['afterok:{}'.format(jid) for jid in jid_deps]))
-
-    runner_opts = args.runner_opts
-    if runner_opts is not None:
-        cmd += runner_opts.split(' ')
-
-    cmd.append(str(cmd_path))
-    return cmd
-
-
-def build_hq_sbatch(cmd_path, args, jid_deps):
-    # Init hq server if not initialized
-    # TODO: finish this
-    subprocess.Popen(['bash', 'scripts/launch_hq_server.sh'])
-    subprocess.Popen([
-        'bash',
-        'scripts/launch_hq_workers.sh',
-        'slurm',
-        args.hq_worker_cpus,
-        args.hq_worker_gpus,
-        args.hq_worker_time_limit
-    ])
-
-    # Create sbatch command for hq
-    cmd = ['./hq', 'submit', '--stdout=none', '--stderr=none']
 
     if jid_deps:
         cmd.append('--dependency')
