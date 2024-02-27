@@ -9,6 +9,7 @@ from opuspocus.utils import file_path
 
 @register_pipeline('simple')
 class SimplePipeline(OpusPocusPipeline):
+    """A simple training pipeline containing no backtranslation."""
 
     @staticmethod
     def add_args(parser):
@@ -16,71 +17,71 @@ class SimplePipeline(OpusPocusPipeline):
 
         parser.add_argument(
             '--src-lang', type=str, required=True,
-            help='TODO'
+            help='source language'
         )
         parser.add_argument(
             '--tgt-lang', type=str, required=True,
-            help='TODO'
+            help='target language'
         )
         parser.add_argument(
             '--raw-data-dir', type=file_path, required=True,
-            help='TODO'
+            help='directory containing the parallel corpora with OpusCleaner '
+                 'metadata (categories.json, filter.json files)'
         )
         parser.add_argument(
             '--valid-data-dir', type=file_path, required=True,
-            help='TODO'
+            help='directory containing the validation data'
         )
         parser.add_argument(
             '--test-data-dir', type=file_path, required=True,
-            help='TODO'
+            help='directory containing the final evaluation data'
         )
         parser.add_argument(
             '--opuscleaner-cmd', type=str, default='opuscleaner-clean',
-            help='TODO'
+            help='opuscleaner-clean command location'
         )
         parser.add_argument(
             '--decontaminate-path', type=file_path,
             default=Path('scripts/decontaminate.py'),
-            help='TODO'
+            help='path to the training data decontamination script'
         )
         parser.add_argument(
             '--opuscleaner-python-venv-dir', type=file_path, required=True,
-            help='TODO'
+            help='path to the OpusCleaner Python Conda environment'
         )
         parser.add_argument(
             '--python-venv-dir', type=file_path, required=True,
-            help='TODO'
+            help='path to the Python Conda environmnent'
         )
         parser.add_argument(
             '--marian-dir', type=file_path, required=True,
-            help='TODO'
+            help='path to the MarianNMT directory'
         )
         parser.add_argument(
             '--marian-config', type=file_path, required=True,
-            help='TODO'
+            help='path to the training config for MarianNMT'
         )
         parser.add_argument(
             '--opustrainer-config', type=file_path, required=True,
-            help='TODO'
+            help='path to the training config for OpusTrainer'
         )
         parser.add_argument(
             '--decontaminate-min-length', type=int, default=25,
-            help='TODO'
+            help='minimum length for the corpus decontamination step'
         )
         parser.add_argument(
             '--train_category', type=str, default='clean',
-            help='TODO'
+            help='training corpus category'
         )
         parser.add_argument(
             '--seed', type=int, default=42,
-            help='TODO'
+            help='fixed random seed'
         )
         parser.add_argument(
             '--vocab-size', type=int, default=64000,
-            help='TODO'
+            help='size of the translation model vocabulary'
         )
 
-    """Simple training pipeline. No backtranslation."""
     def __init__(
         self,
         pipeline: str,
@@ -91,6 +92,8 @@ class SimplePipeline(OpusPocusPipeline):
         super().__init__(pipeline, args, steps, targets)
 
     def build_pipeline_graph(self, args: argparse.Namespace):
+        """Build the pipeline dependency graph for the pipeline instance."""
+
         steps = {}
         targets = []
 

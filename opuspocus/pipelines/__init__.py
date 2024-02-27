@@ -10,12 +10,15 @@ PIPELINE_CLASS_NAMES = set()
 
 
 def build_pipeline(pipeline, args, steps=None, targets=None):
+    """Pipeline builder function. Use this to create pipeline objects."""
+
     return PIPELINE_REGISTRY[pipeline].build_pipeline(
         pipeline, args, steps, targets
     )
 
 
 def load_pipeline(args):
+    """Loads existing (initialized) pipelines."""
     steps, targets, vars_dict = OpusPocusPipeline.load_variables(args)
     return build_pipeline(vars_dict['pipeline'], args, steps, targets)
 
@@ -25,13 +28,19 @@ def register_pipeline(name):
     New pipeline can be added to OpusPocus with the
     :func:`~opuspocus.pipelines.register_pipeline` function decorator.
 
-    Inspired by Fairseq task/model/etc registrations
+    Based on the Fairseq task/model/etc registrations
+    (https://github.com/facebookresearch/fairseq)
 
     For example:
-        TODO
+
+        @register_pipeline('simple')
+        class SimplePipeline(OpusPocusPipeline):
+            (...)
+
+    .. note:: All pipelines must implement the :class:`OpusPocusPipeline` interface.
 
     Args:
-        TODO
+        name (str): the name of the model
     """
 
     def register_pipeline_cls(cls):
@@ -73,16 +82,3 @@ for file in pipelines_dir.iterdir():
             else file
         )
         importlib.import_module('opuspocus.pipelines.' + str(pipeline_name))
-
-        # expose `pipeline_parser` for sphinx
-        #if pipeline_name in PIPELINE_REGISTRY:
-        #    parser = argparse.ArgumentParser(add_help=False)
-        #    group_pipeline = parser.add_argument_group('Pipeline name')
-        #    group_pipeline.add_argument(
-        #        '--pipeline', metavar=pipeline_name,
-        #        help='Enable this pipeline with: '
-        #        '``--pipeline={}``'.format(pipeline_name)
-        #    )
-        #    pipeline_args_group = parser.add_argument_group('Additional command-line arguments')
-        #    PIPELINE_REGISTRY[pipeline_name].add_args(pipeline_args_group)
-        #    globals()[pipeline_name + '_parser'] = parser

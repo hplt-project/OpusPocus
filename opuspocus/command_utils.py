@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_subprocess(cmd_path, args, jid_deps):
-    '''Builds a function for step execution specified in `args`.
+    """Build a function for step execution specified in `args`.
 
     Args:
         cmd_path: path to the step.command
@@ -18,7 +18,7 @@ def build_subprocess(cmd_path, args, jid_deps):
 
     Returns:
         `subprocess` dict containing the `process` object and its `jobid`
-    '''
+    """
     if args.runner == 'bash':
         logger.warn(
             '{} is currently experimental. Use at your own risk.'
@@ -56,13 +56,13 @@ def build_subprocess(cmd_path, args, jid_deps):
 
 
 def build_bash(cmd_path, args, jid_deps):
-    '''(Experimental) Builds function for local Bash execution.'''
+    """(Experimental) Build a function for local Bash execution."""
     cmd = ['bash', str(BASH_WRAPPER), ' '.join(jid_deps), str(cmd_path)]
     return cmd
 
 
 def build_sbatch(cmd_path, args, jid_deps):
-    '''Builds function for execution on SLURM using sbatch.'''
+    """Build a function for execution on SLURM using sbatch."""
     cmd = ['sbatch', '--parsable']
 
     if jid_deps:

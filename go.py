@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 def main_init(args, unparsed_args, parser):
-    '''Pipeline initialization sub-command.
+    """Pipeline initialization sub-command.
 
     Builds the pipeline step objects and initializes the steps,
     creating the respective directories and saving the step parameters.
-    '''
+    """
 
     # Add pipeline args and parse again
     args = parse_init_args(args, unparsed_args, parser)
@@ -34,22 +34,22 @@ def main_init(args, unparsed_args, parser):
 
 
 def main_run(args, *_):
-    '''Pipeline execution sub-command.
+    """Pipeline execution sub-command.
 
     Submits the pipeline steps, respecting their dependencies, using
-    the specified runner (bash, slurm, ...)
-    '''
+    the specified runner (bash, slurm, ...).
+    """
     print(args.pipeline_dir)
     pipeline = pipelines.load_pipeline(args)
     pipeline.run(args)
 
 
 def main_traceback(args, *_):
-    '''Pipeline structure analysis subcommand.
+    """Pipeline structure analysis subcommand.
 
     Prints the simplified dependency graph of the pipeline steps
     with their current status.
-    '''
+    """
     pipeline = pipelines.load_pipeline(args)
     pipeline.traceback(args.full_trace)
 
