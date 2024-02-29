@@ -15,12 +15,9 @@ STEP_STATES = ['INITED', 'RUNNING', 'FAILED', 'DONE', 'INIT_INCOMPLETE']
 logger = logging.getLogger(__name__)
 
 
-def get_hash():
-    # TODO: proper hashing
-    return 'debug'
-
-
 class OpusPocusStep(object):
+    """Base class for OpusPocus pipeline steps."""
+
     command_file = 'step.command'
     dependency_file = 'step.dependencies'
     jobid_file = 'step.jobid'
@@ -34,10 +31,19 @@ class OpusPocusStep(object):
         suffix: str = None,
         **kwargs
     ):
-        """
-        TODO: the derived classes should add attributes+logic for optional
-        step dependencies.
-        TODO: can we do it in a smarter way?
+        """Set the step parameters based on the parameters passed during
+        step object initialization.
+
+        Each step contains a set of step parameters and step dependencies
+        that define a unique step instance.
+
+        Any class inheriting from this class is required to avoid setting
+        class instance attributes. If needed, the shortcuts to additional
+        derived object attributes should be defined via @property class
+        methods.
+
+        TODO: implement strict restriction on setting object attributes
+        the derived classes
         """
         self.step = step
         self.pipeline_dir = pipeline_dir
@@ -50,7 +56,12 @@ class OpusPocusStep(object):
         """Build a specified step instance.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            step (str): step class name in the step class registry
+            pipeline_dir (Path): path to the pipeline directory
+            **kwargs: additional parameters for the derivedclass
+
+        Returns:
+            An instance of the specified pipeline class.
         """
         try:
             cls_inst = cls(step, pipeline_dir, **kwargs)
@@ -61,9 +72,12 @@ class OpusPocusStep(object):
 
     @classmethod
     def list_parameters(cls) -> List[str]:
-        """
-        Return a list of arguments/required for initialization excluding
+        """Return a list of arguments/required for initialization while excluding
         the dependencies.
+
+        These parameter lists are used during step instance saving/loading.
+        Step dependencies are handled differently (by saving/loading
+        their respective dep.step_name properties).
         """
         param_list = []
         for param in inspect.signature(cls.__init__).parameters:
@@ -78,12 +92,13 @@ class OpusPocusStep(object):
     def load_parameters(
         cls, step_name: str, pipeline_dir: Path
     ) -> Dict[str, Any]:
-        """Load existing step."""
+        """Load the previously initialized step instance parameters."""
         vars_path = Path(pipeline_dir, step_name, cls.parameter_file)
         logger.debug('Loading step variables from {}'.format(vars_path))
         return yaml.safe_load(open(vars_path, 'r'))
 
     def save_parameters(self) -> None:
+        """Save the step instance parameters."""
         logger.debug('Saving step variables.')
         param_dict ={}
         for param in self.list_parameters():
@@ -99,14 +114,18 @@ class OpusPocusStep(object):
         )
 
     def register_parameters(self, **kwargs) -> None:
-        """
-        Pre-described setting of the class attributes that are set using
-        the __init__ method parameters.
+        """Class agnostic registration of the step instance parameters.
 
-        We make a distinction between the regular attributes and the step
+        Each step inheriting from the abstract class has a set of attributes
+        and dependencies reflected by the parameters of its respective
+        __init__ method.
+
+        We make a distinction between the standard attributes and the step
         dependencies (indicated by the '_step' suffix).
 
-        This strict parameter registration enables 
+        Use the @property method decorator to define object attributes that
+        are not direct step parameters, i.e. direct access to the attributes
+        of the step dependencies. 
         """
         type_hints = get_type_hints(self.__init__)
         logger.debug('Class type hints: {}'.format(type_hints))
@@ -126,12 +145,13 @@ class OpusPocusStep(object):
     def load_dependencies(
         cls, step_name: str, pipeline_dir: Path
     ) -> Dict[str, str]:
-        """Load step dependecies (directories)."""
+        """Load step dependecies based on their unique step_name values."""
         deps_path = Path(pipeline_dir, step_name, cls.dependency_file)
         logger.debug('Loading dependencies from {}'.format(deps_path))
         return yaml.safe_load(open(deps_path, 'r'))
 
     def save_dependencies(self) -> None:
+        """Save the step dependencies using their unique step_name values."""
         deps_dict = {
             k: v.step_name 
             for k, v in self.dependencies.items()
@@ -144,28 +164,45 @@ class OpusPocusStep(object):
 
     @property
     def step_name(self) -> str:
-        """
-        We can have multiple instances of a step with different
-        parametrization. Must be implemented by the derived step classes.
+        """The unique step-instance identifier.
+
+        Each derived step class is required to implement its own way to create
+        its step name based on its step parameters.
+        As a result, a pipeline should be able to instantiate multiple step
+        instances, i.e. en-to-fr and fr-to-en tranlsation, multiple monolingual
+        cleaning, decontaminating steps, etc.
         """
         raise NotImplementedError()
 
     @property
     def step_dir(self) -> Path:
+        """Location of the step directory."""
         return Path(self.pipeline_dir, self.step_name)
 
     @property
     def output_dir(self) -> Path:
+        """Location of the step output directory."""
         return Path(self.step_dir, 'output')
 
     @property
     def log_dir(self) -> Path:
+        """Location of the step log directory."""
         return Path(self.step_dir, 'logs')
 
     def init_step(self) -> None:
+        """Step initialization method.
+
+        If the step.state is not initialized, the following initialization
+        steps are executed:
+        1. create the step directory structure
+        2. (recursively) initialize the dependencies
+        3. save the step parameters and dependency information
+        4. create the step command
+        5. set set.state to INITED
+        """
         self.state = self.load_state()
         if self.state is not None:
-            if self.has_state('INITED'):
+             if self.has_state('INITED'):
                 logger.info('Step already initialized. Skipping...')
                 return
             else:
@@ -186,8 +223,11 @@ class OpusPocusStep(object):
         self.set_state('INITED')
 
     def init_dependencies(self) -> None:
-        # TODO: improve the dependency representation and implement a
-        # child-agnostic init deps method
+        """Recursively call the init_step method of the step dependencies.
+
+        Some steps can be dependants of multiple steps, we skip steps that
+        are already initialized.
+        """
         for dep in self.dependencies.values():
             if dep is None:
                 continue
@@ -195,6 +235,7 @@ class OpusPocusStep(object):
                 dep.init_step()
 
     def create_directories(self) -> None:
+        """Create the internal step directory structure."""
         # create step dir
         logger.debug('Creating step dir.')
         if self.step_dir.is_dir():
@@ -206,7 +247,11 @@ class OpusPocusStep(object):
             d.mkdir(parents=True)
 
     def create_command(self) -> None:
-        # TODO: add start-end command boilerplate, slurm-related (or other)
+        """Save the string composed using into the compose_command method.
+
+        This method only handles writing command into a file. Command creation
+        is currently handled by the compose_command() method.
+        """
         cmd_path = Path(self.step_dir, self.command_file)
         if cmd_path.exists():
             raise FileExistsError('File {} already exists.'.format(cmd_path))
@@ -215,6 +260,17 @@ class OpusPocusStep(object):
         print(self.compose_command(), file=open(cmd_path, 'w'))
 
     def run_step(self, args: argparse.Namespace) -> int:
+        """Execute the step command.
+
+        The method checks whether the step is in eligible state (INITED or
+        FAILED, in case of retry), calls the run_step method of its
+        dependencies recursively and executes the step.command script
+        using the provided --runner.
+
+        Returns:
+            int indicating the job_id, process_id or other identification
+            of the executed step.
+        """
         # TODO: return type (int or str?)
         # TODO: logic for rerunning/overriding failed/running steps
         if self.has_state('RUNNING'):
@@ -253,8 +309,7 @@ class OpusPocusStep(object):
         return sub['jobid']
 
     def retry_step(self, args: argparse.Namespace):
-        """
-        Try to recover from a failed state.
+        """Try to recover from a failed state.
 
         Default behavior is to change state and just rerun.
         Derived class should override this method if necessary.
@@ -263,6 +318,11 @@ class OpusPocusStep(object):
         self.run_step(args)
 
     def traceback_step(self, level: int = 0, full: bool = False) -> None:
+        """Print the information about the step state and variables.
+
+        If the step has any dependencies, call their respective traceback_step
+        methods.
+        """
         assert level >= 0
         print_indented('+ {}: {}'.format(self.step_name, self.state), level)
         if full:
@@ -276,6 +336,7 @@ class OpusPocusStep(object):
             dep.traceback_step(level + 1, full)
 
     def load_state(self) -> Optional[str]:
+        """Load the current state of a step."""
         state_file = Path(self.step_dir, self.state_file)
         if state_file.exists():
             state = open(Path(self.step_dir, self.state_file), 'r').readline().strip()
@@ -284,14 +345,17 @@ class OpusPocusStep(object):
         return None
 
     def set_state(self, state: str) -> None:
-        """Whenever we change the Step state we also need to update the state
-        file for the purpose of recovery failure."""
+        """Change the state of a step and save it into step.state file."""
         assert state in STEP_STATES
-        logger.debug("Old state: {} -> New state: {}".format(self.state, state))
+        if state == self.state:
+            logger.warn('The new step state is identical to the old one.')
+
+        logger.debug('Old state: {} -> New state: {}'.format(self.state, state))
         self.state = state
         print(state, file=open(Path(self.step_dir, self.state_file), 'w'))
 
     def has_state(self, state: str) -> bool:
+        """Check whether the step is in a specific state."""
         if self.state is not None and self.state == state:
             return True
         return False

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpusPocusPipeline(object):
-    '''Base class for OpusPocus pipelines.'''
+    """Base class for OpusPocus pipelines."""
 
     step_file = 'pipeline.steps'
     target_file = 'pipeline.targets'
@@ -19,7 +19,7 @@ class OpusPocusPipeline(object):
 
     @staticmethod
     def add_args(parser):
-        '''Add pipeline-specific arguments to the parser.'''
+        """Add pipeline-specific arguments to the parser."""
         pass
 
     def __init__(
@@ -50,12 +50,12 @@ class OpusPocusPipeline(object):
         """Build a specified pipeline instance.
 
         Args:
-            pipeline (str): pipeline class name in the register
+            pipeline (str): pipeline class name in the registry
             args (argparse.Namespace): parsed command-line arguments
             steps: pipeline steps (used for loading)
             targets: pipeline targets (used for loading)
 
-        Retuns:
+        Returns:
             An instance of the specified pipeline class.
         """
         return cls(pipeline, args, steps, targets)

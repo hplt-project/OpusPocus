@@ -18,7 +18,7 @@ def build_pipeline(pipeline, args, steps=None, targets=None):
 
 
 def load_pipeline(args):
-    """Loads existing (initialized) pipelines."""
+    """Load an existing (initialized) pipeline."""
     steps, targets, vars_dict = OpusPocusPipeline.load_variables(args)
     return build_pipeline(vars_dict['pipeline'], args, steps, targets)
 
@@ -40,7 +40,7 @@ def register_pipeline(name):
     .. note:: All pipelines must implement the :class:`OpusPocusPipeline` interface.
 
     Args:
-        name (str): the name of the model
+        name (str): the name of the pipeline
     """
 
     def register_pipeline_cls(cls):

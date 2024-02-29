@@ -13,6 +13,9 @@ STEP_CLASS_NAMES = set()
 
 
 def build_step(step, pipeline_dir, step_name: str = None, **kwargs):
+    """Pipeline step builder function. Use this to create pipeline step
+    objects.
+    """
     if step_name is not None and step_name in STEP_INSTANCE_REGISTRY:
         return STEP_INSTANCE_REGISTRY[step_name]
 
@@ -29,6 +32,7 @@ def build_step(step, pipeline_dir, step_name: str = None, **kwargs):
 
 
 def load_step(step_name, args):
+    """Load an existing (initialized) pipeline step."""
     step_params = OpusPocusStep.load_parameters(step_name, args.pipeline_dir)
 
     step = step_params['step']  
@@ -50,13 +54,23 @@ def register_step(name):
     New steps can be added to OpusPocus with the
     :func:`~opuspocus.opuspocus_steps.register_step` function decorator.
 
-    Inspired by Fairseq task/model/etc registrations
+    Based on the Fairseq task/model/etc registrations
+    (https://github.com/facebookresearch/fairseq)
 
     For example:
-        TODO
+
+        @register_step('train_model')
+        class TrainModelStep(OpusPocusStep):
+            (...)
+
+    .. note:: All pipeline steps must implement the :class:`OpusPocusStep` interface.
+        Typically you will extend the base class directly, however, in case
+        of corpus creating/modifying steps (cleaning, translation), you should
+        extend the :class:`CorpusStep` instead since it provides additional
+        corpus-related functionality.
 
     Args:
-        TODO
+        name (str): the name of the pipeline step
     """
 
     def register_step_cls(cls):
