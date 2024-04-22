@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from opuspocus import pipelines
+from opuspocus import runners
 from opuspocus.utils import load_config_defaults, update_args
 
 logger = logging.getLogger(__name__)
@@ -39,9 +40,14 @@ def main_run(args, *_):
     Submits the pipeline steps, respecting their dependencies, using
     the specified runner (bash, slurm, ...).
     """
-    print(args.pipeline_dir)
+    # Load the pipeline
     pipeline = pipelines.load_pipeline(args)
-    pipeline.run(args)
+
+    # Initialize the runner
+    runner = runners.build_runner(args.runner, args)
+
+    # Run the pipeline
+    runner.run_pipeline(pipeline, args)
 
 
 def main_traceback(args, *_):
@@ -52,6 +58,17 @@ def main_traceback(args, *_):
     """
     pipeline = pipelines.load_pipeline(args)
     pipeline.traceback(args.full_trace)
+
+
+def main_stop(args, *_):
+    # Load the pipeline
+    pipeline = pipelines.load_pipeline(args)
+
+    # Initialize the runner
+    runner = runners.build_runner(args.runner, args)
+
+    # Stop the pipeline execution
+    runner.stop_pipeline(pipeline)
 
 
 def main_list_commands(args, *_):
@@ -67,7 +84,9 @@ def main_list_commands(args, *_):
 
 
 def create_args_parser():
-    parser = argparse.ArgumentParser(description='OpusPocus NMT Pipeline Manager')
+    parser = argparse.ArgumentParser(
+        description='OpusPocus NMT Pipeline Manager'
+    )
     parser.set_defaults(fn=main_list_commands)
     parser.add_argument(
         '--log-level', choices=['info', 'debug'], default='info',
@@ -87,11 +106,10 @@ def create_args_parser():
         '--pipeline-config', type=str, default=None,
         help='Pipeline configuration YAML.'
     )
-    from opuspocus.pipelines import PIPELINE_REGISTRY
     parser_init.add_argument(
         '--pipeline', '-p', type=str, default='simple', metavar='PIPELINE',
-        choices=PIPELINE_REGISTRY.keys(),
-        help='Training pipeline type.'
+        choices=pipelines.PIPELINE_REGISTRY.keys(),
+        help='Training pippipeline_nameline type.'
     )
     parser_init.set_defaults(fn=main_init)
 
@@ -102,14 +120,23 @@ def create_args_parser():
         help='Pipeline root directory.'
     )
     parser_run.add_argument(
-        '--runner', choices=['sbatch'], default='sbatch',
+        '--runner', type=str, required=True, metavar='RUNNER',
+        choices=runners.RUNNER_REGISTRY.keys(),
         help='Pipeline step execution command.'
     )
-    parser_run.add_argument(
-        '--runner-opts', type=str, default=None,
-        help='Additional options for the pipeline step execution.'
-    )
     parser_run.set_defaults(fn=main_run)
+
+    # Pipeline Stop
+    parser_stop = subparsers.add_parser('stop')
+    parser_stop.add_argument(
+        '--pipeline-dir', type=str, required=True,
+        help='Pipeline root directory.'
+    )
+    parser_stop.add_argument(
+        '--runner', type=str, required=True, metavar='RUNNER',
+        choices=runners.RUNNER_REGISTRY.keys(),
+        help='Pipeline step cancellation command.'
+    )
 
     # Pipeline Traceback
     parser_traceback = subparsers.add_parser('traceback')
@@ -128,8 +155,7 @@ def create_args_parser():
 
 
 def parse_init_args(args, unparsed_args, parser):
-    from opuspocus.pipelines import PIPELINE_REGISTRY
-    PIPELINE_REGISTRY[args.pipeline].add_args(parser)
+    pipelines.PIPELINE_REGISTRY[args.pipeline].add_args(parser)
 
     parser = load_config_defaults(parser, args.pipeline_config)
 

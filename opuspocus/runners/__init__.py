@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .opuspocus_runner import (
     OpusPocusRunner,
-    RunnerOutput,
+    TaskId,
     RunnerResources
 )
 
@@ -16,7 +16,7 @@ RUNNER_CLASS_NAMES = set()
 def build_runner(runner, args):
     """Runner builder function. Use this to create runner objects."""
 
-    return RUNNER_REGISTRY[runner].build_runner(args)
+    return RUNNER_REGISTRY[runner].build_runner(runner, args)
 
 
 def register_runner(name):
@@ -59,10 +59,6 @@ def register_runner(name):
         return cls
 
     return register_runner_cls
-
-
-def get_runner(name):
-    return RUNNER_REGISTRY[name]
 
 
 runners_dir = Path(__file__).parents[0]
