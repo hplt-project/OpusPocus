@@ -5,7 +5,7 @@ from pathlib import Path
 
 from opuspocus.runners import (
     OpusPocusRunner,
-    RunnerOutput,
+    TaskId,
     RunnerResources,
     register_runner
 )
@@ -24,30 +24,31 @@ class SlurmRunner(OpusPocusRunner):
 
     def __init__(
         self,
+        name: str,
         args: argparse.Namespace,
     ):
-        super().__init__(args)
+        super().__init__(name, args)
 
     def submit(
         cmd_path: Path,
         file_list: Optional[List[str]] = None,
-        dependencies: Optional[List[SlurmOutput]] = None,
+        dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None
-    ) -> List[SlurmOutput]:
+    ) -> List[TaskId]:
+        dep_jids = []
         if dependencies:
-            dependencies = [dep.jid for dep in dependencies]
+            dep_jids = [dep['jid'] for dep in dependencies]
 
         # TODO: can we replace this with a proper Python API?
         cmd = ['sbatch', '--parsable']
 
-        if dependencies:
+        if dep_jids:
             cmd.append('--dependency')
             cmd.append(
-                ','.join(['afterok:{}'.format(dep) for dep in dependencies])
+                ','.join(['afterok:{}'.format(dep) for dep in dep_jids])
             )
 
-        resources = self.global_resources.overwrite(step_resources)
-        cmd += self.convert_resources(resources)
+        cmd += self.convert_resources(step_resources)
         cmd += self.add_environment_variables(resources)
 
         cmd.append(str(cmd_path))
@@ -61,7 +62,7 @@ class SlurmRunner(OpusPocusRunner):
                     shell=False
                 )
                 new_dependencies.append(
-                    SlurmOutput(int(proc.stdout.readline()))
+                    { 'jid': int(proc.stdout.readline()) }
                 )
                 # small delay to avoid overwhelming the scheduler
                 sys.sleep(SLEEP_TIME)
@@ -73,10 +74,12 @@ class SlurmRunner(OpusPocusRunner):
             stderr=subprocess.PIPE,
             shell=False
         )
-        return [SlurmOutput(int(proc.stdout.readline()))]
+        return [{'jid': int(proc.stdout.readline())}]
 
-    def run():
-        pass
+    def cancel(task_id: TaskId) -> None:
+        proc = subprocess.Popen(
+            ['scancel', str(task_id['jid'])], shell=False
+        )
 
     def convert_resources(resources: StepResources) -> List[str]:
         converted = []
@@ -101,12 +104,8 @@ class SlurmRunner(OpusPocusRunner):
         # TODO finish this
         pass
 
+    def task_id_to_string(self, task_id: TaskId) -> str:
+        return str(task_id['jid'])
 
-class SlurmOutput(RunnerOutput):
-    """TODO"""
-
-    def __init__(self, job_id: int):
-        self.jid = job_id
-
-    def __str__(self) -> str:
-        return str(self.jid)
+    def string_to_task_id(self, id_str: str) -> TaskId:
+        return {'jid': int(id_str)}

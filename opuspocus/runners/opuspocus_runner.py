@@ -163,10 +163,10 @@ class OpusPocusRunner(object):
     def cancel(task_id: TaskId) -> None:
         raise NotImplementedError()
 
-    def serialize_task_id(self, task_id: TaskId) -> str:
+    def task_id_to_string(self, task_id: TaskId) -> str:
         raise NotImplementedError()
 
-    def deserialize_task_id(self, id_str: str) -> TaskId:
+    def string_to_task_id(self, id_str: str) -> TaskId:
         raise NotImplementedError()
 
     def save_task_ids(
@@ -175,7 +175,7 @@ class OpusPocusRunner(object):
         task_ids: List[TaskId]
     ) -> None:
         ids_str = ';'.join(
-            [self.serialize_task_id(task_id) for task_id in task_ids]
+            [self.task_id_to_string(task_id) for task_id in task_ids]
         )
         logger.debug(
             'Saving Taks Ids ({}) for {} step.'.format(ids_str, step.step_name)
@@ -190,14 +190,14 @@ class OpusPocusRunner(object):
         if self.name not in ids_dict:
             return None
         task_ids = [
-            self.deserialize_task_id(id_str)
+            self.string_to_task_id(id_str)
             for id_str in ids_dict[self.name].split(';')
         ]
         return task_ids
 
-    def get_resources(self, step: OpusPocusStep) -> RunnerResources
-        # TODO: implement this
-        raise NotImplementedError()
+    def get_resources(self, step: OpusPocusStep) -> RunnerResources:
+        # TODO: expand the logic here
+        return step.default_resources.overwrite(self.global_resources)
 
 
 class RunnerResources(object):
