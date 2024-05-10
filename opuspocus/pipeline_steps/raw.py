@@ -21,23 +21,23 @@ class RawCorpusStep(CorpusStep):
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
         raw_data_dir: Path,
         src_lang: str,
         tgt_lang: str = None,
         output_shard_size: Optional[int] = None,
         gzipped: bool = True,
-        suffix: str = None,
     ):
         super().__init__(
             step=step,
+            step_label=step_label,
             pipeline_dir=pipeline_dir,
             raw_data_dir=raw_data_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             output_shard_size=output_shard_size,
             gzipped=gzipped,
-            suffix=suffix
         )
 
     def register_categories(self) -> None:

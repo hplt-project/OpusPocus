@@ -18,6 +18,7 @@ class TrainModelStep(OpusPocusStep):
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
         marian_dir: Path,
         valid_data_dir: Path,
@@ -32,10 +33,10 @@ class TrainModelStep(OpusPocusStep):
         model_init_step: Optional['TrainModelStep'] = None,
         seed: int = 42,
         valid_dataset: str = 'flores200.dev',
-        suffix: str = None
     ):
         super().__init__(
             step=step,
+            step_label=step_label,
             pipeline_dir=pipeline_dir,
             marian_dir=marian_dir,
             valid_data_dir=valid_data_dir,
@@ -50,9 +51,7 @@ class TrainModelStep(OpusPocusStep):
             seed=seed,
             train_category=train_category,
             valid_dataset=valid_dataset,
-            suffix=suffix
         )
-        self.input_dir = self.dependencies['train_corpus_step'].output_dir
 
         # Check existence of the valid dataset
         for lang in [self.src_lang, self.tgt_lang]:
@@ -69,6 +68,10 @@ class TrainModelStep(OpusPocusStep):
                 raise FileNotFoundError(
                     'Dataset file {} does not exist'.format(valid_dataset_path)
                 )
+
+    @property
+    def input_dir(self) -> Path:
+        return self.dependencies['train_corpus_step'].output_dir
 
     @property
     def train_corpus_step(self) -> CorpusStep:
@@ -102,15 +105,6 @@ class TrainModelStep(OpusPocusStep):
     @property
     def tmp_dir(self) -> Path:
         return Path(self.step_dir, 'tmp.d')
-
-    @property
-    def step_name(self):
-        name = 's.{}.{}-{}'.format(
-            self.step, self.src_lang, self.tgt_lang
-        )
-        if self.suffix is not None:
-            name += '.{}'.format(self.suffix)
-        return name
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(

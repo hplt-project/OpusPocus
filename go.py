@@ -11,6 +11,11 @@ from opuspocus.utils import load_config_defaults, update_args
 logger = logging.getLogger(__name__)
 
 
+def check_pipeline_dir_exists(pipeline_dir) -> None:
+    if pipeline_dir is not None:
+        logger.error('Missing "--pipeline-dir" option.')
+
+
 def main_init(args, unparsed_args, parser):
     """Pipeline initialization sub-command.
 
@@ -22,16 +27,10 @@ def main_init(args, unparsed_args, parser):
     args = parse_init_args(args, unparsed_args, parser)
 
     logger.info('Building pipeline...')
-    pipeline = pipelines.build_pipeline(args.pipeline, args)
+    pipeline = pipelines.build_pipeline(args)
     logger.info('Initializing pipeline...')
     pipeline.init()
     logger.info('Pipeline initialized successfully.')
-
-    # Dry-run
-    if args.dry_run:
-        # TODO: test 3rd party tools (?), anything else(?), touch files for
-        # checking dependencies (?)
-        pass
 
 
 def main_run(args, *_):
@@ -40,6 +39,8 @@ def main_run(args, *_):
     Submits the pipeline steps, respecting their dependencies, using
     the specified runner (bash, slurm, ...).
     """
+    check_pipeline_dir_exists(args.pipeline_dir)
+
     # Load the pipeline
     pipeline = pipelines.load_pipeline(args)
 
@@ -56,11 +57,16 @@ def main_traceback(args, *_):
     Prints the simplified dependency graph of the pipeline steps
     with their current status.
     """
+    check_pipeline_dir_exists(args.pipeline_dir)
+
     pipeline = pipelines.load_pipeline(args)
-    pipeline.traceback(args.full_trace)
+    pipeline.traceback(args.targets, args.full_trace)
 
 
 def main_stop(args, *_):
+    """TODO"""
+    check_pipeline_dir_exists(args.pipeline_dir)
+
     # Load the pipeline
     pipeline = pipelines.load_pipeline(args)
 
@@ -92,6 +98,10 @@ def create_args_parser():
         '--log-level', choices=['info', 'debug'], default='info',
         help='Indicates current logging level.'
     )
+    parser.add_argument(
+        '--pipeline-dir', type=str, default=None,
+        help='Pipeline root directory.'
+    )
     subparsers = parser.add_subparsers(help='command', dest='command')
 
     # TODO: more arguments (?)
@@ -99,15 +109,11 @@ def create_args_parser():
     # Pipeline Init
     parser_init = subparsers.add_parser('init')
     parser_init.add_argument(
-        '--pipeline-dir', type=str, required=True,
-        help='Pipeline root directory.'
-    )
-    parser_init.add_argument(
         '--pipeline-config', type=str, default=None,
         help='Pipeline configuration YAML.'
     )
     parser_init.add_argument(
-        '--pipeline', '-p', type=str, default='simple', metavar='PIPELINE',
+        '--pipeline', '-p', type=str, default='custom', metavar='PIPELINE',
         choices=pipelines.PIPELINE_REGISTRY.keys(),
         help='Training pippipeline_nameline type.'
     )
@@ -116,22 +122,18 @@ def create_args_parser():
     # Pipeline Run
     parser_run = subparsers.add_parser('run')
     parser_run.add_argument(
-        '--pipeline-dir', type=str, required=True,
-        help='Pipeline root directory.'
-    )
-    parser_run.add_argument(
         '--runner', type=str, required=True, metavar='RUNNER',
         choices=runners.RUNNER_REGISTRY.keys(),
         help='Pipeline step execution command.'
+    )
+    parser_run.add_argument(
+        '--targets', type=str, nargs='+', default=None,
+        help='TODO'
     )
     parser_run.set_defaults(fn=main_run)
 
     # Pipeline Stop
     parser_stop = subparsers.add_parser('stop')
-    parser_stop.add_argument(
-        '--pipeline-dir', type=str, required=True,
-        help='Pipeline root directory.'
-    )
     parser_stop.add_argument(
         '--runner', type=str, required=True, metavar='RUNNER',
         choices=runners.RUNNER_REGISTRY.keys(),
@@ -141,13 +143,13 @@ def create_args_parser():
     # Pipeline Traceback
     parser_traceback = subparsers.add_parser('traceback')
     parser_traceback.add_argument(
-        '--pipeline-dir', type=str, required=True,
-        help='Pipeline root directory.'
-    )
-    parser_traceback.add_argument(
         '--full-trace', action='store_true',
         help='Also print the parameters of the individual '
              'pipeline steps.'
+    )
+    parser_traceback.add_argument(
+        '--targets', type=str, nargs='+', default=None,
+        help='TODO'
     )
     parser_traceback.set_defaults(fn=main_traceback)
 
@@ -170,6 +172,7 @@ if __name__ == '__main__':
     # Parse the main command
     args, unparsed_args = parser.parse_known_args()
 
+    # TODO: fix logging using a global logger
     logging.basicConfig(level=logging.INFO)
     if args.log_level == 'debug':
         logging.basicConfig(level=logging.DEBUG)

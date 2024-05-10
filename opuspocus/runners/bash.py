@@ -53,7 +53,7 @@ class BashRunner(OpusPocusRunner):
             outputs = []
             for file in file_list:
                 proc = subprocess.Popen(
-                    [self.submit_wrapper, cmd_path, dependencies_str, file]
+                    [self.submit_wrapper, cmd_path, dependencies_str, file],
                     start_new_session=True,
                     stdout=stdout,
                     stderr=stderr,
@@ -64,7 +64,7 @@ class BashRunner(OpusPocusRunner):
             return outputs
 
         proc = subprocess.Popen(
-            [self.submit_wrapper, cmd_path, dependencies_str]
+            [self.submit_wrapper, cmd_path, dependencies_str],
             start_new_session=True,
             stdout=stdout,
             stderr=stderr,

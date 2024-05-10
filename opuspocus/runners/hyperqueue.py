@@ -71,12 +71,12 @@ class HyperqueueRunner(OpusPocusRunner):
         self.hq_alloc_backlog = args.hq_alloc_backlog
 
         self.hq_alloc_range_cpus = args.hq_alloc_range_cpus.split(',')
-        assert len(self.hq_alloc_range_cpus) = 2
+        assert len(self.hq_alloc_range_cpus) == 2
 
         self.hq_alloc_range_gpus = None
         if args.hq_alloc_range_gpus is not None:
             self.hq_alloc_range_cpus = args.hq_alloc_range_gpus.split(',')
-            assert len(self.hq_alloc_range_gpus) = 2
+            assert len(self.hq_alloc_range_gpus) == 2
 
         self.hq_max_worker_count = args.hq_max_worker_count
 
@@ -154,7 +154,7 @@ class HyperqueueRunner(OpusPocusRunner):
         #       the pipeline execution ends
         # TODO: separate queue CPU and GPU computation queues?
         hq_cmd = [
-            self.hq_path
+            self.hq_path,
             'alloc', 'add', self.hq_scheduler,
             '--server-dir={}'.format(self.hq_server_dir),
             '--time-limit={}'.format(self.hq_alloc_time_limit),
@@ -198,13 +198,12 @@ class HyperqueueRunner(OpusPocusRunner):
     def convert_memory(self, mem: str) -> int:
         unit = mem[-1]
         if unit == 'g' or unit == 'G':
-            return int(mem[:-1] * 1024 ** 3
-        elif unit == 'm' or unit == 'M':
-            return int(mem[:-1] * 1024 ** 2
-        elif unit == 'k' or unit == 'K':
-            return int(mem[:-1] * 1024
-        else:
-            raise ValueError('Unknown unit of memory ({}).'.format(unit))
+            return int(mem[:-1] * 1024 ** 3)
+        if unit == 'm' or unit == 'M':
+            return int(mem[:-1] * 1024 ** 2)
+        if unit == 'k' or unit == 'K':
+            return int(mem[:-1] * 1024)
+        raise ValueError('Unknown unit of memory ({}).'.format(unit))
 
     def task_id_to_string(self, task_id: TaskId) -> str:
         tid = task_id['task_id']

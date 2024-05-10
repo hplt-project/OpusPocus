@@ -3,7 +3,7 @@ import inspect
 import importlib
 from pathlib import Path
 
-from .opuspocus_step import OpusPocusStep
+from .opuspocus_step import OpusPocusStep, StepState
 from opuspocus.utils import update_args
 
 
@@ -12,41 +12,41 @@ STEP_INSTANCE_REGISTRY = {}
 STEP_CLASS_NAMES = set()
 
 
-def build_step(step, pipeline_dir, step_name: str = None, **kwargs):
+def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):
     """Pipeline step builder function. Use this to create pipeline step
     objects.
     """
-    if step_name is not None and step_name in STEP_INSTANCE_REGISTRY:
-        return STEP_INSTANCE_REGISTRY[step_name]
+    if step_label is not None and step_label in STEP_INSTANCE_REGISTRY:
+        return STEP_INSTANCE_REGISTRY[step_label]
 
     step_instance = STEP_REGISTRY[step].build_step(
-        step, pipeline_dir, **kwargs
+        step, step_label, pipeline_dir, **kwargs
     )
 
     # sanity check (TODO: make this test into a warning)
-    if step_name is not None:
-        assert step_name == step_instance.step_name
+    if step_label is not None:
+        assert step_label == step_instance.step_label
 
-    STEP_INSTANCE_REGISTRY[step_instance.step_name] = step_instance
+    STEP_INSTANCE_REGISTRY[step_instance.step_label] = step_instance
     return step_instance
 
 
-def load_step(step_name, args):
+def load_step(step_label, args):
     """Load an existing (initialized) pipeline step."""
-    step_params = OpusPocusStep.load_parameters(step_name, args.pipeline_dir)
+    step_params = OpusPocusStep.load_parameters(step_label, args.pipeline_dir)
 
-    step = step_params['step']  
+    step = step_params['step']
     del step_params['step']
 
     pipeline_dir = step_params['pipeline_dir']
     assert pipeline_dir == args.pipeline_dir
     del step_params['pipeline_dir']
 
-    step_deps = OpusPocusStep.load_dependencies(step_name, args.pipeline_dir)
+    step_deps = OpusPocusStep.load_dependencies(step_label, args.pipeline_dir)
     for k, v in step_deps.items():
         step_params[k] = load_step(v, args)
 
-    return build_step(step, pipeline_dir, step_name, **step_params)
+    return build_step(step, pipeline_dir, step_label, **step_params)
 
 
 def register_step(name):
@@ -107,8 +107,8 @@ for file in steps_dir.iterdir():
         and file.name.endswith('py')
         and not file.is_dir()
     ):
-        step_name = (
+        step_label = (
             file.stem if file.name.endswith('.py')
             else file
         )
-        importlib.import_module('opuspocus.pipeline_steps.' + str(step_name))
+        importlib.import_module('opuspocus.pipeline_steps.' + str(step_label))

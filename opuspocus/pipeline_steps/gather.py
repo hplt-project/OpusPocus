@@ -20,6 +20,7 @@ class GatherStep(CorpusStep):
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
         previous_corpus_step: CorpusStep,
         python_venv_dir: Path,
@@ -27,10 +28,10 @@ class GatherStep(CorpusStep):
         tgt_lang: str = None,
         output_shard_size: Optional[int] = None,
         gzipped: bool = True,
-        suffix: str = None,
     ):
         super().__init__(
             step=step,
+            step_label=step_label,
             pipeline_dir=pipeline_dir,
             previous_corpus_step=previous_corpus_step,
             python_venv_dir=python_venv_dir,
@@ -38,7 +39,6 @@ class GatherStep(CorpusStep):
             tgt_lang=tgt_lang,
             output_shard_size=output_shard_size,
             gzipped=gzipped,
-            suffix=suffix
         )
 
     def register_categories(self) -> None:

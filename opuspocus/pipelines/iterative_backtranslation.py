@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import argparse
 from pathlib import Path
@@ -111,10 +111,10 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         self,
         pipeline: str,
         args: argparse.Namespace,
-        steps = None,
-        targets = None,
+        pipeline_dir: Optional[Path] = None,
+        pipeline_config_path: Optional[Path] = None
     ):
-        super().__init__(pipeline, args, steps, targets)
+        super().__init__(pipeline, args, pipeline_dir, pipeline_config_path)
 
     def build_pipeline_graph(self, args: argparse.Namespace):
         """Build the pipeline dependency graph for the pipeline instance."""
@@ -128,6 +128,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         step_label = 'raw.{}-{}'.format(args.src_lang, args.tgt_lang)
         steps[step_label] = pipeline_steps.build_step(
             'raw',
+            step_label=step_label,
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
@@ -138,6 +139,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         step_label = 'clean.{}-{}'.format(args.src_lang, args.tgt_lang)
         steps[step_label] = pipeline_steps.build_step(
             'clean',
+            step_label=step_label,
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
@@ -152,6 +154,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         step_label = 'decontaminate.{}-{}'.format(args.src_lang, args.tgt_lang)
         steps[step_label] = pipeline_steps.build_step(
             'decontaminate',
+            step_label=step_label,
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
@@ -168,6 +171,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         step_label = 'gather.{}-{}'.format(args.src_lang, args.tgt_lang)
         steps[step_label] = pipeline_steps.build_step(
             'gather',
+            step_label=step_label,
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
@@ -178,8 +182,10 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         )
 
         # Train BPE
-        steps['generate_vocab'] = pipeline_steps.build_step(
+        step_label = 'generate_vocab'
+        steps[step_label] = pipeline_steps.build_step(
             'generate_vocab',
+            step_label=step_label,
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=args.tgt_lang,
@@ -195,15 +201,19 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         ## Preprocess monolingual data ##
 
         # Collect raw corpora
-        steps['raw.{}'.format(args.src_lang)] = pipeline_steps.build_step(
+        step_label = 'raw.{}'.format(args.src_lang)
+        steps[step_label] = pipeline_steps.build_step(
             'raw',
+            step_label=step_label,
             pipeline_dir=args.pipeline_dir,
             src_lang=args.src_lang,
             tgt_lang=None,
             raw_data_dir=args.raw_data_src_dir,
         )
-        steps['raw.{}'.format(args.tgt_lang)] = pipeline_steps.build_step(
+        step_label = 'raw.{}'.format(args.tgt_lang)
+        steps[step_label] = pipeline_steps.build_step(
             'raw',
+            step_label=step_label,
             pipeline_dir=args.pipeline_dir,
             src_lang=args.tgt_lang,
             tgt_lang=None,
@@ -215,8 +225,10 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
         if not args.skip_tgt_clean: clean_langs.append(args.tgt_lang)
         for lang in clean_langs:
             # Clean the monolingual data
-            steps['clean.{}'.format(lang)] = pipeline_steps.build_step(
+            step_label = 'clean.{}'.format(lang)
+            steps[step_label] = pipeline_steps.build_step(
                 'clean',
+                step_label=step_label,
                 pipeline_dir=args.pipeline_dir,
                 src_lang=lang,
                 tgt_lang=None,
@@ -233,8 +245,10 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                 prev_step = steps['clean.{}'.format(lang)]
             else:
                 prev_step = steps['raw.{}'.format(lang)]
-            steps['decontaminate.{}'.format(lang)] = pipeline_steps.build_step(
+            step_label = 'decontaminate.{}'.format(lang)
+            steps[step_label] = pipeline_steps.build_step(
                 'decontaminate',
+                step_label=step_label,
                 pipeline_dir=args.pipeline_dir,
                 src_lang=lang,
                 tgt_lang=None,
@@ -245,8 +259,10 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                 min_length=args.decontaminate_min_length,
             )
 
-            steps['gather.{}'.format(lang)] = pipeline_steps.build_step(
+            step_label = 'gather.{}'.format(lang)
+            steps[step_label] = pipeline_steps.build_step(
                 'gather',
+                step_label=step_label,
                 pipeline_dir=args.pipeline_dir,
                 src_lang=lang,
                 tgt_lang=None,
@@ -262,6 +278,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
             step_label = 'train.{}-{}.0'.format(src, tgt)
             steps[step_label] = pipeline_steps.build_step(
                 'train_model',
+                step_label = step_label,
                 pipeline_dir=args.pipeline_dir,
                 src_lang=src,
                 tgt_lang=tgt,
@@ -278,7 +295,6 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                 seed=args.seed,
                 train_category='clean',
                 valid_dataset=args.valid_dataset,
-                suffix='iter-0'
             )
 
         # Traiing (i-th iteration, with BT data)
@@ -288,6 +304,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                 step_label = 'translate.{}-{}.{}'.format(src, tgt, i)
                 steps[step_label] = pipeline_steps.build_step(
                     'translate',
+                    step_label=step_label,
                     pipeline_dir=args.pipeline_dir,
                     marian_dir=args.marian_dir,
                     src_lang=src,
@@ -295,7 +312,6 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                     previous_corpus_step=steps['gather.{}'.format(src)],
                     model_step=steps['train.{}-{}.{}'.format(src, tgt, i)],
                     model_suffix=args.best_model_suffix,
-                    suffix='iter-{}'.format(i)
                 )
 
                 # TODO: cleaning
@@ -305,6 +321,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                 step_label = 'merge.{}-{}.{}'.format(src, tgt, i)
                 steps[step_label] = pipeline_steps.build_step(
                     'merge',
+                    step_label=step_label,
                     pipeline_dir=args.pipeline_dir,
                     src_lang=src,
                     tgt_lang=tgt,
@@ -316,7 +333,6 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                         'translate.{}-{}.{}'.format(tgt, src, i)
                     ],
                     other_corpus_label='synth',
-                    suffix='iter-{}'.format(i)
                 )
 
                 # Training
@@ -325,6 +341,7 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                 step_label = 'train.{}-{}.{}'.format(src, tgt, i + 1)
                 steps[step_label] = pipeline_steps.build_step(
                     'train_model',
+                    step_label=step_label,
                     pipeline_dir=args.pipeline_dir,
                     src_lang=src,
                     tgt_lang=tgt,
@@ -343,7 +360,6 @@ class IterativeBacktranslationPipeline(OpusPocusPipeline):
                     seed=args.seed,
                     train_category='clean',
                     valid_dataset=args.valid_dataset,
-                    suffix='iter-{}'.format(i + 1)
                 )
 
         for (src, tgt) in [(args.src_lang, args.tgt_lang), (args.tgt_lang, args.src_lang)]:

@@ -6,7 +6,7 @@ import logging
 import yaml
 from pathlib import Path
 
-from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
 from opuspocus.command_utils import build_subprocess
 from opuspocus.utils import print_indented
 
@@ -47,12 +47,12 @@ class CorpusStep(OpusPocusStep):
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
         src_lang: str,
         tgt_lang: Optional[str] = None,
         previous_corpus_step: Optional['CorpusStep'] = None,
         output_shard_size: Optional[int] = None,
-        suffix: Optional[str] = None,
         **kwargs
     ):
         """Object initialization.
@@ -62,12 +62,12 @@ class CorpusStep(OpusPocusStep):
         """
         super().__init__(
             step=step,
+            step_label=step_label,
             pipeline_dir=pipeline_dir,
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             output_shard_size=output_shard_size,
-            suffix=suffix,
             **kwargs,
         )
 
@@ -168,7 +168,7 @@ class CorpusStep(OpusPocusStep):
         # TODO: refactor opuscleaner_step.init_step to reduce code duplication
         self.state = self.load_state()
         if self.state is not None:
-            if self.has_state('INITED'):
+            if self.has_state(StepState.INITED):
                 logger.info('Step already initialized. Skipping...')
                 return
             else:
@@ -177,7 +177,7 @@ class CorpusStep(OpusPocusStep):
                 )
         # Set state to incomplete until finished initializing.
         self.create_directories()
-        self.set_state('INIT_INCOMPLETE')
+        self.set_state(StepState.INIT_INCOMPLETE)
 
         self.init_dependencies()
         self.init_categories_file()
@@ -187,7 +187,7 @@ class CorpusStep(OpusPocusStep):
 
         # Initialize state
         logger.info('[{}.init] Step Initialized.'.format(self.step))
-        self.set_state('INITED')
+        self.set_state(StepState.INITED)
 
     def init_categories_file(self) -> None:
         """Initialize the categories.json file."""
@@ -212,18 +212,6 @@ class CorpusStep(OpusPocusStep):
             return [self.src_lang, self.tgt_lang]
         return [self.src_lang]
 
-    @property
-    def step_name(self) -> str:
-        """The unique step-instance identifier."""
-        name = 's.{}'.format(self.step)
-        if self.tgt_lang is not None:
-            name += '.{}-{}'.format(self.src_lang, self.tgt_lang)
-        else:
-            name += '.{}'.format(self.src_lang)
-        if self.suffix is not None:
-            name += '.{}'.format(self.suffix)
-        return name
-   
     def _cmd_exit_str(self) -> str:
         """
         Check whether all the datasets files are present and are not empty.

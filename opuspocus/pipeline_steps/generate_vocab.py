@@ -15,6 +15,7 @@ class GenerateVocabStep(OpusPocusStep):
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
         src_lang: str,
         tgt_lang: str,
@@ -23,10 +24,10 @@ class GenerateVocabStep(OpusPocusStep):
         corpus_step: CorpusStep,
         seed: int = 42,
         vocab_size: int = 64000,
-        suffix: str = None
     ):
         super().__init__(
             step=step,
+            step_label=step_label,
             pipeline_dir=pipeline_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
@@ -35,13 +36,11 @@ class GenerateVocabStep(OpusPocusStep):
             corpus_step=corpus_step,
             seed=seed,
             vocab_size=vocab_size,
-            suffix=suffix
         )
-        self.input_dir = self.dependencies['corpus_step'].output_dir
 
     @property
-    def step_name(self):
-        return 's.{}.{}-{}'.format(self.step, self.src_lang, self.tgt_lang)
+    def input_dir(self) -> Path:
+        return self.dependencies['corpus_step'].output_dir
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(

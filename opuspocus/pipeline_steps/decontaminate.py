@@ -16,6 +16,7 @@ class DecontaminateCorpusStep(CorpusStep):
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
         previous_corpus_step: CorpusStep,
         python_venv_dir: Path,
@@ -26,10 +27,10 @@ class DecontaminateCorpusStep(CorpusStep):
         decontaminate_path: Path = Path('scripts/decontaminate.py'),
         min_length: int = 25,
         gzipped: bool = True,
-        suffix: str = None
     ):
         super().__init__(
             step=step,
+            step_label=step_label,
             pipeline_dir=pipeline_dir,
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
@@ -40,7 +41,6 @@ class DecontaminateCorpusStep(CorpusStep):
             decontaminate_path=decontaminate_path,
             min_length=min_length,
             gzipped=gzipped,
-            suffix=suffix
         )
         for valid_dir in self.valid_data_dirs:
             if not valid_dir.exists():

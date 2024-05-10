@@ -1,18 +1,26 @@
 from typing import Any, Dict, List, Optional, get_type_hints
 
 import argparse
+import enum
 import inspect
+import json
 import logging
 import yaml
 from pathlib import Path
 
-from opuspocus.command_utils import build_subprocess
 from opuspocus.utils import print_indented
 
 
-STEP_STATES = ['INITED', 'RUNNING', 'FAILED', 'DONE', 'INIT_INCOMPLETE']
-
 logger = logging.getLogger(__name__)
+
+
+class StepState(str, enum.Enum):
+    INIT_INCOMPLETE = 'INIT_INCOMPLETE'
+    FAILED = 'FAILED'
+    INITED = 'INITED'
+    SUBMITTED = 'SUBMITTED'
+    RUNNING = 'RUNNING'
+    DONE = 'DONE'
 
 
 class OpusPocusStep(object):
@@ -20,15 +28,14 @@ class OpusPocusStep(object):
 
     command_file = 'step.command'
     dependency_file = 'step.dependencies'
-    jobid_file = 'step.jobid'
     state_file = 'step.state'
     parameter_file = 'step.parameters'
 
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
-        suffix: str = None,
         **kwargs
     ):
         """Set the step parameters based on the parameters passed during
@@ -45,14 +52,27 @@ class OpusPocusStep(object):
         TODO: implement strict restriction on setting object attributes
         the derived classes
         """
+        if pipeline_dir is None:
+            logger.error(
+                '{}.pipeline_dir was not specified. Use --pipeline-dir '
+                'option to set global pipeline_dir or set the pipeline_dir '
+                'for the step using the config file.'.format(step_label)
+            )
+
         self.step = step
+        self.step_label = step_label
         self.pipeline_dir = pipeline_dir
-        self.suffix = suffix
         self.register_parameters(**kwargs)
         self.state = self.load_state()
 
     @classmethod
-    def build_step(cls, step: str, pipeline_dir: Path, **kwargs) -> 'OpusPocusStep':
+    def build_step(
+        cls,
+        step: str,
+        step_label: str,
+        pipeline_dir: Path,
+        **kwargs
+    ) -> 'OpusPocusStep':
         """Build a specified step instance.
 
         Args:
@@ -64,52 +84,84 @@ class OpusPocusStep(object):
             An instance of the specified pipeline class.
         """
         try:
-            cls_inst = cls(step, pipeline_dir, **kwargs)
+            cls_inst = cls(step, step_label, pipeline_dir, **kwargs)
         except TypeError as err:
-            logger.error('Error occured while building step {}.'.format(step))
+            sig = inspect.signature(cls.__init__)
+            logger.error(
+                'Error occured while building step {} ({}).\n'
+                'Step Signature:\n{}\n'
+                .format(
+                    step_label, step,
+                    '\n'.join([
+                        '\t{}'.format(sig.parameters[x])
+                        for x in sig.parameters
+                    ])
+                )
+            )
             raise err
         return cls_inst
 
     @classmethod
-    def list_parameters(cls) -> List[str]:
-        """Return a list of arguments/required for initialization while excluding
-        the dependencies.
+    def list_parameters(cls, exclude_dependencies: bool = True) -> List[str]:
+        """Return a list of arguments/required for initialization
+
+        Args:
+            exclude_dependencies (bool): exlude the step dependencies
+            parameters
 
         These parameter lists are used during step instance saving/loading.
         Step dependencies are handled differently (by saving/loading
-        their respective dep.step_name properties).
+        their respective dep.step_label properties).
         """
         param_list = []
         for param in inspect.signature(cls.__init__).parameters:
             if param == 'self':
                 continue
-            if '_step' in param:
+            if '_step' in param and exclude_dependencies:
                 continue
             param_list.append(param)
         return param_list
 
     @classmethod
     def load_parameters(
-        cls, step_name: str, pipeline_dir: Path
-    ) -> Dict[str, Any]:
+            cls,
+            pipeline_dir: Path,
+            step_label: str
+        ) -> Dict[str, Any]:
         """Load the previously initialized step instance parameters."""
-        vars_path = Path(pipeline_dir, step_name, cls.parameter_file)
+        vars_path = Path(pipeline_dir, step_label, cls.parameter_file)
         logger.debug('Loading step variables from {}'.format(vars_path))
-        return yaml.safe_load(open(vars_path, 'r'))
+
+        vars_dict = yaml.safe_load(open(vars_path, 'r'))
+        # TODO: check for missing/unknown parameters
+        return vars_dict
+
+    def get_parameters_dict(
+        self,
+        exclude_dependencies: bool = True
+    ) -> Dict[str, Any]:
+        """Serialize the step parameters"""
+        param_dict ={}
+        for param in self.list_parameters(exclude_dependencies):
+            if '_step' in param:
+                p = None
+                dep = getattr(self.dependencies, param, None)
+                if dep is not None:
+                    p = dep.step_label
+            else:
+                p = getattr(self, param)
+                if isinstance(p, Path):
+                    p = str(p)
+                if isinstance(p, list) and isinstance(p[0], Path):
+                    p = [str(v) for v in p]
+            param_dict[param] = p
+        return param_dict
 
     def save_parameters(self) -> None:
         """Save the step instance parameters."""
         logger.debug('Saving step variables.')
-        param_dict ={}
-        for param in self.list_parameters():
-            p = getattr(self, param)
-            if isinstance(p, Path):
-                p = str(p)
-            if isinstance(p, list) and isinstance(p[0], Path):
-                p = [str(v) for v in p]
-            param_dict[param] = p
         yaml.dump(
-            param_dict,
+            self.get_parameters_dict(),
             open(Path(self.step_dir, self.parameter_file), 'w')
         )
 
@@ -125,7 +177,7 @@ class OpusPocusStep(object):
 
         Use the @property method decorator to define object attributes that
         are not direct step parameters, i.e. direct access to the attributes
-        of the step dependencies. 
+        of the step dependencies.
         """
         type_hints = get_type_hints(self.__init__)
         logger.debug('Class type hints: {}'.format(type_hints))
@@ -143,17 +195,17 @@ class OpusPocusStep(object):
 
     @classmethod
     def load_dependencies(
-        cls, step_name: str, pipeline_dir: Path
+        cls, step_label: str, pipeline_dir: Path
     ) -> Dict[str, str]:
-        """Load step dependecies based on their unique step_name values."""
-        deps_path = Path(pipeline_dir, step_name, cls.dependency_file)
+        """Load step dependecies based on their unique step_label values."""
+        deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
         logger.debug('Loading dependencies from {}'.format(deps_path))
         return yaml.safe_load(open(deps_path, 'r'))
 
     def save_dependencies(self) -> None:
-        """Save the step dependencies using their unique step_name values."""
+        """Save the step dependencies using their unique step_label values."""
         deps_dict = {
-            k: v.step_name 
+            k: v.step_label
             for k, v in self.dependencies.items()
             if v is not None
         }
@@ -163,21 +215,9 @@ class OpusPocusStep(object):
         )
 
     @property
-    def step_name(self) -> str:
-        """The unique step-instance identifier.
-
-        Each derived step class is required to implement its own way to create
-        its step name based on its step parameters.
-        As a result, a pipeline should be able to instantiate multiple step
-        instances, i.e. en-to-fr and fr-to-en tranlsation, multiple monolingual
-        cleaning, decontaminating steps, etc.
-        """
-        raise NotImplementedError()
-
-    @property
     def step_dir(self) -> Path:
         """Location of the step directory."""
-        return Path(self.pipeline_dir, self.step_name)
+        return Path(self.pipeline_dir, self.step_label)
 
     @property
     def output_dir(self) -> Path:
@@ -202,17 +242,19 @@ class OpusPocusStep(object):
         """
         self.state = self.load_state()
         if self.state is not None:
-             if self.has_state('INITED'):
+            if self.has_state(StepState.INITED):
                 logger.info('Step already initialized. Skipping...')
-                return
+                return None
             else:
                 raise ValueError(
                     'Trying to initialize step in a {} state.'.format(self.state)
                 )
         # Set state to incomplete until finished initializing.
         self.create_directories()
-        self.set_state('INIT_INCOMPLETE')
+        self.set_state(StepState.INIT_INCOMPLETE)
 
+        # Initialization of dependencies after directory creation and setting
+        # state to 'incomplete' helps to detect possible dependency cycles.
         self.init_dependencies()
         self.save_parameters()
         self.save_dependencies()
@@ -220,7 +262,7 @@ class OpusPocusStep(object):
 
         # initialize state
         logger.info('[{}.init] Step Initialized.'.format(self.step))
-        self.set_state('INITED')
+        self.set_state(StepState.INITED)
 
     def init_dependencies(self) -> None:
         """Recursively call the init_step method of the step dependencies.
@@ -231,7 +273,7 @@ class OpusPocusStep(object):
         for dep in self.dependencies.values():
             if dep is None:
                 continue
-            if not dep.has_state('INITED'):
+            if not dep.has_state(StepState.INITED):
                 dep.init_step()
 
     def create_directories(self) -> None:
@@ -259,62 +301,13 @@ class OpusPocusStep(object):
         logger.debug('Creating step command.')
         print(self.compose_command(), file=open(cmd_path, 'w'))
 
-    def run_step(self, args: argparse.Namespace) -> int:
-        """Execute the step command.
-
-        The method checks whether the step is in eligible state (INITED or
-        FAILED, in case of retry), calls the run_step method of its
-        dependencies recursively and executes the step.command script
-        using the provided --runner.
-
-        Returns:
-            int indicating the job_id, process_id or other identification
-            of the executed step.
-        """
-        # TODO: return type (int or str?)
-        # TODO: logic for rerunning/overriding failed/running steps
-        if self.has_state('RUNNING'):
-            jobid = open(Path(self.step_dir, self.jobid_file), 'r').readline().strip()
-            return jobid
-        elif self.has_state('DONE'):
-            logger.info(
-                'Step {} already finished. Skipping...'.format(self.step_name)
-            )
-            return None
-        elif self.has_state('FAILED'):
-            return self.retry_step(args)
-        elif (
-            not self.has_state('INITED')
-        ):
-            raise ValueError(
-                'Cannot run step. Not in INITED state.'.format(self.step)
-            )
-        # TODO: add rerun option for FAILED jobs
-
-        jid_deps = []
-        for dep in self.dependencies.values():
-            if dep is None:
-                continue
-            jid = dep.run_step(args)
-            if jid is not None:
-                jid_deps.append(jid)
-
-        cmd_path = Path(self.step_dir, self.command_file)
-        sub = build_subprocess(cmd_path, args, jid_deps=jid_deps)
-
-        logger.info('Submitted {} job {}'.format(args.runner, sub['jobid']))
-        print(sub['jobid'], file=open(Path(self.step_dir, self.jobid_file), 'w'))
-        self.set_state('RUNNING')
-
-        return sub['jobid']
-
     def retry_step(self, args: argparse.Namespace):
         """Try to recover from a failed state.
 
         Default behavior is to change state and just rerun.
         Derived class should override this method if necessary.
         """
-        self.set_state('INITED')
+        self.set_state(StepState.INITED)
         self.run_step(args)
 
     def traceback_step(self, level: int = 0, full: bool = False) -> None:
@@ -324,7 +317,7 @@ class OpusPocusStep(object):
         methods.
         """
         assert level >= 0
-        print_indented('+ {}: {}'.format(self.step_name, self.state), level)
+        print_indented('+ {}: {}'.format(self.step_label, self.state), level)
         if full:
             for param in self.list_parameters():
                 print_indented('|-- {} = {}'.format(param, getattr(self, param)), level)
@@ -335,28 +328,38 @@ class OpusPocusStep(object):
                 continue
             dep.traceback_step(level + 1, full)
 
-    def load_state(self) -> Optional[str]:
+    def load_state(self) -> Optional[StepState]:
         """Load the current state of a step."""
         state_file = Path(self.step_dir, self.state_file)
         if state_file.exists():
-            state = open(Path(self.step_dir, self.state_file), 'r').readline().strip()
-            assert state in STEP_STATES
+            state = StepState(
+                json.load(open(Path(self.step_dir, self.state_file), 'r'))
+            )
+            assert state in StepState
             return state
         return None
 
-    def set_state(self, state: str) -> None:
+    def set_state(self, state: StepState) -> None:
         """Change the state of a step and save it into step.state file."""
-        assert state in STEP_STATES
+        assert state in StepState
         if state == self.state:
             logger.warn('The new step state is identical to the old one.')
 
         logger.debug('Old state: {} -> New state: {}'.format(self.state, state))
         self.state = state
-        print(state, file=open(Path(self.step_dir, self.state_file), 'w'))
+        json.dump(state, fp=open(Path(self.step_dir, self.state_file), 'w'))
 
-    def has_state(self, state: str) -> bool:
+    def has_state(self, state: StepState) -> bool:
         """Check whether the step is in a specific state."""
         if self.state is not None and self.state == state:
+            return True
+        return False
+
+    def is_running_or_submitted(self) -> bool:
+        if (
+            self.has_state(StepState.RUNNING)
+            or self.has_state(StepState.SUBMITTED)
+        ):
             return True
         return False
 

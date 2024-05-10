@@ -17,6 +17,7 @@ class TranslateStep(CorpusStep):
     def __init__(
         self,
         step: str,
+        step_label: str,
         pipeline_dir: Path,
         marian_dir: Path,
         src_lang: str,
@@ -25,10 +26,10 @@ class TranslateStep(CorpusStep):
         model_step: TrainModelStep,
         output_shard_size: Optional[int] = None,
         model_suffix: str = 'best-chrf',
-        suffix: str = None
     ):
         super().__init__(
             step=step,
+            step_label=step_label,
             pipeline_dir=pipeline_dir,
             marian_dir=marian_dir,
             src_lang=src_lang,
@@ -37,7 +38,6 @@ class TranslateStep(CorpusStep):
             model_step=model_step,
             output_shard_size=output_shard_size,
             model_suffix=model_suffix,
-            suffix=suffix
         )
 
     @property
@@ -63,15 +63,6 @@ class TranslateStep(CorpusStep):
             self.model_step.model_path,
             '{}.npz.decoder.yml'.format(self.model_suffix)
         )
-
-    @property
-    def step_name(self):
-        name = 's.{}.{}-{}'.format(
-            self.step, self.src_lang, self.tgt_lang
-        )
-        if self.suffix is not None:
-            name += '.{}'.format(self.suffix)
-        return name
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(

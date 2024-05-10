@@ -54,7 +54,7 @@ class SlurmRunner(OpusPocusRunner):
         cmd.append(str(cmd_path))
         if file_list is not None:
             new_dependencies = []
-            for f in file_list
+            for f in file_list:
                 proc = subprocess.Popen(
                     cmd + [f],
                     stdout=subprocess.PIPE,
@@ -81,7 +81,7 @@ class SlurmRunner(OpusPocusRunner):
             ['scancel', str(task_id['jid'])], shell=False
         )
 
-    def convert_resources(resources: StepResources) -> List[str]:
+    def convert_resources(resources: RunnerResources) -> List[str]:
         converted = []
         if resources.cpus is not None:
             converted += ['--cpus', str(resources.cpus)]
@@ -100,7 +100,7 @@ class SlurmRunner(OpusPocusRunner):
 
         return converted
 
-    def add_environment_variables(resources: StepResources) -> List[str]:
+    def add_environment_variables(resources: RunnerResources) -> List[str]:
         # TODO finish this
         pass
 

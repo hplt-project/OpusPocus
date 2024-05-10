@@ -9,6 +9,7 @@ hanziconv==0.3.2
 hyperqueue==0.18.0
 more_itertools
 mtdata==0.4.0
+omegaconf
 opustrainer==0.2
 pycld2==0.41
 requests

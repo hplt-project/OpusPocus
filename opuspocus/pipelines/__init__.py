@@ -9,18 +9,25 @@ PIPELINE_REGISTRY = {}
 PIPELINE_CLASS_NAMES = set()
 
 
-def build_pipeline(pipeline, args, steps=None, targets=None):
+def build_pipeline(args):
     """Pipeline builder function. Use this to create pipeline objects."""
 
-    return PIPELINE_REGISTRY[pipeline].build_pipeline(
-        pipeline, args, steps, targets
+    return PIPELINE_REGISTRY[args.pipeline].build_pipeline(
+        args.pipeline, args.pipeline_dir, args.pipeline_config, args
     )
 
 
 def load_pipeline(args):
     """Load an existing (initialized) pipeline."""
-    steps, targets, vars_dict = OpusPocusPipeline.load_variables(args)
-    return build_pipeline(vars_dict['pipeline'], args, steps, targets)
+    pipeline_dir = args.pipeline_dir
+    variables_path = Path(pipeline_dir, OpusPocusPipeline.variables_file)
+    config_path = Path(pipeline_dir, OpusPocusPipeline.config_file)
+
+    variables_dict = yaml.safe_load(open(variables_path, 'r'))
+    pipeline = variables_dict['pipeline']
+    return PIPELINE_REGISTRY[pipeline].build_pipeline(
+        pipeline, pipeline_dir, config_path, args
+    )
 
 
 def register_pipeline(name):
