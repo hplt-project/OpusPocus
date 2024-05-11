@@ -10,7 +10,7 @@ global:
   opuscleaner_cmd: opuscleaner-clean
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner-only.${global.src_lang}-${global.tgt_lang}
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner-only
   steps:
     - step: raw
       step_label: raw.${global.src_lang}-${global.tgt_lang}

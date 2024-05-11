@@ -8,7 +8,7 @@ import logging
 import yaml
 from pathlib import Path
 
-from opuspocus.utils import print_indented
+from opuspocus.utils import print_indented, RunnerResources
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class OpusPocusStep(object):
         the derived classes
         """
         if pipeline_dir is None:
-            logger.error(
+            raise ValueError(
                 '{}.pipeline_dir was not specified. Use --pipeline-dir '
                 'option to set global pipeline_dir or set the pipeline_dir '
                 'for the step using the config file.'.format(step_label)
@@ -144,10 +144,13 @@ class OpusPocusStep(object):
         param_dict ={}
         for param in self.list_parameters(exclude_dependencies):
             if '_step' in param:
-                p = None
-                dep = getattr(self.dependencies, param, None)
-                if dep is not None:
-                    p = dep.step_label
+                if (
+                    param in self.dependencies
+                    and self.dependencies[param] is not None
+                ):
+                    p = self.dependencies[param].step_label
+                else:
+                    p = None
             else:
                 p = getattr(self, param)
                 if isinstance(p, Path):
@@ -275,6 +278,10 @@ class OpusPocusStep(object):
                 continue
             if not dep.has_state(StepState.INITED):
                 dep.init_step()
+
+    def get_file_list(self) -> Optional[List[Path]]:
+        """TODO"""
+        return None
 
     def create_directories(self) -> None:
         """Create the internal step directory structure."""
@@ -445,14 +452,14 @@ set -euo pipefail
     if [[ $exit_code -gt 0 ]]; then
         exit $exit_code
     fi
-    echo DONE > {state_file}
+    echo '"DONE"' > {state_file}
     exit 0
 }}
 
 err_cleanup() {{
     exit_code=$?
     # Set the step state and exit
-    echo FAILED > {state_file}
+    echo '"FAILED"' > {state_file}
     exit $exit_code
 }}
 
@@ -473,3 +480,11 @@ trap cleanup EXIT
         return """# Explicitly exit with a non-zero status
 exit 0
 """
+
+    @property
+    def default_resources(self) -> RunnerResources:
+        logger.warn(
+            'OpusPocusStep.default_resources is not currently supported. '
+            'Using global default RunnerResources instead...'
+        )
+        return RunnerResources()

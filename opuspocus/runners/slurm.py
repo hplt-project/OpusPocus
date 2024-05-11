@@ -6,9 +6,9 @@ from pathlib import Path
 from opuspocus.runners import (
     OpusPocusRunner,
     TaskId,
-    RunnerResources,
     register_runner
 )
+from opuspocus.utils import RunnerResources
 
 SLEEP_TIME = 0.1
 
@@ -24,10 +24,10 @@ class SlurmRunner(OpusPocusRunner):
 
     def __init__(
         self,
-        name: str,
+        runner: str,
         args: argparse.Namespace,
     ):
-        super().__init__(name, args)
+        super().__init__(runner, args)
 
     def submit(
         cmd_path: Path,

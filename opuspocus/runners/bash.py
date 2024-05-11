@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Optional
 
 import argparse
 import logging
+import subprocess
+import sys
 from pathlib import Path
 from psutil import Process
 import time
@@ -9,9 +11,9 @@ import time
 from opuspocus.runners import (
     OpusPocusRunner,
     TaskId,
-    RunnerResources,
     register_runner
 )
+from opuspocus.utils import RunnerResources
 
 
 SLEEP_TIME = 0.1
@@ -26,22 +28,27 @@ class BashRunner(OpusPocusRunner):
 
     def __init__(
         self,
-        name: str,
+        runner: str,
         args: argparse.Namespace,
     ):
-        super().__init__(name, args)
+        super().__init__(runner, args)
 
     def _submit_step(
+        self,
         cmd_path: Path,
         file_list: Optional[List[str]] = None,
         dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None,
-        stdout: Optional[Path] = None,
-        stderr: Optional[Path] = None
+        stdout=sys.stdout,
+        stderr=sys.stderr
     ) -> List[TaskId]:
         dependencies_str = ''
         if dependencies is not None:
-            dependencies_str = ' '.join([str(dep) for dep in dependencies])
+            dependencies_str = ' '.join([
+                self.task_id_to_string(dep)
+                for dep in dependencies
+            ])
+        env_dict = step_resources.get_env_dict()
 
         # Each task is started as a new process that waits on the depencencies
         # (processes) in a for loop, checks their status after they finish and
@@ -49,7 +56,8 @@ class BashRunner(OpusPocusRunner):
         # TODO: what happens when we submit hundreds/thousands such ``waiting''
         # processes?
         # TODO: implement a proper ``scheduler'' for running on a single machine
-        if file_list:
+        print(file_list)
+        if file_list is not None:
             outputs = []
             for file in file_list:
                 proc = subprocess.Popen(
@@ -57,7 +65,8 @@ class BashRunner(OpusPocusRunner):
                     start_new_session=True,
                     stdout=stdout,
                     stderr=stderr,
-                    shell=False
+                    shell=False,
+                    env=env_dict
                 )
                 outputs.append({'pid': proc.pid})
                 time.time(SLEEP_TIME)  # Sleep to not overload the process manager
@@ -68,7 +77,8 @@ class BashRunner(OpusPocusRunner):
             start_new_session=True,
             stdout=stdout,
             stderr=stderr,
-            shell=False
+            shell=False,
+            env=env_dict
         )
         return [{'pid': proc.pid}]
 

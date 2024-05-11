@@ -8,10 +8,9 @@ from pathlib import Path
 from opuspocus.runners import (
     OpusPocusRunner,
     TaskId,
-    RunnerResources,
     register_runner
 )
-from opuspocus.utils import file_path
+from opuspocus.utils import file_path, RunnerResources
 
 
 @register_runner('hyperqueue')
@@ -57,10 +56,10 @@ class HyperqueueRunner(OpusPocusRunner):
 
     def __init__(
         self,
-        name: str,
+        runner: str,
         args: argparse.Namespace,
     ):
-        super().__init__(name, args)
+        super().__init__(runner, args)
 
         # TODO: args values checking
         self.hq_server_dir = args.hq_server_dir

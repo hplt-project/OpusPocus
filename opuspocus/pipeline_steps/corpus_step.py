@@ -95,6 +95,13 @@ class CorpusStep(OpusPocusStep):
         """Syntactic sugar for output_shard_size."""
         return self.output_shard_size
 
+    def get_file_list(self) -> Optional[List[Path]]:
+        logger.warn(
+            'Step parallelization is not currently supported. '
+            'Skipping file list generation...'
+        )
+        return None
+
     def create_directories(self) -> None:
         """Create the internal directory structure.
 

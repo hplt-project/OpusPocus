@@ -5,6 +5,7 @@ from pathlib import Path
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
+from opuspocus.utils import RunnerResources
 
 
 logger = logging.getLogger(__name__)
@@ -127,7 +128,7 @@ for filter_file in $INPUT_DIR/*filters.json; do
     echo "Cleaning $dataset..." >&2
     $OPUSCLEANER \\
         $filter_file \\
-        --parallel $SLURM_CPUS_PER_TASK \\
+        --parallel ${cpus_var_name} \\
         -b $INPUT_DIR \\
     > {opuscleaner_out_str} \\
     2> >(tee $LOG_DIR/opuscleaner.$dataset.log >&2)
@@ -135,6 +136,7 @@ for filter_file in $INPUT_DIR/*filters.json; do
     {sanity_check_str}
 done
         """.format(
+            cpus_var_name=RunnerResources.get_env_name('cpus'),
             opuscleaner_out_str=opuscleaner_out_str,
             sanity_check_str=sanity_check_str,
         )

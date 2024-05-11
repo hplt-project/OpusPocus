@@ -38,7 +38,7 @@ class OpusPocusPipeline(object):
         """TODO: describe the overwrite order"""
         self.pipeline = pipeline
         if pipeline_dir is None and pipeline_config_path is None:
-            logger.error(
+            raise ValueError(
                 'Pipeline initialization requires to be provided either '
                 '"pipeline_dir" or "pipeline_config" path value.'
             )
@@ -50,6 +50,7 @@ class OpusPocusPipeline(object):
 
         # Resolve global pipeline_dir
         self.pipeline_dir = pipeline_dir
+        print(pipeline_dir)
         if self.pipeline_dir is None:
             self.pipeline_dir = getattr(
                 pipeline_config.pipeline, 'pipeline_dir', None
@@ -162,11 +163,12 @@ class OpusPocusPipeline(object):
             step_args = {}
             logger.info('Building arguments for {}.'.format(step_label))
             for k, v in pipeline_steps_configs[step_label].items():
-                if '_step' not in k:
+                # Simply assing the value if None or not a dependency parameter
+                if '_step' not in k or v is None:
                     step_args[k] = v
                 else:
                     if v not in pipeline_steps_configs:
-                        logger.error(
+                        raise ValueError(
                             'Step "{}" has an undefined dependency "{}={}".'
                             .format(step_label, k, v)
                         )
@@ -225,7 +227,7 @@ class OpusPocusPipeline(object):
                 'No target steps were specified. Using default targets.'
             )
             return self.default_targets
-        logger.error(
+        raise ValueError(
             'The pipeline does not contain any default target steps. '
             'Please specify the targets using the "--pipeline-targets" '
             'option.'
@@ -250,7 +252,7 @@ class PipelineConfig(OmegaConf):
         return OmegaConf.create({
             'pipeline': {
                 'pipeline_dir': str(pipeline_dir),
-                'pipeline_steps': [
+                'steps': [
                     s.get_parameters_dict(exclude_dependencies=False)
                     for s in pipeline_steps.values()
                 ],
@@ -295,7 +297,7 @@ class PipelineConfig(OmegaConf):
                 )
         # Contains "pipeline" top key
         if 'pipeline' not in config:
-            logger.error(
+            raise ValueError(
                 'Config file must contain pipeline definition '
                 '("pipeline" top key).'
             )
@@ -308,7 +310,7 @@ class PipelineConfig(OmegaConf):
                 )
         # Contains "pipeline.steps" key
         if 'steps' not in config.pipeline:
-            logger.error(
+            raise ValueError(
                 'Config file must contain the list of steps ("pipeline.steps")'
             )
 
@@ -316,7 +318,7 @@ class PipelineConfig(OmegaConf):
         steps = {}
         for step in config.pipeline.steps:
             if step.step_label in steps:
-                logger.error(
+                raise ValueError(
                     'Duplicate step_label found in pipeline definition. Please '
                     'make sure that each pipeline step has a unique step_label '
                     'value.\n'

@@ -24,7 +24,7 @@ global:
   vocab_size: 64000
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/train.simple.${global.src_lang}-${global.tgt_lang}
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/train.simple
   steps:
     # Load Data
     - step: raw
@@ -38,7 +38,8 @@ pipeline:
       step_label: generate_vocab.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
-      datasets: [clean]
+      datasets: 
+        - clean.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}
       corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       vocab_size: ${global.vocab_size}

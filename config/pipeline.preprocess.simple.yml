@@ -17,7 +17,7 @@ global:
   decontaminate_min_length: 25
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess.simple.${global.src_lang}-${global.tgt_lang}
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess.simple
   steps:
     - step: raw
       step_label: raw.${global.src_lang}-${global.tgt_lang}

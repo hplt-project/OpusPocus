@@ -5,7 +5,6 @@ from pathlib import Path
 from .opuspocus_runner import (
     OpusPocusRunner,
     TaskId,
-    RunnerResources
 )
 
 

@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 def check_pipeline_dir_exists(pipeline_dir) -> None:
-    if pipeline_dir is not None:
-        logger.error('Missing "--pipeline-dir" option.')
+    if pipeline_dir is None:
+        raise ValueError('Missing "--pipeline-dir" option.')
 
 
 def main_init(args, unparsed_args, parser):
@@ -158,6 +158,8 @@ def create_args_parser():
 
 def parse_init_args(args, unparsed_args, parser):
     pipelines.PIPELINE_REGISTRY[args.pipeline].add_args(parser)
+    if hasattr(args, 'runner'):
+        runners.RUNNER_REGISTRY[args.runner].add_args(runner)
 
     parser = load_config_defaults(parser, args.pipeline_config)
 

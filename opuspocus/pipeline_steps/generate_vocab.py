@@ -5,6 +5,7 @@ from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+from opuspocus.utils import RunnerResources
 
 
 logger = logging.getLogger(__name__)
@@ -38,9 +39,22 @@ class GenerateVocabStep(OpusPocusStep):
             vocab_size=vocab_size,
         )
 
+    def init_step(self) -> None:
+        super().init_step()
+        for dset in self.datasets:
+            if dset not in self.corpus_step.dataset_list:
+                raise ValueError(
+                    'Dataset {} is not registered in the {} categories.json'
+                    .format(dset, self.corpus_step.step_label)
+                )
+
+    @property
+    def corpus_step(self) -> OpusPocusStep:
+        return self.dependencies['corpus_step']
+
     @property
     def input_dir(self) -> Path:
-        return self.dependencies['corpus_step'].output_dir
+        return self.corpus_step.output_dir
 
     def _cmd_header_str(self) -> str:
         return super()._cmd_header_str(
@@ -92,11 +106,14 @@ $MARIAN_DIR/bin/spm_train \\
     --shuffle_input_sentence=true \\
     --train_extremely_large_corpus \\
     --byte_fallback \\
-    --num_threads $SLURM_CPUS_PER_TASK
+    --num_threads ${cpus_var_name}
 
 mv $OUTPUT_DIR/model.$SRC-$TGT.model \\
     $OUTPUT_DIR/model.$SRC-$TGT.spm
 # Create links for the backtranslation
 ln -s model.$SRC-$TGT.spm $OUTPUT_DIR/model.$TGT-$SRC.spm
 ln -s model.$SRC-$TGT.vocab $OUTPUT_DIR/model.$TGT-$SRC.vocab
-        """.format(datasets=datasets)
+        """.format(
+            cpus_var_name=RunnerResources.get_env_name('cpus'),
+            datasets=datasets
+        )

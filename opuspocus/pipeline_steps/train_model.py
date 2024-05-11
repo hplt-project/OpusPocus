@@ -6,6 +6,7 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.generate_vocab import GenerateVocabStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+from opuspocus.utils import RunnerResources
 
 
 logger = logging.getLogger(__name__)
@@ -212,7 +213,7 @@ trap cleanup EXIT
 
         return """
 # We need to set state to running due to resubmission logic
-echo RUNNING > {state_file}
+echo '"RUNNING"' > {state_file}
 
 for lang in $SRC $TGT; do
     for dset in $TRAIN_DATASETS; do
@@ -221,8 +222,8 @@ for lang in $SRC $TGT; do
 done
 
 compute_opt="--cpu-threads 1"
-[[ $SLURM_GPUS_PER_NODE -gt 0 ]] \\
-    && compute_opt="--devices $(seq 0 1 $(expr $SLURM_GPUS_PER_NODE - 1))"
+[[ ${gpus_var_name} -gt 0 ]] \\
+    && compute_opt="--devices $(seq 0 1 $(expr ${gpus_var_name} - 1))"
 
 # TODO: Use OpusTrainer instead
 $MARIAN_DIR/bin/marian \\
@@ -276,6 +277,7 @@ for job in `squeue --me --format "%i %E" | grep ":$SLURM_JOBID" | grep -v ^$new_
 done
         """.format(
             state_file=Path(self.step_dir, self.state_file),
+            gpus_var_name=RunnerResources.get_env_name('gpus'),
             model_init=model_init,
             train_data_opt=train_data_opt
         )

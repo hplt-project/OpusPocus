@@ -1,90 +1,18 @@
 from typing import Any, Dict, List, Optional
 
 import argparse
-import inspect
-import json
+import logging
+import sys
+import yaml
 from pathlib import Path
 
-from opuspocus.pipeline_steps import OpusPocusStep
+from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline
+from opuspocus.utils import RunnerResources
+
+logger = logging.getLogger(__name__)
 
 TaskId = Dict[str, Any]
-
-
-class RunnerResources(object):
-    """Runner-agnostic resources object.
-
-    TODO
-    """
-
-    def __init__(
-        self,
-        cpus: int = 1,
-        gpus: Optional[int] = None,
-        mem: Optional[str] = None,
-        partition: Optional[str] = None,
-        account: Optional[str] = None,
-    ):
-        self.cpus = cpus
-        self.gpus = gpus
-        self.mem = mem
-        self.partition = partition
-        self.account = account
-
-    @classmethod
-    def list_parameters(cls) -> List[str]:
-        """TODO"""
-        return [
-            param for param in inspect.signature(cls.__init__).parameters
-            if param != 'self'
-        ]
-
-    def overwrite(self, resource_overwrite: 'RunnerResources') -> 'RunnerResources':
-        params = {}
-        for param in self.list_parameters():
-            val = getattr(resource_overwrite, param)
-            if val is None:
-                val = getattr(self, param)
-            params[param] = val
-        return RunnerResources(**params)
-
-    def to_json(self, json_path: Path) -> None:
-        """Serialize the object (to JSON).
-
-        TODO
-        """
-        json_dict = {
-            param: getattr(self, param)
-            for param in self.list_parameters()
-        }
-        json.dump(json_dict, open(json_path, 'w'), indent=2)
-
-    @classmethod
-    def from_json(cls, json_path: Path) -> 'RunnerResources':
-        """TODO"""
-        json_dict = json.load(open(json_path, 'r'))
-
-        cls_params = cls.list_parameters()
-        params = {}
-        for k, v in json_dict.items():
-            if k not in cls_params:
-                logger.warn('Resource {} not supported. Ignoring'.format(k))
-            params[k] = v
-        return RunnerResources(**params)
-
-    @classmethod
-    def get_env_name(cls, name) -> str:
-        """TODO"""
-        assert name in self.list_parameters()
-        return 'OPUSPOCUS_{}'.format(name)
-
-    def get_env_dict(self) -> Dict[str, str]:
-        env_dict = {}
-        for param in self.list_parameters():
-            param_val = getattr(self, param)
-            if param_val is not None:
-                env_dict[self.get_env_name(param)] = str(param_val)
-        return env_dict
 
 
 class OpusPocusRunner(object):
@@ -117,21 +45,29 @@ class OpusPocusRunner(object):
 
     def __init__(
         self,
-        name: str,
+        runner: str,
         args: argparse.Namespace,
     ):
-        self.global_resources = RunnerResources(
-            cpus = args.cpus,
-            gpus = args.gpus,
-            mem = args.mem,
-            partition = args.partition,
-            account = args.account
-        )
-        self.name = name
+        try:
+            self.global_resources = RunnerResources(
+                cpus = args.cpus,
+                gpus = args.gpus,
+                mem = args.mem,
+                partition = args.partition,
+                account = args.account
+            )
+        except:
+            logger.warn(
+                'Something went wrong with runner resource parsing. '
+                'Using default values...'
+            )
+            self.global_resources = RunnerResources()
+        self.runner = runner
 
     @classmethod
     def build_runner(
         cls,
+        runner: str,
         args: argparse.Namespace,
     ) -> 'OpusPocusRunner':
         """Build a specified runner instance.
@@ -142,7 +78,7 @@ class OpusPocusRunner(object):
         Returns:
             An instance of the specified runner class.
         """
-        return cls(name, args)
+        return cls(runner, args)
 
     def stop_pipeline(
         self,
@@ -153,10 +89,10 @@ class OpusPocusRunner(object):
                 continue
             task_ids = self.load_task_ids(step)
             if task_ids is None:
-                logger.error(
+                raise ValueError(
                     'Step {} cannot be cancelled using {} runner because it '
                     'was submitted by a different runner type.'
-                    .format(step.step_label, self.name)
+                    .format(step.step_label, self.runner)
                 )
             for task_id in task_ids:
                 logger.info(
@@ -164,40 +100,43 @@ class OpusPocusRunner(object):
                     .format(step.step_label)
                 )
                 self.cancel(task_id)
-            step.set_state('FAILED')
+            step.set_state(StepState.FAILED)
 
     def run_pipeline(
         self,
         pipeline: OpusPocusPipeline,
         args: argparse.Namespace,
     ) -> None:
-        for step in pipeline.targets:
+        for step in pipeline.get_targets(args.targets):
             self.submit_step(step)
         self.run()
 
-    def run():
+    def run(self) -> None:
         """TODO"""
         pass
 
     def submit_step(self, step: OpusPocusStep) -> Optional[List[TaskId]]:
-        if step.has_state('RUNNING') or step.has_state('SUBMITTED'):
+        if (
+            step.has_state(StepState.RUNNING) or
+            step.has_state(StepState.SUBMITTED)
+        ):
             task_ids = self.load_task_ids(step)
             if task_ids is None:
-                logger.error(
+                raise ValueError(
                     'Step {} cannot be submitted because it is currently '
                     '{} using a different runner.'
                     .format(step.step_label, step.state)
                 )
             return task_ids
-        elif step.has_state('DONE'):
+        elif step.has_state(StepState.DONE):
             logger.info(
                 'Step {} has already finished. Skipping...'
                 .format(step.step_label)
             )
             return None
-        elif step.has_state('FAILED'):
+        elif step.has_state(StepState.FAILED):
             return self.resubmit_step(step)
-        elif not step.has_state('INITED'):
+        elif not step.has_state(StepState.INITED):
             raise ValueError(
                 'Cannot run step {}. Not in INITED state.'
                 .format(step.step_label)
@@ -214,28 +153,31 @@ class OpusPocusRunner(object):
 
         cmd_path = Path(step.step_dir, step.command_file)
         task_ids = self._submit_step(
-            cmd_path,
-            step.get_file_list(),
-            dependencies_task_ids,
-            self.get_resources(step)
+            cmd_path=cmd_path,
+            file_list=step.get_file_list(),
+            dependencies=dependencies_task_ids,
+            step_resources=self.get_resources(step),
+            stdout=open(Path(step.log_dir, '{}.out'.format(self.runner)), 'w'),
+            stderr=open(Path(step.log_dir, '{}.err'.format(self.runner)), 'w'),
         )
         self.save_task_ids(step, task_ids)
-        step.set_state('SUBMITTED')
+        step.set_state(StepState.SUBMITTED)
 
         return task_ids
 
     def resubmit_step(self, step: OpusPocusStep) -> Optional[List[TaskId]]:
         # TODO: add more logic here
-        step.step_state('INITED')
+        step.step_state(StepState.INITED)
         return self.submit_step(step)
 
     def _submit_step(
-        cmd_path: str,
+        self,
+        cmd_path: Path,
         file_list: Optional[List[str]] = None,
         dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None,
-        stdout: Optional[Path] = None,
-        stderr: Optional[Path] = None
+        stdout=sys.stdout,
+        stderr=sys.stderr
     ) -> List[TaskId]:
         """TODO"""
         raise NotImplementedError()
@@ -261,17 +203,19 @@ class OpusPocusRunner(object):
             'Saving Taks Ids ({}) for {} step.'.format(ids_str, step.step_label)
         )
         yaml.dump(
-            {self.name : ids_str},
+            {self.runner : ids_str},
             open(Path(step.step_dir, self.jobid_file), 'w')
         )
 
     def load_task_ids(self, step: OpusPocusStep) -> Optional[List[TaskId]]:
-        ids_dict = yaml.safe_load(open(step.step_dir, self.jobid_file), 'r')
-        if self.name not in ids_dict:
+        ids_dict = yaml.safe_load(
+            open(Path(step.step_dir, self.jobid_file), 'r')
+        )
+        if self.runner not in ids_dict:
             return None
         task_ids = [
             self.string_to_task_id(id_str)
-            for id_str in ids_dict[self.name].split(';')
+            for id_str in ids_dict[self.runner].split(';')
         ]
         return task_ids
 
