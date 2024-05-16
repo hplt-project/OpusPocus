@@ -5,6 +5,6 @@ TGT=${2:-nn}
 PIPELINE_DIR="experiments/$SRC-$TGT/full.simple"
 echo "Initializing pipeline with overwrite --pipeline-dir $PIPELINE_DIR" >&2
 ./go.py \
-	--pipeline-dir $PIPELINE_DIR \
 	init \
-		--pipeline-config config/pipeline.full.simple.yml
+	--pipeline-dir $PIPELINE_DIR \
+	--pipeline-config config/pipeline.full.simple.yml
