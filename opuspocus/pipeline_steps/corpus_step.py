@@ -1,9 +1,11 @@
 from typing import Any, Dict, List, Optional, get_type_hints
 from typing_extensions import TypedDict
 
+import gzip
 import json
 import logging
 import yaml
+from os import listdir
 from pathlib import Path
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
@@ -74,9 +76,15 @@ class CorpusStep(OpusPocusStep):
     @property
     def input_dir(self) -> Optional[Path]:
         """Shortcut to the input directory (previous step's output)."""
-        if self.prev_corpus_step is not None:
-            return self.prev_corpus_step.output_dir
-        return None
+        if self.prev_corpus_step is None:
+            return None
+        return self.prev_corpus_step.output_dir
+
+    @property
+    def input_shard_dir(self) -> Optional[Path]:
+        if self.prev_corpus_step is None:
+            return None
+        return self.prev_corpus_step.shard_dir
 
     @property
     def is_sharded(self) -> bool:
@@ -95,12 +103,35 @@ class CorpusStep(OpusPocusStep):
         """Syntactic sugar for output_shard_size."""
         return self.output_shard_size
 
-    def get_file_list(self) -> Optional[List[Path]]:
-        logger.warn(
-            'Step parallelization is not currently supported. '
-            'Skipping file list generation...'
-        )
-        return None
+    def split_file_to_shards(
+        self,
+        directory: Path,
+        filename: Path
+    ) -> None:
+        pad_length = 4
+        out_fh = None
+        with gzip.open(Path(directory, filename), 'rt') as in_fh:
+            for i, line in enumerate(in_fh):
+                line = line.strip()
+                if i % self.shard_size == 0:
+                    n = i // self.shard_size
+                    output_filename = '{}.{}.gz'.format(
+                        filename, str(n).zfill(pad_length)
+                    )
+                    out_fh = gzip.open(
+                        Path(self.shard_dir, output_filename), 'wt'
+                    )
+                print(line, file=out_fh)
+
+    def command_postprocess(self) -> None:
+        """TODO"""
+        if self.is_sharded:
+            for dset in self.dataset_list:
+                for lang in self.languages:
+                    self.split_file_to_shards(
+                        self.output_dir,
+                        '{}.{}.gz'.format(dset, lang)
+                    )
 
     def create_directories(self) -> None:
         """Create the internal directory structure.
@@ -218,54 +249,3 @@ class CorpusStep(OpusPocusStep):
         if self.tgt_lang is not None:
             return [self.src_lang, self.tgt_lang]
         return [self.src_lang]
-
-    def _cmd_exit_str(self) -> str:
-        """
-        Check whether all the datasets files are present and are not empty.
-        """
-        sharding_str = ''
-        if self.is_sharded:
-            sharding_str = """
-        # Shard the output for the future steps
-        SHARD_DIR="{shard_dir}"
-        zcat $dset_path \\
-            | split -a4 -dl {shard_size} --filter='gzip -c > $FILE.gz' - $SHARD_DIR/$dset_file.
-
-        [[ $dset_lines -ne $($zcat $SHARD_DIR/$dset_file.* | wc -l) ]] && ( \\
-            echo "Original file and sum of shards $SHARD_DIR/$dset_file contain different number of lines" >&2 \\
-            && exit 1
-        )
-            """.format(
-                    shard_size=self.shard_size,
-                    shard_dir=self.shard_dir,
-                )
-
-        return """# Sanity check: Check the dataset existence and whether
-# they are not empty
-OUTPUT_DIR="{outdir}"
-for dset in {datasets}; do
-    for lang in {languages}; do
-        dset_file="$dset.$lang.gz"
-        dset_path="$OUTPUT_DIR/$dset_file"
-        [[ -e $dset_path ]] || ( \\
-            echo "Dataset $dset_path does not exist." >&2 \\
-            && exit 1 \\
-        )
-
-        dset_lines=$(zcat $dset_path | wc -l)
-        [[ $dset_lines -eq 0 ]] && ( \\
-            echo "Datset $dset_path is empty." >&2 \\
-            && exit 1 \\
-        )
-        {sharding_str}
-    done
-done
-
-# By default, return zero code.
-exit 0
-""".format(
-            outdir=self.output_dir,
-            datasets=' '.join(self.dataset_list),
-            languages=' '.join(self.languages),
-            sharding_str=sharding_str,
-        )

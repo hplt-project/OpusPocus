@@ -1,6 +1,8 @@
 from typing import Optional
 
 import logging
+import os
+import shutil
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -27,7 +29,6 @@ class RawCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: str = None,
         output_shard_size: Optional[int] = None,
-        gzipped: bool = True,
     ):
         super().__init__(
             step=step,
@@ -37,7 +38,6 @@ class RawCorpusStep(CorpusStep):
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             output_shard_size=output_shard_size,
-            gzipped=gzipped,
         )
 
     def register_categories(self) -> None:
@@ -46,10 +46,8 @@ class RawCorpusStep(CorpusStep):
         Use categories.json, if available. Otherwise, scan the input direcotory
         for corpus files.
         """
-        import os
         categories_path = Path(self.raw_data_dir, self.categories_file)
         if categories_path.exists():
-            import shutil
 
             logger.info(
                 'OpusCleaner\'s categories.json found. Copying.'
@@ -89,12 +87,11 @@ class RawCorpusStep(CorpusStep):
             )
             if filters_path.exists():
                 shutil.copy(
-                    filters_path, 
+                    filters_path,
                     Path(self.output_dir, '{}.filters.json'.format(dset))
                 )
 
-    def _cmd_vars_str(self) -> str:
-        return ''
-
-    def _cmd_body_str(self) -> str:
-        return ''
+    def command(
+        self, input_file: Path = None, runner: 'OpusPocusRunner' = None
+    ) -> None:
+        pass

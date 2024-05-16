@@ -5,10 +5,15 @@ import enum
 import inspect
 import json
 import logging
+import os
 import yaml
 from pathlib import Path
 
-from opuspocus.utils import print_indented, RunnerResources
+from opuspocus.utils import (
+    convert_to_python_declaration,
+    print_indented,
+    RunnerResources
+)
 
 
 logger = logging.getLogger(__name__)
@@ -124,24 +129,24 @@ class OpusPocusStep(object):
 
     @classmethod
     def load_parameters(
-            cls,
-            pipeline_dir: Path,
-            step_label: str
-        ) -> Dict[str, Any]:
+        cls,
+        step_label: str,
+        pipeline_dir: Path,
+    ) -> Dict[str, Any]:
         """Load the previously initialized step instance parameters."""
-        vars_path = Path(pipeline_dir, step_label, cls.parameter_file)
-        logger.debug('Loading step variables from {}'.format(vars_path))
+        params_path = Path(pipeline_dir, step_label, cls.parameter_file)
+        logger.debug('Loading step variables from {}'.format(params_path))
 
-        vars_dict = yaml.safe_load(open(vars_path, 'r'))
+        params_dict = yaml.safe_load(open(params_path, 'r'))
         # TODO: check for missing/unknown parameters
-        return vars_dict
+        return params_dict
 
     def get_parameters_dict(
         self,
         exclude_dependencies: bool = True
     ) -> Dict[str, Any]:
         """Serialize the step parameters"""
-        param_dict ={}
+        param_dict = {}
         for param in self.list_parameters(exclude_dependencies):
             if '_step' in param:
                 if (
@@ -162,7 +167,6 @@ class OpusPocusStep(object):
 
     def save_parameters(self) -> None:
         """Save the step instance parameters."""
-        logger.debug('Saving step variables.')
         yaml.dump(
             self.get_parameters_dict(),
             open(Path(self.step_dir, self.parameter_file), 'w')
@@ -198,7 +202,9 @@ class OpusPocusStep(object):
 
     @classmethod
     def load_dependencies(
-        cls, step_label: str, pipeline_dir: Path
+        cls,
+        step_label: str,
+        pipeline_dir: Path
     ) -> Dict[str, str]:
         """Load step dependecies based on their unique step_label values."""
         deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
@@ -307,6 +313,7 @@ class OpusPocusStep(object):
 
         logger.debug('Creating step command.')
         print(self.compose_command(), file=open(cmd_path, 'w'))
+        os.chmod(cmd_path, 0o755)
 
     def retry_step(self, args: argparse.Namespace):
         """Try to recover from a failed state.
@@ -370,6 +377,19 @@ class OpusPocusStep(object):
             return True
         return False
 
+    def get_input_file_list(self) -> Optional[List[Path]]:
+        return None
+
+    def command(
+        self,
+        input_file: Path = None,
+        runner: 'OpusPocusRunner' = None,
+    ) -> None:
+        raise NotImplementedError()
+
+    def command_postprocess(self) -> None:
+        pass
+
     def compose_command(self) -> str:
         """Compose the step command.
 
@@ -380,111 +400,40 @@ class OpusPocusStep(object):
         More fine-grained structure should be defined through cmd_body_str
         method.
         """
-        return """{cmd_header}
-{cmd_vars}
-{cmd_traps}
-{cmd_body}
-{cmd_exit}
+        return """#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+from opuspocus.pipeline_steps import load_step, StepState
+from opuspocus.runners import load_runner
+
+
+if __name__ == '__main__':
+    try:
+        step = load_step('{step_label}', Path('{pipeline_dir}'))
+        runner = load_runner(Path('{pipeline_dir}'))
+
+        step.set_state(StepState.RUNNING)
+        input_file = None
+        if len(sys.argv) > 1:
+            input_file = sys.argv[1]
+        step.command(
+            input_file=input_file,
+            runner=runner,
+        )
+        step.command_postprocess()
+
+    except Exception as e:
+        step.set_state(StepState.FAILED)
+        raise e
+
+    step.set_state(StepState.DONE)
 """.format(
-            cmd_header=self._cmd_header_str(),
-            cmd_vars=self._cmd_vars_str(),
-            cmd_traps=self._cmd_traps_str(),
-            cmd_body=self._cmd_body_str(),
-            cmd_exit=self._cmd_exit_str()
+            step_label=self.step_label,
+            pipeline_dir=self.pipeline_dir,
         )
-
-    def _cmd_header_str(
-        self,
-        n_nodes: int = 1,
-        n_tasks: int = 1,
-        n_cpus: int = 1,
-        n_gpus: int = None,
-        mem: int = 1,
-    ) -> str:
-        """Produces scripts header code.
-
-        Should contain stuff like shebang, sbatch-related defaults, etc.
-        """
-        sbatch_gpu = ''
-        if n_gpus is not None:
-            sbatch_gpu = '\n#SBATCH --gpus-per-node={}'.format(n_gpus)
-
-        return """#!/usr/bin/env bash
-#SBATCH --job-name={jobname}
-#SBATCH --nodes={n_nodes}
-#SBATCH --ntasks={n_tasks}
-#SBATCH --cpus-per-task={n_cpus}{sbatch_gpu}
-#SBATCH --mem={mem}G
-#SBATCH -o {logdir}/slurm.%j.log
-#SBATCH -e {logdir}/slurm.%j.log
-set -euo pipefail
-        """.format(
-            jobname=self.step,
-            n_nodes=n_nodes,
-            n_tasks=n_tasks,
-            n_cpus=n_cpus,
-            mem=mem,
-            logdir=self.log_dir,
-            sbatch_gpu=sbatch_gpu,
-        )
-
-    def _cmd_vars_str(self) -> str:
-        """Produces code with variable definitions.
-
-        To increase readability and simplify the Python string replacements
-        (using the step parameters),
-        script variables should be defined at this place. Later parts should
-        use the variables defined here.
-        """
-        raise NotImplementedError()
-
-    def _cmd_traps_str(self) -> str:
-        """
-        Produces code that can catch exceptions, exectue cleanup
-        (and recover from them).
-
-        Mainly to define behavior at a (un)successful execution of the script,
-        i.e. setting the DONE/FAILED step.state at the end of execution.
-        """
-
-        return """cleanup() {{
-    exit_code=$?
-    if [[ $exit_code -gt 0 ]]; then
-        exit $exit_code
-    fi
-    echo '"DONE"' > {state_file}
-    exit 0
-}}
-
-err_cleanup() {{
-    exit_code=$?
-    # Set the step state and exit
-    echo '"FAILED"' > {state_file}
-    exit $exit_code
-}}
-
-trap err_cleanup ERR
-trap cleanup EXIT
-        """.format(state_file=Path(self.step_dir, self.state_file))
-
-    def _cmd_body_str(self) -> str:
-        """Get the step specific code.
-
-        This method must be overridden by the derived classes.
-        """
-        raise NotImplementedError()
-
-    def _cmd_exit_str(self) -> str:
-        """Code executed at the end of the scripts."""
-
-        return """# Explicitly exit with a non-zero status
-exit 0
-"""
 
     @property
     def default_resources(self) -> RunnerResources:
-        logger.warn(
-            'OpusPocusStep.default_resources is not currently supported. '
-            'Using global default RunnerResources instead...'
-        )
+        """Definition of defeault runner resources for a specific step."""
         return RunnerResources()

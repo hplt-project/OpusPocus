@@ -31,25 +31,23 @@ def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):
     return step_instance
 
 
-def load_step(step_label, args):
+def load_step(step_label: str, pipeline_dir: Path):
     """Load an existing (initialized) pipeline step."""
-    step_params = OpusPocusStep.load_parameters(step_label, args.pipeline_dir)
+    step_params = OpusPocusStep.load_parameters(step_label, pipeline_dir)
 
     step = step_params['step']
     del step_params['step']
-
-    pipeline_dir = step_params['pipeline_dir']
-    assert pipeline_dir == args.pipeline_dir
+    del step_params['step_label']
     del step_params['pipeline_dir']
 
-    step_deps = OpusPocusStep.load_dependencies(step_label, args.pipeline_dir)
+    step_deps = OpusPocusStep.load_dependencies(step_label, pipeline_dir)
     for k, v in step_deps.items():
-        step_params[k] = load_step(v, args)
+        step_params[k] = load_step(v, pipeline_dir)
 
-    return build_step(step, pipeline_dir, step_label, **step_params)
+    return build_step(step, step_label, pipeline_dir, **step_params)
 
 
-def register_step(name):
+def register_step(name: str):
     """
     New steps can be added to OpusPocus with the
     :func:`~opuspocus.opuspocus_steps.register_step` function decorator.
