@@ -23,9 +23,6 @@ def main_init(args, unparsed_args, parser):
     creating the respective directories and saving the step parameters.
     """
 
-    # Add pipeline args and parse again
-    args = parse_init_args(args, unparsed_args, parser)
-
     logger.info('Building pipeline...')
     pipeline = pipelines.build_pipeline(args)
     logger.info('Initializing pipeline...')
@@ -33,22 +30,24 @@ def main_init(args, unparsed_args, parser):
     logger.info('Pipeline initialized successfully.')
 
 
-def main_run(args, *_):
+def main_run(args, unparsed_args, parser):
     """Pipeline execution sub-command.
 
     Submits the pipeline steps, respecting their dependencies, using
     the specified runner (bash, slurm, ...).
     """
+    args = parse_run_args(args, unparsed_args, parser)
+
     check_pipeline_dir_exists(args.pipeline_dir)
 
     # Load the pipeline
     pipeline = pipelines.load_pipeline(args)
 
     # Initialize the runner
-    runner = runners.build_runner(args.runner, args)
+    runner = runners.build_runner(args.runner, args.pipeline_dir, args)
 
     # Run the pipeline
-    runner.run_pipeline(pipeline, args)
+    runner.run_pipeline(pipeline, pipeline.get_targets(args.targets))
 
 
 def main_traceback(args, *_):
@@ -98,10 +97,6 @@ def create_args_parser():
         '--log-level', choices=['info', 'debug'], default='info',
         help='Indicates current logging level.'
     )
-    parser.add_argument(
-        '--pipeline-dir', type=str, default=None,
-        help='Pipeline root directory.'
-    )
     subparsers = parser.add_subparsers(help='command', dest='command')
 
     # TODO: more arguments (?)
@@ -111,11 +106,6 @@ def create_args_parser():
     parser_init.add_argument(
         '--pipeline-config', type=str, default=None,
         help='Pipeline configuration YAML.'
-    )
-    parser_init.add_argument(
-        '--pipeline', '-p', type=str, default='custom', metavar='PIPELINE',
-        choices=pipelines.PIPELINE_REGISTRY.keys(),
-        help='Training pippipeline_nameline type.'
     )
     parser_init.set_defaults(fn=main_init)
 
@@ -156,23 +146,20 @@ def create_args_parser():
     return parser
 
 
-def parse_init_args(args, unparsed_args, parser):
-    pipelines.PIPELINE_REGISTRY[args.pipeline].add_args(parser)
-    if hasattr(args, 'runner'):
-        runners.RUNNER_REGISTRY[args.runner].add_args(runner)
-
-    parser = load_config_defaults(parser, args.pipeline_config)
-
-    # Parse second time to get pipeline options
+def parse_run_args(args, unparsed_args, parser):
+    runners.RUNNER_REGISTRY[args.runner].add_args(parser)
     additional_args, _ = parser.parse_known_args(unparsed_args)
-
     return update_args(args, additional_args)
+
 
 if __name__ == '__main__':
     parser = create_args_parser()
 
     # Parse the main command
     args, unparsed_args = parser.parse_known_args()
+    pipelines.add_args(parser)
+    additional_args, unparsed_args = parser.parse_known_args(unparsed_args)
+    args = update_args(args, additional_args)
 
     # TODO: fix logging using a global logger
     logging.basicConfig(level=logging.INFO)

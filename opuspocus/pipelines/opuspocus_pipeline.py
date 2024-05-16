@@ -21,76 +21,68 @@ logger = logging.getLogger(__name__)
 class OpusPocusPipeline(object):
     """Base class for OpusPocus pipelines."""
     config_file = 'pipeline.config'
-    variables_file = 'pipeline.variables'
 
     @staticmethod
     def add_args(parser):
         """Add pipeline-specific arguments to the parser."""
-        pass
+        parser.add_argument(
+            '--pipeline-dir', type=str, default=None,
+            help='Pipeline root directory.'
+        )
 
     def __init__(
         self,
-        pipeline: str,
-        args: argparse.Namespace,
+        pipeline_config_path: Path,
         pipeline_dir: Optional[Path] = None,
-        pipeline_config_path: Optional[Path] = None,
     ):
         """TODO: describe the overwrite order"""
-        self.pipeline = pipeline
-        if pipeline_dir is None and pipeline_config_path is None:
-            raise ValueError(
-                'Pipeline initialization requires to be provided either '
-                '"pipeline_dir" or "pipeline_config" path value.'
-            )
-
         # Load pipeline config
-        pipeline_config = None
-        if pipeline_config_path is not None:
-            pipeline_config = PipelineConfig.load(pipeline_config_path)
-
-        # Resolve global pipeline_dir
-        self.pipeline_dir = pipeline_dir
-        print(pipeline_dir)
-        if self.pipeline_dir is None:
-            self.pipeline_dir = getattr(
-                pipeline_config.pipeline, 'pipeline_dir', None
-            )
-            if self.pipeline_dir is None:
-                raise ValueError(
-                    'You must specify either "--pipeline-dir" option or the '
-                    '"pipeline.pipeline_dir" in the "--pipeline-config" file.'
-                )
+        pipeline_config = PipelineConfig.load(pipeline_config_path)
+        if pipeline_dir is not None:
+            pipeline_config.pipeline.pipeline_dir = pipeline_dir
 
         # Construct the pipeline graph
-        self.pipeline_graph, self.default_targets = self.build_pipeline_graph(
-            args, self.pipeline_dir, pipeline_config
-        )
+        graph = self.build_pipeline_graph(pipeline_config)
+        self.pipeline_graph = graph[0]
+        self.default_targets = graph[1]
 
         # Create the pipeline config without the (global) wildcards
         # Actually set the class attribute
         self.pipeline_config = PipelineConfig.create(
-            self.pipeline_dir, self.pipeline_graph, self.default_targets
+            pipeline_config.pipeline.pipeline_dir,
+            self.pipeline_graph,
+            self.default_targets
         )
+
+    @property
+    def pipeline_dir(self) -> Path:
+        return self.pipeline_config.pipeline.pipeline_dir
 
     @classmethod
     def build_pipeline(
         cls,
-        pipeline: str,
-        pipeline_dir: Path,
         pipeline_config_path: Path,
-        args: argparse.Namespace,
+        pipeline_dir: Path,
     ) -> 'OpusPocusPipeline':
         """Build a specified pipeline instance.
 
         Args:
-            pipeline (str): pipeline class name in the registry
-            pipeline_config (Path): TODO
-            args (argparse.Namespace): parsed command-line arguments
+            pipeline_config_path (Path): TODO
+            pipeline_dir (Path): TODO
 
         Returns:
             An instance of the specified pipeline class.
         """
-        return cls(pipeline, args, pipeline_dir, pipeline_config_path)
+        return cls(pipeline_config_path, pipeline_dir)
+
+    @classmethod
+    def load_pipeline(
+        cls,
+        pipeline_dir: Path,
+    ) -> 'OpusPocusPipeline':
+        """TODO"""
+        pipeline_config_path = Path(pipeline_dir, cls.config_file)
+        return cls(pipeline_config_path, pipeline_dir)
 
     def save_pipeline(self) -> None:
         """Save the pipeline information.
@@ -103,52 +95,13 @@ class OpusPocusPipeline(object):
             Path(self.pipeline_dir, self.config_file)
         )
 
-        yaml.dump(
-            self.get_variables_dict(),
-            open(Path(self.pipeline_dir, self.variables_file), 'w')
-        )
-
-    def get_variables_dict(self) -> Dict[str, Any]:
-        """TODO: revise this implementation"""
-        return { 'pipeline': self.pipeline }
-
     def build_pipeline_graph(
         self,
-        args: argparse.Namespace,
-        pipeline_dir: Optional[Path] = None,
         pipeline_config: Optional[OmegaConf] = None
     ) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
         """TODO"""
-        if pipeline_config is None:
-            logger.info(
-                '"--pipeline-config" was not provided. Building pipeline '
-                'using the "._build_pipeline_graph" method.'
-            )
-            return self._build_pipeline_graph(args)
+        pipeline_dir = pipeline_config.pipeline.pipeline_dir
 
-        logger.info(
-            'Building {} pipeline from the config.'.format(self.pipeline)
-        )
-        if callable(getattr(self, '_build_pipeline_graph', None)):
-            logger.warn(
-                'Pipeline {} has a hard-coded pipeline structure in '
-                '{}._build_pipeline_graph() method. Overwriting '
-                'the structure with the provided config.'.format(
-                    self.pipeline,
-                    self.__class__.__name__,
-                )
-            )
-        return self._build_pipeline_graph_from_config(
-            args, pipeline_dir, pipeline_config
-        )
-
-    def _build_pipeline_graph_from_config(
-        self,
-        args: argparse.Namespace,
-        pipeline_dir: Path,
-        pipeline_config: OmegaConf
-    ) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
-        """TODO"""
         pipeline_steps = {} # type: Dict[str, OpusPocusStep]
         pipeline_steps_configs = {
             s.step_label: OmegaConf.to_object(s)
@@ -193,14 +146,6 @@ class OpusPocusPipeline(object):
             ]
         return pipeline_steps, default_targets
 
-    @abstractmethod
-    def _build_pipeline_graph(
-        self,
-        args: argparse.Namespace,
-    ) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
-        """TODO"""
-        raise NotImplementedError()
-
     def init(self) -> None:
         """Initialize the pipeline."""
         for _, v in self.pipeline_graph.items():
@@ -237,7 +182,7 @@ class OpusPocusPipeline(object):
 class PipelineConfig(OmegaConf):
     """OmegaConf wrapper for storing pipeline config.
 
-    TODO
+    TODO: convert to dataclass (?)
 
     """
     top_keys = ['global', 'pipeline']
