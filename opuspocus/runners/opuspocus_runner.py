@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 
-import argparse
+from argparse import Namespace
+import inspect
 import logging
 import sys
 import yaml
@@ -17,68 +18,85 @@ TaskId = Dict[str, Any]
 
 class OpusPocusRunner(object):
     """Base class for OpusPocus runners."""
+    parameter_file = 'runner.parameters'
     jobid_file = 'runner.jobid'
 
     @staticmethod
     def add_args(parser):
         """Add runner-specific arguments to the parser."""
-        parser.add_argument(
-            '--gpus', type=int, default=None,
-            help='TODO'
-        )
-        parser.add_argument(
-            '--cpus', type=int, default=1,
-            help='TODO'
-        )
-        parser.add_argument(
-            '--mem', type=str, default='1g',
-            help='TODO'
-        )
-        parser.add_argument(
-            '--partition', type=str, default=None,
-            help='TODO'
-        )
-        parser.add_argument(
-            '--account', type=str, default=None,
-            help='TODO'
-        )
+        pass
 
     def __init__(
         self,
         runner: str,
-        args: argparse.Namespace,
+        pipeline_dir: Path,
+        **kwargs
     ):
-        try:
-            self.global_resources = RunnerResources(
-                cpus = args.cpus,
-                gpus = args.gpus,
-                mem = args.mem,
-                partition = args.partition,
-                account = args.account
-            )
-        except:
-            logger.warn(
-                'Something went wrong with runner resource parsing. '
-                'Using default values...'
-            )
-            self.global_resources = RunnerResources()
         self.runner = runner
+        self.pipeline_dir = pipeline_dir
+
+        # TODO: properly include global resource request override
+        self.global_resources = RunnerResources()
 
     @classmethod
     def build_runner(
         cls,
         runner: str,
-        args: argparse.Namespace,
+        pipeline_dir: Path,
+        **kwargs
     ) -> 'OpusPocusRunner':
         """Build a specified runner instance.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            runner (str): TODO
+            pipeline_dir (Path): TODO
+            args (Namespace): parsed command-line arguments
 
         Returns:
             An instance of the specified runner class.
         """
-        return cls(runner, args)
+        return cls(runner, pipeline_dir, **kwargs)
+
+    @classmethod
+    def list_parameters(cls) -> List[str]:
+        """TODO"""
+        param_list = []
+        for param in inspect.signature(cls.__init__).parameters:
+            if param == 'self':
+                continue
+            param_list.append(param)
+        return param_list
+
+    @classmethod
+    def load_parameters(
+        cls,
+        pipeline_dir: Path
+    ) -> Dict[str, Any]:
+        """TODO"""
+        params_path = Path(pipeline_dir, cls.parameter_file)
+        logger.debug('Loading step variables from {}'.format(params_path))
+
+        params_dict = yaml.safe_load(open(params_path, 'r'))
+        return params_dict
+
+    def get_parameters_dict(self) -> Dict[str, Any]:
+        """TODO"""
+        param_dict = {}
+        for param in self.list_parameters():
+            p = getattr(self, param)
+            if isinstance(p, Path):
+                p = str(p)
+            if isinstance(p, list) and isinstance(p[0], Path):
+                p = [str(v) for v in p]
+            param_dict[param] = p
+        return param_dict
+
+    def save_parameters(self) -> None:
+        """TODO"""
+        yaml.dump(
+            self.get_parameters_dict(),
+            open(Path(self.pipeline_dir, self.parameter_file), 'w')
+        )
 
     def stop_pipeline(
         self,
@@ -105,9 +123,10 @@ class OpusPocusRunner(object):
     def run_pipeline(
         self,
         pipeline: OpusPocusPipeline,
-        args: argparse.Namespace,
+        targets: List[str],
     ) -> None:
-        for step in pipeline.get_targets(args.targets):
+        self.save_parameters()
+        for step in pipeline.get_targets(targets):
             self.submit_step(step)
         self.run()
 
@@ -116,10 +135,7 @@ class OpusPocusRunner(object):
         pass
 
     def submit_step(self, step: OpusPocusStep) -> Optional[List[TaskId]]:
-        if (
-            step.has_state(StepState.RUNNING) or
-            step.has_state(StepState.SUBMITTED)
-        ):
+        if step.is_running_or_submitted():
             task_ids = self.load_task_ids(step)
             if task_ids is None:
                 raise ValueError(
@@ -154,7 +170,7 @@ class OpusPocusRunner(object):
         cmd_path = Path(step.step_dir, step.command_file)
         task_ids = self._submit_step(
             cmd_path=cmd_path,
-            file_list=step.get_file_list(),
+            file_list=step.get_input_file_list(),
             dependencies=dependencies_task_ids,
             step_resources=self.get_resources(step),
             stdout=open(Path(step.log_dir, '{}.out'.format(self.runner)), 'w'),
@@ -166,14 +182,30 @@ class OpusPocusRunner(object):
         return task_ids
 
     def resubmit_step(self, step: OpusPocusStep) -> Optional[List[TaskId]]:
-        # TODO: add more logic here
+        # Cancel the original job
+        if step.is_running_or_submitted:
+            task_ids = self.load_task_ids(step)
+            if task_ids is None:
+                raise ValueError(
+                    'Step {} cannot be cancelled using {} runner because it '
+                    'was submitted by a different runner type.'
+                    .format(step.step_label, self.runner)
+                )
+            for task_id in task_ids:
+                logger.info(
+                    'Stopping {}. Setting state to FAILED.'
+                    .format(step.step_label)
+                )
+                self.cancel(task_id)
         step.step_state(StepState.INITED)
+
+        # Submit the job again
         return self.submit_step(step)
 
     def _submit_step(
         self,
         cmd_path: Path,
-        file_list: Optional[List[str]] = None,
+        file_list: Optional[List[Path]] = None,
         dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None,
         stdout=sys.stdout,

@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-import argparse
+from argparse import Namespace
 from pathlib import Path
 
 from opuspocus.runners import (
@@ -25,7 +25,8 @@ class SlurmRunner(OpusPocusRunner):
     def __init__(
         self,
         runner: str,
-        args: argparse.Namespace,
+        pipeline_dir: Path,
+        args: Namespace,
     ):
         super().__init__(runner, args)
 
@@ -75,6 +76,9 @@ class SlurmRunner(OpusPocusRunner):
             shell=False
         )
         return [{'jid': int(proc.stdout.readline())}]
+
+    def update_dependants(self, task_id):
+        raise NotImplementedError()
 
     def cancel(task_id: TaskId) -> None:
         proc = subprocess.Popen(

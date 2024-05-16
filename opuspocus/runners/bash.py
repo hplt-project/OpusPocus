@@ -29,9 +29,9 @@ class BashRunner(OpusPocusRunner):
     def __init__(
         self,
         runner: str,
-        args: argparse.Namespace,
+        pipeline_dir: Path
     ):
-        super().__init__(runner, args)
+        super().__init__(runner, pipeline_dir)
 
     def _submit_step(
         self,
@@ -56,12 +56,19 @@ class BashRunner(OpusPocusRunner):
         # TODO: what happens when we submit hundreds/thousands such ``waiting''
         # processes?
         # TODO: implement a proper ``scheduler'' for running on a single machine
-        print(file_list)
         if file_list is not None:
             outputs = []
             for file in file_list:
+                dep_str = dependencies_str
+                if outputs:
+                    dep_str = '{} {}'.format(dep_str, outputs[-1]['pid'])
                 proc = subprocess.Popen(
-                    [self.submit_wrapper, cmd_path, dependencies_str, file],
+                    [
+                        self.submit_wrapper,
+                        cmd_path,
+                        dep_str,
+                        file
+                    ],
                     start_new_session=True,
                     stdout=stdout,
                     stderr=stderr,
@@ -69,7 +76,7 @@ class BashRunner(OpusPocusRunner):
                     env=env_dict
                 )
                 outputs.append({'pid': proc.pid})
-                time.time(SLEEP_TIME)  # Sleep to not overload the process manager
+                time.sleep(SLEEP_TIME)  # Sleep to not overload the process manager
             return outputs
 
         proc = subprocess.Popen(

@@ -1,4 +1,4 @@
-import argparse
+from argparse import Namespace
 import importlib
 from pathlib import Path
 
@@ -12,10 +12,27 @@ RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()
 
 
-def build_runner(runner, args):
+def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
     """Runner builder function. Use this to create runner objects."""
+    kwargs = {}
+    for param in RUNNER_REGISTRY[runner].list_parameters():
+        if param == 'runner' or param == 'pipeline_dir':
+            continue
+        kwargs[param] = getattr(args, param)
 
-    return RUNNER_REGISTRY[runner].build_runner(runner, args)
+    return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **kwargs)
+
+
+def load_runner(pipeline_dir: Path):
+    runner_params = OpusPocusRunner.load_parameters(pipeline_dir)
+
+    runner = runner_params['runner']
+    del runner_params['runner']
+    del runner_params['pipeline_dir']
+
+    return RUNNER_REGISTRY[runner].build_runner(
+        runner, pipeline_dir, **runner_params
+    )
 
 
 def register_runner(name):
