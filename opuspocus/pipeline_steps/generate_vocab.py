@@ -56,64 +56,52 @@ class GenerateVocabStep(OpusPocusStep):
     def input_dir(self) -> Path:
         return self.corpus_step.output_dir
 
-    def _cmd_header_str(self) -> str:
-        return super()._cmd_header_str(
-            n_cpus=8,
-            mem=80
+    def command(
+        self,
+        input_file: Path,
+        runner: 'OpusPocusRunner'
+    ) -> None:
+        spm_train_path = Path(self.marian_dir, 'bin', 'spm_train')
+        model_prefix = '{}/model.{}-{}'.format(
+            self.output_dir, self.src_lang, self.tgt_lang
+        )
+        n_cpus = os.environ(RunnerResources.get_env_name('cpus'))
+
+        train_datasets = ' '.join(
+            '{}/{}.{}.gz'.format(self.input_dir, dset, lang)
+            for dset in self.datasets for lang in self.languages
         )
 
-    def _cmd_vars_str(self) -> str:
-        return """
-SRC="{src_lang}"
-TGT="{tgt_lang}"
-
-TRAIN_DIR="{indir}"
-OUTPUT_DIR="{outdir}"
-LOG_DIR="{logdir}"
-
-MARIAN_DIR="{marian_dir}"
-SEED="{seed}"
-VOCAB_SIZE="{vocab_size}"
-        """.format(
-            src_lang=self.src_lang,
-            tgt_lang=self.tgt_lang,
-            indir=self.input_dir,
-            outdir=self.output_dir,
-            logdir=self.log_dir,
-            marian_dir=self.marian_dir,
-            seed=self.seed,
-            vocab_size=self.vocab_size,
+        # Train subword model
+        proc = subprocess.Popen(
+            [
+                str(spm_train_path),
+                '--random_seed={}'.format(self.seed),
+                '--bos_id=-1',
+                '--eos_id=0',
+                '--unk_id=1',
+                '--model_prefix={}'.format(model_prefix),
+                '--vocab_size={}'.format(self.vocab_size),
+                '--input=<(cat {} | pigz -dc)'.format(train_datasets),
+                '--input_sentence_size=10000000',
+                '--shufle_input_sentence=true',
+                '--train_extremely_large_corpus',
+                '--byte_fallback',
+                '--num_threads={}'.format(n_cpus)
+            ]
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            env=os.environ,
+            text=True
         )
 
-    def _cmd_body_str(self) -> str:
-        # List the training dataset prefixes
-        datasets=','.join(self.datasets)
-        if ',' in datasets:
-            datasets = '{' + datasets + '}'
+        # Rename the output file
+        shutil.move(model_prefix + '.model', model_prefix + '.spm')
 
-        # Compose the body_cmd string
-        return """# TODO: test existence of input corpus
-
-$MARIAN_DIR/bin/spm_train \\
-    --random_seed=$SEED \\
-    --bos_id=-1 \\
-    --eos_id=0 \\
-    --unk_id=1 \\
-    --model_prefix=$OUTPUT_DIR/model.$SRC-$TGT \\
-    --vocab_size=$VOCAB_SIZE \\
-    --input=<(cat $TRAIN_DIR/{datasets}.{{$SRC,$TGT}}.gz | pigz -dc) \\
-    --input_sentence_size=10000000 \\
-    --shuffle_input_sentence=true \\
-    --train_extremely_large_corpus \\
-    --byte_fallback \\
-    --num_threads ${cpus_var_name}
-
-mv $OUTPUT_DIR/model.$SRC-$TGT.model \\
-    $OUTPUT_DIR/model.$SRC-$TGT.spm
-# Create links for the backtranslation
-ln -s model.$SRC-$TGT.spm $OUTPUT_DIR/model.$TGT-$SRC.spm
-ln -s model.$SRC-$TGT.vocab $OUTPUT_DIR/model.$TGT-$SRC.vocab
-        """.format(
-            cpus_var_name=RunnerResources.get_env_name('cpus'),
-            datasets=datasets
-        )
+        for suffix in ['spm', 'vocab']:
+            os.symlink(
+                'model.{}-{}.{}'.format(src_lang, tgt_lang, suffix),
+                '{}/model.{}-{}.{}'.format(
+                    self.output_dir, self.tgt_lang, self.src_lang, suffix
+                )
+            )
