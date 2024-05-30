@@ -1,12 +1,16 @@
-from typing import Optional
+from typing import List, Optional
+
 
 import logging
+import os
+import subprocess
+import sys
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.generate_vocab import GenerateVocabStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
-from opuspocus.utils import RunnerResources
+from opuspocus.utils import concat_files, RunnerResources, subprocess_wait
 
 
 logger = logging.getLogger(__name__)
@@ -22,17 +26,16 @@ class TrainModelStep(OpusPocusStep):
         step_label: str,
         pipeline_dir: Path,
         marian_dir: Path,
-        valid_data_dir: Path,
-        python_venv_dir: Path,
         src_lang: str,
         tgt_lang: str,
         marian_config: Path,
         opustrainer_config: Path,
         vocab_step: GenerateVocabStep,
         train_corpus_step: CorpusStep,
-        train_category: str = 'clean',
+        valid_corpus_step: CorpusStep,
         model_init_step: Optional['TrainModelStep'] = None,
         seed: int = 42,
+        train_category: str = 'clean',
         valid_dataset: str = 'flores200.dev',
     ):
         super().__init__(
@@ -40,43 +43,51 @@ class TrainModelStep(OpusPocusStep):
             step_label=step_label,
             pipeline_dir=pipeline_dir,
             marian_dir=marian_dir,
-            valid_data_dir=valid_data_dir,
-            python_venv_dir=python_venv_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             marian_config=marian_config,
             opustrainer_config=opustrainer_config,
             vocab_step=vocab_step,
             train_corpus_step=train_corpus_step,
+            valid_corpus_step=valid_corpus_step,
             model_init_step=model_init_step,
             seed=seed,
             train_category=train_category,
             valid_dataset=valid_dataset,
         )
+        # TODO: check language compatibility
 
-        # Check existence of the valid dataset
-        for lang in [self.src_lang, self.tgt_lang]:
-            valid_dataset_path = Path(
-                self.valid_data_dir,
-                '{dset}.{src}-{tgt}.{lang}'.format(
-                    dset=self.valid_dataset,
-                    src=self.src_lang,
-                    tgt=self.tgt_lang,
-                    lang=lang
-                )
+    def init_step(self) -> None:
+        super().init_step()
+        if self.valid_dataset not in self.valid_corpus_step.dataset_list:
+            raise ValueError(
+                'Dataset {} is not registered in the {} categories.json.'
+                .format(self.valid_dataset, self.valid_corpus_step.step_label)
             )
-            if not valid_dataset_path.exists():
-                raise FileNotFoundError(
-                    'Dataset file {} does not exist'.format(valid_dataset_path)
-                )
-
-    @property
-    def input_dir(self) -> Path:
-        return self.dependencies['train_corpus_step'].output_dir
 
     @property
     def train_corpus_step(self) -> CorpusStep:
         return self.dependencies['train_corpus_step']
+
+    @property
+    def valid_corpus_step(self) -> CorpusStep:
+        return self.dependencies['valid_corpus_step']
+
+    @property
+    def vocab_step(self) -> OpusPocusStep:
+        return self.dependencies['vocab_step']
+
+    @property
+    def input_dir(self) -> Path:
+        return self.train_corpus_step.output_dir
+
+    @property
+    def train_datasets(self) -> List[str]:
+        return self.train_corpus_step.category_mapping[self.train_category]
+
+    @property
+    def valid_data_dir(self) -> Path:
+        return self.valid_corpus_step.output_dir
 
     @property
     def model_init_path(self) -> Path:
@@ -86,7 +97,7 @@ class TrainModelStep(OpusPocusStep):
 
     @property
     def vocab_path(self) -> Path:
-        vocab_dir = self.dependencies['vocab_step'].output_dir
+        vocab_dir = self.vocab_step.output_dir
 
         # TODO: this should be fetched from the dependency in case that
         # file naming changes in the future
@@ -97,7 +108,7 @@ class TrainModelStep(OpusPocusStep):
 
     @property
     def vocab_size(self) -> int:
-        return self.dependencies['vocab_step'].vocab_size
+        return self.vocab_step.vocab_size
 
     @property
     def model_path(self) -> Path:
@@ -107,177 +118,87 @@ class TrainModelStep(OpusPocusStep):
     def tmp_dir(self) -> Path:
         return Path(self.step_dir, 'tmp.d')
 
-    def _cmd_header_str(self) -> str:
-        return super()._cmd_header_str(
-            n_cpus=8,
-            n_gpus=8,
-            mem=40
-        )
+    @property
+    def languages(self) -> List[str]:
+        return [self.src_lang, self.tgt_lang]
 
-    def _cmd_vars_str(self) -> str:
-        return """export PATH="{python_venv}/bin:$PATH"
+    @property
+    def langpair(self) -> str:
+        return '-'.join(self.languages)
 
-SRC="{src_lang}"
-TGT="{tgt_lang}"
+    @property
+    def default_resources(self) -> RunnerResources:
+        return RunnerResources(gpus=1)
 
-TRAIN_DATA_DIR="{indir}"
-OUTPUT_DIR="{outdir}"
-VALID_DIR="{valdir}"
-LOG_DIR="{logdir}"
+    def get_command_targets(self) -> List[Path]:
+        return [self.model_path]
 
-STEP_DIR="{step_dir}"
-SCRIPT_DIR="scripts"
-MARIAN_DIR="{marian_dir}"
-SEED="{seed}"
+    def command(self, target_file: Path) -> None:
+        model_path = target_file  # for better readability
 
-OPUSTRAINER_CONFIG_FILE="{opustrainer_config}"
-MARIAN_CONFIG_FILE="{marian_config}"
+        env = os.environ
+        n_cpus = int(env[RunnerResources.get_env_name('cpus')])
+        n_gpus = 0
+        if RunnerResources.get_env_name('gpus') in env:
+            n_gpus = int(env[RunnerResources.get_env_name('gpus')])
 
-MODEL_FILE="{model_file}"
-VOCAB_FILE="{vocab_file}"
-VOCAB_SIZE="{vocab_size}"
+        # Prepare the command
+        marian_path = Path(self.marian_dir, 'bin', 'marian')
+        cmd = [
+            str(marian_path),
+            '-c', str(self.marian_config),
+            '--seed', str(self.seed),
+            '--data-threads', str(n_cpus),
+            '--model', str(model_path),
+            '--vocabs', str(self.vocab_path), str(self.vocab_path),
+            '--dim-vocabs', str(self.vocab_size),
+            '--tempdir', str(self.tmp_dir),
+            '--valid-translation-output', '{}/valid.out'.format(self.log_dir),
+            '--log-level', 'info',
+            '--log', '{}/train.log'.format(self.log_dir),
+            '--valid-log', '{}/valid.log'.format(self.log_dir),
+            '--cpu-threads', str(n_cpus),
+        ]
 
-VALID_OUT_FILE="$LOG_DIR/model.valid.out"
-TRAIN_LOG_FILE="$LOG_DIR/model.train.log"
-VALID_LOG_FILE="$LOG_DIR/model.valid.log"
+        # Training data
+        # TODO: Data concatenation should be removed when opustrainer support
+        #       is added
+        train_paths = [
+            Path(self.tmp_dir, 'train.{}.gz'.format(lang))
+            for lang in self.languages
+        ]
+        if not all([p.exists() for p in train_paths]):
+            for lang, output_file in zip(self.languages, train_paths):
+                concat_files(
+                    [
+                        Path(self.input_dir, '{}.{}.gz'.format(dset, lang))
+                        for dset in self.train_datasets
+                    ],
+                    output_file
+                )
+        cmd += ['--train-sets'] + [str(p) for p in train_paths]
 
-TRAIN_DATASETS="{train_dsets}"
-VALID_PREFIX="$VALID_DIR/{valid_dset}"
-RESUBMIT_TIME_LEFT={resubmit_time}
+        # Validation data
+        cmd += ['--valid-sets'] + [
+            '{}/{}.{}.gz'.format(
+                self.valid_data_dir, self.valid_dataset, lang
+            ) for lang in self.languages
+        ]
 
-TEMP_DIR="{tmpdir}/$SLURM_JOBID"
-mkdir -p $TEMP_DIR
-        """.format(
-            python_venv=self.python_venv_dir,
-            src_lang=self.src_lang,
-            tgt_lang=self.tgt_lang,
-            indir=self.input_dir,
-            outdir=self.output_dir,
-            valdir=self.valid_data_dir,
-            logdir=self.log_dir,
-            step_dir=self.step_dir,
-            marian_dir=self.marian_dir,
-            seed=self.seed,
-            opustrainer_config='TODO',
-            marian_config=self.marian_config,
-            model_file=self.model_path,
-            vocab_file=self.vocab_path,
-            vocab_size=self.vocab_size,
-            train_dsets=' '.join(
-                self.train_corpus_step.category_mapping[self.train_category]
-            ),
-            valid_dset=self.valid_dataset,
-            resubmit_time=SLURM_RESUBMIT_TIME,
-            tmpdir=self.tmp_dir
-        )
+        # GPU option
+        if n_gpus:
+            cmd += ['--devices'] + [str(i) for i in range(n_gpus)]
 
-    def _cmd_traps_str(self) -> str:
-        return """cleanup() {{
-    exit_code=$?
-    if [[ $exit_code -gt 0 ]]; then
-        exit $exit_code
-    fi
-
-    rm $TEMP_DIR/train.*.gz
-    echo DONE > {state_file}
-    exit 0
-}}
-
-err_cleanup() {{
-    exit_code=$?
-    # Set the step state and exit
-    echo FAILED > {state_file}
-    exit $exit_code
-}}
-
-trap err_cleanup ERR
-trap cleanup EXIT
-        """.format(
-            state_file=Path(self.step_dir, self.state_file)
-        )
-
-    def _cmd_body_str(self) -> str:
-        model_init = ''
+        # Initial checkpoint option
         if self.model_init_path is not None:
-            model_init = '--pretrained-model {}'.format(self.model_init_path)
+            cmd += ['--pretrained-model', str(self.model_init_path)]
 
-        dset_list = self.train_corpus_step.category_mapping[self.train_category]
-        train_data_opt = '--train-sets '
-        train_data_opt += ' '.join([
-            '<(zcat {})'.format(' '.join([
-                '{}/{}.{}.gz'.format(self.input_dir, dset, lang)
-                for dset in dset_list
-            ]))
-            for lang in [self.src_lang, self.tgt_lang]
-        ])
-
-        return """
-# We need to set state to running due to resubmission logic
-echo '"RUNNING"' > {state_file}
-
-for lang in $SRC $TGT; do
-    for dset in $TRAIN_DATASETS; do
-        cat $TRAIN_DATA_DIR/$dset.$lang.gz
-    done > $TEMP_DIR/train.$lang.gz
-done
-
-compute_opt="--cpu-threads 1"
-[[ ${gpus_var_name} -gt 0 ]] \\
-    && compute_opt="--devices $(seq 0 1 $(expr ${gpus_var_name} - 1))"
-
-# TODO: Use OpusTrainer instead
-$MARIAN_DIR/bin/marian \\
-    -c $MARIAN_CONFIG_FILE \\
-    --seed $SEED \\
-    --data-threads $SLURM_CPUS_PER_TASK \\
-    --model $MODEL_FILE \\
-    --vocabs $VOCAB_FILE $VOCAB_FILE \\
-    --dim-vocabs $VOCAB_SIZE \\
-    --tempdir $TEMP_DIR \\
-    --train-sets $TEMP_DIR/train.{{$SRC,$TGT}}.gz \\
-    --valid-sets $VALID_PREFIX.$SRC-$TGT.{{$SRC,$TGT}} \\
-    --valid-translation-output $VALID_OUT_FILE \\
-    --log-level info \\
-    --log $TRAIN_LOG_FILE \\
-    --valid-log $VALID_LOG_FILE \\
-    {model_init} $compute_opt &
-pid=$!
-
-# Wait for the time limit to run out
-while [[ $(python $SCRIPT_DIR/slurm_time_to_seconds.py $(squeue -h -j $SLURM_JOBID -o %L)) -gt $RESUBMIT_TIME_LEFT ]]; do
-    sleep 60s
-    # Exit if Marian finished
-    ps -p $pid > /dev/null || (wait $pid; exit $?)
-done
-
-echo "Training termination due to SLURM time limit." >&2
-echo "Submitting a continuation job..." >&2
-
-# Terminate the training and resubmit
-kill -15 $pid
-new_jid=$(sbatch \\
-    --parsable \\
-    --dependency="afterany:$SLURM_JOBID" \\
-    --account=$SLURM_JOB_ACCOUNT \\
-    --partition=$SLURM_JOB_PARTITION \\
-    --time=$(squeue -h -j $SLURM_JOBID -o %l) \\
-    $STEP_DIR/step.command \\
-)
-echo $new_jid > `pwd`/step.jobid
-
-# Update the job dependencies
-for job in `squeue --me --format "%i %E" | grep ":$SLURM_JOBID" | grep -v ^$new_jid | cut -d" " -f1`; do
-    echo Updating dependencies of job $job... >&2
-    update_str=$(squeue --me --format "%i %E" \\
-        | grep ^$job \\
-        | cut -d" " -f2 \\
-        | sed "s/([^)]*)//g;s/$SLURM_JOBID/$new_jid/" \\
-    )
-    scontrol update JobId=$job dependency=$update_str
-done
-        """.format(
-            state_file=Path(self.step_dir, self.state_file),
-            gpus_var_name=RunnerResources.get_env_name('gpus'),
-            model_init=model_init,
-            train_data_opt=train_data_opt
+        # Execute the command
+        proc = subprocess.Popen(
+            cmd,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            env=env,
+            text=True
         )
+        subprocess_wait(proc)

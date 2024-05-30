@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import List, Optional
 
+import gzip
 import logging
-import os
 import shutil
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
@@ -27,8 +27,9 @@ class RawCorpusStep(CorpusStep):
         pipeline_dir: Path,
         raw_data_dir: Path,
         src_lang: str,
-        tgt_lang: str = None,
+        tgt_lang: Optional[str] = None,
         output_shard_size: Optional[int] = None,
+        compressed: bool = True
     ):
         super().__init__(
             step=step,
@@ -38,6 +39,7 @@ class RawCorpusStep(CorpusStep):
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             output_shard_size=output_shard_size,
+            compressed=compressed
         )
 
     def register_categories(self) -> None:
@@ -48,50 +50,69 @@ class RawCorpusStep(CorpusStep):
         """
         categories_path = Path(self.raw_data_dir, self.categories_file)
         if categories_path.exists():
-
             logger.info(
-                'OpusCleaner\'s categories.json found. Copying.'
+                '[{}] OpusCleaner\'s categories.json found. Copying.'
+                .format(self.step_label)
             )
             shutil.copy(categories_path, self.categories_path)
         else:
             logger.info(
-                'categories.json not found. Scanning for datasets.'
+                '[{}] categories.json not found. Scanning for datasets.'
+                .format(self.step_label)
             )
             categories_dict = {
                 'categories': [{ 'name' : self.default_category }],
                 'mapping': { self.default_category : [] }
             }
-            # TODO: support other than .gz files
-            for lang in self.languages:
-                for corpus_path in self.raw_data_dir.glob('*.{}.gz'.format(lang)):
-                    categories_dict['mapping'][self.default_category].append(
-                        '.'.join(corpus_path.name.split('.')[:-2])
-                    )
+            suffix = '.{}'.format(self.src_lang)
+            if self.compressed:
+                suffix += '.gz'
+            for corpus_path in self.raw_data_dir.glob('*{}'.format(suffix)):
+                corpus_prefix = '.'.join(corpus_path.name.split('.')[:-1])
+                if self.compressed:
+                    corpus_prefix = '.'.join(corpus_path.name.split('.')[:-2])
+                categories_dict['mapping'][self.default_category].append(corpus_prefix)
             self.save_categories_dict(categories_dict)
-        for dset in self.dataset_list:
-            # Hardlink corpus files
-            for lang in self.languages:
-                corpus_path = Path(
-                    self.raw_data_dir, '{}.{}.gz'.format(dset, lang)
-                )
-                if not corpus_path.exists():
-                    FileNotFoundError(corpus_path)
-                os.link(
-                    corpus_path.resolve(),
-                    Path(self.output_dir, '{}.{}.gz'.format(dset, lang))
-                )
 
-            # Copy .filters.json files, if available
-            filters_path = Path(
-                self.raw_data_dir, '{}.filters.json'.format(dset)
+    def get_command_targets(self) -> List[Path]:
+        return [
+            Path(self.output_dir, '{}.{}.gz'.format(dset, lang))
+            for dset in self.dataset_list for lang in self.languages
+        ]
+
+    def command(self, target_file: Path) -> None:
+        # Hardlink compressed files
+        target_filename = target_file.stem + target_file.suffix
+        lang = target_file.stem.split('.')[-1]
+
+        # Copy .filters.json files, if available
+        # Only do this once (for src lang) in bilingual corpora
+        if lang == self.src_lang:
+            filters_filename = '.'.join(
+                target_file.stem.split('.')[:-1] + ['filters.json']
             )
+            filters_path = Path(self.raw_data_dir, filters_filename)
             if filters_path.exists():
                 shutil.copy(
                     filters_path,
-                    Path(self.output_dir, '{}.filters.json'.format(dset))
+                    Path(self.output_dir, filters_filename)
                 )
 
-    def command(
-        self, input_file: Path = None, runner: 'OpusPocusRunner' = None
-    ) -> None:
-        pass
+        if self.compressed:
+            corpus_path = Path(self.raw_data_dir, target_filename)
+            if not corpus_path.exists():
+                raise FileNotFoundError(corpus_path)
+
+            Path(
+                self.output_dir, target_filename
+            ).hardlink_to(corpus_path.resolve())
+        else:
+            corpus_path = Path(self.raw_data_dir, target_file.stem)
+            if not corpus_path.exists():
+                raise FileNotFoundError(corpus_path)
+
+            compressed_path = Path(self.output_dir, target_filename)
+            with open(corpus_path, 'r') as f_in:
+                with gzip.open(compressed_path, 'wt') as f_out:
+                    for line in f_in:
+                        print(line, end='', file=f_out)

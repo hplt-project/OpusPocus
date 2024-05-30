@@ -5,12 +5,14 @@ import gzip
 import json
 import logging
 import yaml
-from os import listdir
 from pathlib import Path
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
-from opuspocus.command_utils import build_subprocess
-from opuspocus.utils import print_indented
+from opuspocus.utils import (
+    file_to_shards,
+    open_file,
+    shards_to_file
+)
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,7 @@ class CorpusStep(OpusPocusStep):
     """
     categories_file = 'categories.json'
     shard_dirname = 'shards'
+    shard_index_file = 'shard_index.yml'
 
     def __init__(
         self,
@@ -72,6 +75,20 @@ class CorpusStep(OpusPocusStep):
             output_shard_size=output_shard_size,
             **kwargs,
         )
+        if self._inherits_sharded and output_shard_size is not None:
+            logger.warn(
+                'Step {} always inherits sharding from its '
+                'previous_corpus_step ({}). Ignoring the output_shard_size '
+                'parameter...'
+                .format(self.step, self.prev_corpus_step.step_label)
+            )
+            if self.prev_corpus_step.is_sharded:
+                self.output_shard_size = self.previous_corpus_step.shard_size
+
+    @property
+    def prev_corpus_step(self) -> 'CorpusStep':
+        """Shortcut to the previous corpus step dependency."""
+        return self.dependencies['previous_corpus_step']
 
     @property
     def input_dir(self) -> Optional[Path]:
@@ -85,6 +102,14 @@ class CorpusStep(OpusPocusStep):
         if self.prev_corpus_step is None:
             return None
         return self.prev_corpus_step.shard_dir
+
+    @property
+    def _inherits_sharded(self) -> bool:
+        """TODO: This should be implemented as an interface/subclass.
+        Something along corpus steps that can/cannot process sharded
+        prev_corpus_step steps.
+        """
+        return False
 
     @property
     def is_sharded(self) -> bool:
@@ -103,34 +128,63 @@ class CorpusStep(OpusPocusStep):
         """Syntactic sugar for output_shard_size."""
         return self.output_shard_size
 
-    def split_file_to_shards(
-        self,
-        directory: Path,
-        filename: Path
-    ) -> None:
-        pad_length = 4
-        out_fh = None
-        with gzip.open(Path(directory, filename), 'rt') as in_fh:
-            for i, line in enumerate(in_fh):
-                line = line.strip()
-                if i % self.shard_size == 0:
-                    n = i // self.shard_size
-                    output_filename = '{}.{}.gz'.format(
-                        filename, str(n).zfill(pad_length)
-                    )
-                    out_fh = gzip.open(
-                        Path(self.shard_dir, output_filename), 'wt'
-                    )
-                print(line, file=out_fh)
+    @property
+    def shard_index(self) -> Optional[Dict[str, List[Path]]]:
+        if not self.is_sharded:
+            return []
+        shard_dict = yaml.safe_load(
+            open(Path(self.shard_dir, self.shard_index_file), 'r')
+        )
+        return {
+            k: [f for f in v]
+            for k, v in shard_dict.items()
+        }
+
+    def save_shard_index(self, shard_dict: Dict[str, List[str]]) -> None:
+        assert self.is_sharded
+        yaml.dump(
+            shard_dict,
+            open(Path(self.shard_dir, self.shard_index), 'w')
+        )
+
+    def get_shard_list(self, dset_filename: str) -> List[Path]:
+        return self.shard_map(dset_filename)
 
     def command_postprocess(self) -> None:
         """TODO"""
-        if self.is_sharded:
+        if self.is_sharded and not self._inherits_sharded:
+            # Shard Output
+            shard_map = {}
             for dset in self.dataset_list:
                 for lang in self.languages:
-                    self.split_file_to_shards(
-                        self.output_dir,
-                        '{}.{}.gz'.format(dset, lang)
+                    dset_path = Path(
+                        self.output_dir, '{}.{}.gz'.format(dset, lang)
+                    )
+                    dset_filename = dset_path.stem + dset_path.suffix
+                    shard_map[dset_filename] = file_to_shards(
+                        file_path=dset_path,
+                        shard_dir=self.shard_dir,
+                        shard_size=self.shard_size,
+                    )
+            self.save_shard_map(shard_map)
+        elif self._inherits_sharded:
+            Path(self.shard_dir, self.shard_index).hardlink_to(
+                Path(
+                    self.prev_corpus_step.shard_dir,
+                    self.prev_corpus_step.shard_index
+                ).resolve()
+            )
+            # Merge Shards
+            for dset in self.dataset_list:
+                for lang in self.languages:
+                    dset_file_path = Path(
+                        self.output_dir, '{}.{}.gz'.format(dset, lang)
+                    )
+                    dset_filename = dset_file_path.stem + dset_file_path.suffix
+                    shards_to_file(
+                        self.get_shard_list(dset_filename),
+                        self.shard_dir,
+                        dset_file_path
                     )
 
     def create_directories(self) -> None:
@@ -142,11 +196,6 @@ class CorpusStep(OpusPocusStep):
         super().create_directories()
         if self.shard_dir is not None:
             self.shard_dir.mkdir()
-
-    @property
-    def prev_corpus_step(self) -> 'CorpusStep':
-        """Shortcut to the previous corpus step dependency."""
-        return self.dependencies['previous_corpus_step']
 
     @property
     def categories_path(self) -> Path:
@@ -224,7 +273,7 @@ class CorpusStep(OpusPocusStep):
         self.create_command()
 
         # Initialize state
-        logger.info('[{}.init] Step Initialized.'.format(self.step))
+        logger.info('[{}] Step Initialized.'.format(self.step_label))
         self.set_state(StepState.INITED)
 
     def init_categories_file(self) -> None:

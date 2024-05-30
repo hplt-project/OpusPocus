@@ -4,10 +4,8 @@ global:
   tgt_lang: nn
 
   raw_data_dir: data/${.src_lang}-${.tgt_lang}/raw
-  valid_dataset: flores200.dev
 
   opuscleaner_python_venv_dir: opuscleaner-venv
-  opuscleaner_cmd: opuscleaner-clean
 
 pipeline:
   pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner-only

@@ -1,16 +1,15 @@
 from typing import Any, Dict, List, Optional, get_type_hints
 
-import argparse
+from argparse import Namespace
+from pathlib import Path
 import enum
 import inspect
 import json
 import logging
 import os
 import yaml
-from pathlib import Path
 
 from opuspocus.utils import (
-    convert_to_python_declaration,
     print_indented,
     RunnerResources
 )
@@ -57,6 +56,10 @@ class OpusPocusStep(object):
         TODO: implement strict restriction on setting object attributes
         the derived classes
         """
+        self.step = step
+        self.step_label = step_label
+        self.pipeline_dir = pipeline_dir
+
         if pipeline_dir is None:
             raise ValueError(
                 '{}.pipeline_dir was not specified. Use --pipeline-dir '
@@ -64,9 +67,6 @@ class OpusPocusStep(object):
                 'for the step using the config file.'.format(step_label)
             )
 
-        self.step = step
-        self.step_label = step_label
-        self.pipeline_dir = pipeline_dir
         self.register_parameters(**kwargs)
         self.state = self.load_state()
 
@@ -238,6 +238,15 @@ class OpusPocusStep(object):
         """Location of the step log directory."""
         return Path(self.step_dir, 'logs')
 
+    @property
+    def tmp_dir(self) -> Path:
+        """Location of the step temp directory.
+
+        The contents of this directory get deleted after a successfull step
+        completuion.
+        """
+        return Path(self.step_dir, 'temp')
+
     def init_step(self) -> None:
         """Step initialization method.
 
@@ -270,7 +279,7 @@ class OpusPocusStep(object):
         self.create_command()
 
         # initialize state
-        logger.info('[{}.init] Step Initialized.'.format(self.step))
+        logger.info('[{}] Step Initialized.'.format(self.step_label))
         self.set_state(StepState.INITED)
 
     def init_dependencies(self) -> None:
@@ -298,7 +307,7 @@ class OpusPocusStep(object):
                 'Cannot create {}. Directory already exists.'
                 .format(self.step_dir)
             )
-        for d in [self.step_dir, self.log_dir, self.output_dir]:
+        for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
 
     def create_command(self) -> None:
@@ -315,7 +324,7 @@ class OpusPocusStep(object):
         print(self.compose_command(), file=open(cmd_path, 'w'))
         os.chmod(cmd_path, 0o755)
 
-    def retry_step(self, args: argparse.Namespace):
+    def retry_step(self, args: Namespace):
         """Try to recover from a failed state.
 
         Default behavior is to change state and just rerun.
@@ -377,17 +386,40 @@ class OpusPocusStep(object):
             return True
         return False
 
-    def get_input_file_list(self) -> Optional[List[Path]]:
-        return None
-
-    def command(
-        self,
-        input_file: Path = None,
-        runner: 'OpusPocusRunner' = None,
-    ) -> None:
+    def get_command_targets(self) -> List[Path]:
         raise NotImplementedError()
 
+    def is_target_complete(self, target_file: Path) -> bool:
+        if not target_file.exists():
+            return False
+        # TODO: more conditions?, e.g. empty file, timestamp comparison, etc.
+        return True
+
+    def is_finished(
+        self,
+        runner: 'OpusPocusRunner'
+    ) -> bool:
+        task_info = runner.load_task_info(self)
+        for task_id in task_info['subtasks']:
+            if self.task_is_running(task_id):
+                return False
+
+        for target_file in self.get_command_targets():
+            if not self.is_target_complete():
+                return False
+
+        return True
+
+    def command(self, target_file: Path) -> None:
+        """TODO"""
+        raise NotImplementedError()
+
+    def command_preprocess(self) -> None:
+        """TODO"""
+        pass
+
     def command_postprocess(self) -> None:
+        """TODO"""
         pass
 
     def compose_command(self) -> str:
@@ -406,28 +438,49 @@ from pathlib import Path
 
 from opuspocus.pipeline_steps import load_step, StepState
 from opuspocus.runners import load_runner
+from opuspocus.utils import clean_dir
+
+
+def run_main(step):
+    runner = load_runner(Path('{pipeline_dir}'))
+
+    step.set_state(StepState.RUNNING)
+    step.command_preprocess()
+
+    task_ids = []
+    for target_file in step.get_command_targets():
+        cmd_path = Path(step.step_dir, step.command_file)
+        task_id = runner.submit_task(
+            cmd_path=cmd_path,
+            target_file=target_file,
+            dependencies=None,
+            step_resources=runner.get_resources(step),
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+        task_ids.append(task_id)
+
+    runner.wait_for_all_tasks(task_ids)
+    step.command_postprocess()
+
+    clean_dir(step.tmp_dir)
+    step.set_state(StepState.DONE)
 
 
 if __name__ == '__main__':
     try:
         step = load_step('{step_label}', Path('{pipeline_dir}'))
-        runner = load_runner(Path('{pipeline_dir}'))
 
-        step.set_state(StepState.RUNNING)
-        input_file = None
-        if len(sys.argv) > 1:
-            input_file = sys.argv[1]
-        step.command(
-            input_file=input_file,
-            runner=runner,
-        )
-        step.command_postprocess()
+        if len(sys.argv) == 1:
+            run_main(step)
+        else:
+            # Run Subtask
+            assert len(sys.argv) == 2
+            step.command(Path(sys.argv[1]))
 
     except Exception as e:
         step.set_state(StepState.FAILED)
         raise e
-
-    step.set_state(StepState.DONE)
 """.format(
             step_label=self.step_label,
             pipeline_dir=self.pipeline_dir,

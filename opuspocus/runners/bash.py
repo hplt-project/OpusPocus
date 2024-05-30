@@ -5,20 +5,20 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-from psutil import Process
+from psutil import Process, wait_procs
 import time
 
 from opuspocus.runners import (
     OpusPocusRunner,
     TaskId,
+    TaskInfo,
     register_runner
 )
-from opuspocus.utils import RunnerResources
-
-
-SLEEP_TIME = 0.1
+from opuspocus.utils import RunnerResources, subprocess_wait
 
 logger = logging.getLogger(__name__)
+
+SLEEP_TIME = 0.1
 
 
 @register_runner('bash')
@@ -26,78 +26,102 @@ class BashRunner(OpusPocusRunner):
     """TODO"""
     submit_wrapper = 'scripts/bash_runner_submit.py'
 
+    @staticmethod
+    def add_args(parser):
+        OpusPocusRunner.add_args(parser)
+        parser.add_argument(
+            '--run-subtasks-in-parallel', action='store_true', default=False,
+            help='TODO'
+        )
+
     def __init__(
         self,
         runner: str,
-        pipeline_dir: Path
+        pipeline_dir: Path,
+        run_subtasks_in_parallel: bool = False,
     ):
-        super().__init__(runner, pipeline_dir)
+        super().__init__(
+            runner=runner,
+            pipeline_dir=pipeline_dir,
+            run_subtasks_in_parallel=run_subtasks_in_parallel
+        )
 
-    def _submit_step(
+    def submit_task(
         self,
         cmd_path: Path,
-        file_list: Optional[List[str]] = None,
+        target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None,
         stdout=sys.stdout,
         stderr=sys.stderr
-    ) -> List[TaskId]:
+    ) -> TaskId:
+        """TODO"""
         dependencies_str = ''
         if dependencies is not None:
-            dependencies_str = ' '.join([
-                self.task_id_to_string(dep)
-                for dep in dependencies
-            ])
+            dependencies_str = ' '.join(
+                [str(dep['id']) for dep in dependencies]
+            )
         env_dict = step_resources.get_env_dict()
 
-        # Each task is started as a new process that waits on the depencencies
-        # (processes) in a for loop, checks their status after they finish and
-        # executes the task command
-        # TODO: what happens when we submit hundreds/thousands such ``waiting''
-        # processes?
-        # TODO: implement a proper ``scheduler'' for running on a single machine
-        if file_list is not None:
-            outputs = []
-            for file in file_list:
-                dep_str = dependencies_str
-                if outputs:
-                    dep_str = '{} {}'.format(dep_str, outputs[-1]['pid'])
-                proc = subprocess.Popen(
-                    [
-                        self.submit_wrapper,
-                        cmd_path,
-                        dep_str,
-                        file
-                    ],
-                    start_new_session=True,
-                    stdout=stdout,
-                    stderr=stderr,
-                    shell=False,
-                    env=env_dict
-                )
-                outputs.append({'pid': proc.pid})
-                time.sleep(SLEEP_TIME)  # Sleep to not overload the process manager
-            return outputs
+        # Subtasks do not have dependencies, no need for the wrapper
+        if target_file is not None:
+            proc = subprocess.Popen(
+                [str(cmd_path), str(target_file)],
+                start_new_session=False,
+                stdout=stdout,
+                stderr=stderr,
+                shell=False,
+                env=env_dict
+            )
+            if not self.run_subtasks_in_parallel:
+                logger.debug('Waiting for process to finish...')
+                subprocess_wait(proc)
+        else:
+            proc = subprocess.Popen(
+                [
+                    self.submit_wrapper,
+                    str(cmd_path),
+                    dependencies_str,
+                ],
+                start_new_session=True,
+                stdout=stdout,
+                stderr=stderr,
+                shell=False,
+                env=env_dict
+            )
 
-        proc = subprocess.Popen(
-            [self.submit_wrapper, cmd_path, dependencies_str],
-            start_new_session=True,
-            stdout=stdout,
-            stderr=stderr,
-            shell=False,
-            env=env_dict
-        )
-        return [{'pid': proc.pid}]
+        return TaskId(filename=str(target_file), id=proc.pid)
 
-    def cancel(task_id: TaskId) -> None:
+    def get_process(self, task_id: TaskId) -> Optional[Process]:
+        """TODO"""
         try:
-            proc = Process(task_id['pid'])
-            p.terminate()
+            proc = Process(task_id['id'])
         except:
-            logger.warn('Process {} does not exist. Ignoring.'.format(task_id))
+            logger.debug(
+                'Process with pid={} does not exist. Ignoring...'
+                .format(task_id)
+            )
+            return None
+        return proc
 
-    def task_id_to_string(self, task_id: TaskId) -> str:
-        return str(task_id['pid'])
+    def cancel_task(self, task_id: TaskId) -> None:
+        """TODO"""
+        proc = self.get_process(task_id['id'])
+        p.terminate()
 
-    def string_to_task_id(self, id_str: str) -> TaskId:
-        return {'pid': int(id_str)}
+    def wait_for_task(self, task_id: TaskId) -> None:
+        proc = self.get_process(task_id)
+        if proc is None:
+            return
+        gone, _ = wait_procs([proc])
+        for p in gone:
+            if p.returncode:
+                raise subprocess.SubprocessError(
+                    'Process {} exited with non-zero '
+                    'value.'.format(task_id['id'])
+                )
+
+    def is_task_running(self, task_id: TaskId) -> bool:
+        """TODO"""
+        proc = self.get_process(task_id)
+        return (proc is not None)

@@ -1,21 +1,159 @@
 from typing import Any, Callable, Dict, List, Optional
+from argparse import Namespace
+from pathlib import Path
 
+import gzip
 import inspect
 import json
 import logging
 import os
+import subprocess
+import sys
 import yaml
-from argparse import Namespace
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+def get_open_fn(compressed: bool):
+    if compressed:
+        return gzip.open
+    return open
+
+
+def open_file(file: Path, mode: str):
+    assert mode == 'r' or mode == 'w'
+    open_fn = get_open_fn(compressed=(file.suffix == '.gz'))
+    return open_fn(file, f'{mode}t')
+
+
+def decompress_file(input_file: Path, output_file: Path) -> None:
+    with gzip.open(input_file, 'rt') as in_fh:
+        with open(output_file, 'wt') as out_fh:
+            for line in in_fh:
+                print(line, end='', file=out_fh)
+
+
+def concat_files(
+    input_files: List[Path],
+    output_file: Path,
+    compressed: bool = True
+) -> None:
+    open_fn = get_open_fn(compressed)
+    with open_fn(output_file, 'wt') as out_fh:
+        for input_file in input_files:
+            with open_fn(input_file, 'rt') as in_fh:
+                for line in in_fh:
+                    print(line, end='', file=out_fh)
+
+
+def paste_files(
+    input_files: List[Path],
+    output_file: Path,
+    compressed: bool = True,
+    delimiter: str = '\t'
+) -> None:
+    open_fn = get_open_fn(compressed)
+    with open_fn(output_file, 'wt') as out_fh:
+        in_fhs = [open_fn(input_file, 'rt') for input_file in input_files]
+        for lines in zip(*in_fhs):
+            print(delimiter.join(lines), end='', file=out_fh)
+
+
+def cut_file(
+    input_file: Path,
+    output_files: List[Path],
+    compressed: bool = True,
+    delimiter: str = '\t'
+) -> None:
+    open_fn = get_open_fn(compressed)
+    cut_filestream(
+        input_stream=open_fn(input_file, 'rt'),
+        output_files=output_files,
+        compressed=compressed,
+        delimiter=delimiter
+    )
+
+
+def cut_filestream(
+    input_stream,
+    output_files: List[Path],
+    compressed: bool = True,
+    delimiter: str = '\t'
+) -> None:
+    open_fn = get_open_fn(compressed)
+    out_fhs = [open_fn(output_file, 'wt') for output_file in output_files]
+    for line in input_stream:
+        for i, (l, fh) in enumerate(zip(line.split(delimiter), out_fhs)):
+            if i == len(out_fhs) - 1:
+                print(l, end='', file=fh)
+            else:
+                print(l, file=fh)
+
+def file_to_shards(
+    file_path: Path,
+    shard_dir: Path,
+    shard_size: int,
+    shard_index_pad_length: int = 4,
+) -> List[str]:
+    filename = file_path.stem + file_path.suffix
+    shard_list = []
+    out_fh = None
+    with open_file(file_path, 'r') as in_fh:
+        for i, line in enumerate(in_fh):
+            if i % shard_size == 0:
+                n = i // shard_size
+                shard_filename = file_path.stem + f'.{n}' + file_path.suffix
+                shard_list.append(shard_filename)
+                shard_file_path = Path(shard_dir, shard_filename)
+                out_fh = open_file(shard_file_path, 'w')
+            print(line, end='', file=out_fh)
+    return shard_list
+
+
+def shards_to_file(
+    shard_list: List[str],
+    shard_dir: Path,
+    file_path: Path,
+) -> None:
+    with open_file(file_path, 'w') as out_fh:
+        for shard_filename in shard_list:
+            shard_file_path = Path(shard_dir, shard_filename)
+            with open_file(shard_file_path, 'r') as in_fh:
+                for line in in_fh:
+                    print(line, end='', file=out_fh)
+
+
+def clean_dir(directory: Path) -> None:
+    for file_path in directory.iterdir():
+        try:
+            if (
+                file_path.is_file() or
+                file_path.is_symlink()
+            ):
+                file_path.unlink()
+            elif file_path.is_dir():
+                file_path.rmdir()
+        except Exception as e:
+            print(
+                'Failed to delete {}. Reason: {}'.format(file_path, e),
+                file=sys.stderr
+            )
+
+
+def subprocess_wait(proc: subprocess.Popen) -> None:
+    rc = proc.wait()
+    if rc:
+        raise subprocess.SubprocessError(
+            'Process {} exited with non-zero value.'
+            .format(proc.pid)
+        )
 
 
 def get_action_type_map(parser) -> Dict[str, Callable]:
     type_map = {}
     for action in args._actions:
         type_map[action.dest] = action.type
-    return type_map 
+    return type_map
 
 
 def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
@@ -88,12 +226,12 @@ class RunnerResources(object):
             if param != 'self'
         ]
 
-    def overwrite(self, resource_overwrite: 'RunnerResources') -> 'RunnerResources':
+    def overwrite(self, resource_dict: Dict[str, Any]) -> 'RunnerResources':
         params = {}
         for param in self.list_parameters():
-            val = getattr(resource_overwrite, param)
-            if val is None:
-                val = getattr(self, param)
+            val = getattr(self, param)
+            if param in resource_dict:
+                val = resource_dict[param]
             params[param] = val
         return RunnerResources(**params)
 

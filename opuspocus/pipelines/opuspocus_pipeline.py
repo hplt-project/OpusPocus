@@ -114,7 +114,7 @@ class OpusPocusPipeline(object):
 
             # Create the arguments for the step instance initialization
             step_args = {}
-            logger.info('Building arguments for {}.'.format(step_label))
+            logger.info('Creating parameters to build {} object.'.format(step_label))
             for k, v in pipeline_steps_configs[step_label].items():
                 # Simply assing the value if None or not a dependency parameter
                 if '_step' not in k or v is None:

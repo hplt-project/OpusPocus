@@ -1,15 +1,17 @@
 from typing import List, Optional
 
 import gzip
+import json
 import logging
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-from opuspocus.utils import RunnerResources
+from opuspocus.utils import cut_filestream, RunnerResources
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +27,7 @@ class CleanCorpusStep(CorpusStep):
         previous_corpus_step: CorpusStep,
         python_venv_dir: Path,
         src_lang: str,
-        tgt_lang: str = None,
+        tgt_lang: Optional[str] = None,
         output_shard_size: Optional[int] = None,
         opuscleaner_cmd: str = 'opuscleaner-clean',
     ):
@@ -52,29 +54,18 @@ class CleanCorpusStep(CorpusStep):
             self.categories_path
         )
 
-        # Sanity check: .filters.json files exist
-        for dset in self.dataset_list:
-            dset_filter_path = Path(
-                self.input_dir, '{}.filters.json'.format(dset)
-            )
-            if not dset_filter_path.exists():
-                raise FileNotFoundError(dset_filter_path)
-
-    def get_input_file_list(self) -> List[Path]:
+    def get_command_targets(self) -> List[Path]:
         return [
-            Path(self.input_dir, '{}.filters.json'.format(dset))
+            Path(self.output_dir, '{}.{}.gz'.format(dset, self.src_lang))
             for dset in self.dataset_list
         ]
 
-    def command(
-        self,
-        input_file: Path,
-        runner: 'OpusPocusRunner' = None
-    ) -> None:
+    def command(self, target_file: Path) -> None:
         # TODO: use OpusCleaner Python API instead when available
-        input_filename = input_file.stem + input_file.suffix
+        target_filename = target_file.stem + target_file.suffix
+        dataset = '.'.join(str(target_filename).split('.')[:-2])
+        input_file = Path(self.input_dir, '{}.filters.json'.format(dataset))
 
-        dataset = '.'.join(str(input_filename).split('.')[:-2])
         opuscleaner_bin_path =  Path(
             self.python_venv_dir, 'bin', self.opuscleaner_cmd
         )
@@ -89,27 +80,27 @@ class CleanCorpusStep(CorpusStep):
                 '-b', str(self.input_dir)
             ],
             stdout=subprocess.PIPE,
-            stderr=open(Path(self.log_dir, '{}.err'.format(dataset)), 'w'),
+            stderr=sys.stderr,
             env=os.environ,
             text=True
         )
-        output, _ = proc.communicate()
 
-        # Open Output Files
-        output_src_path = Path(
-            self.output_dir, '{}.{}.gz'.format(dataset, self.src_lang)
-        )
-        output_src_fh = gzip.open(output_src_path, 'wt')
-        output_tgt_fh = None
-        if self.tgt_lang is not None:
-            output_tgt_path = Path(
-                self.output_dir, '{}.{}.gz'.format(dataset, self.tgt_lang)
+        # Get the correct order of languages
+        languages = [
+            file.split('.')[-2]
+            for file in json.load(open(input_file, 'r'))['files']
+        ]
+
+        # Split OpusCleaner output into files
+        output_files = [
+            Path(self.output_dir, '{}.{}.gz'.format(dataset, lang))
+            for lang in languages
+        ]
+        cut_filestream(input_stream=proc.stdout, output_files=output_files)
+
+        # Check the return code
+        rc = proc.poll()
+        if rc:
+            raise Exception(
+                'Process {} exited with non-zero value.'.format(proc.pid)
             )
-            output_tgt_fh = gzip.open(output_tgt_path, 'wt')
-
-        # Write Output
-        for line in output:
-            line = line.strip().split('\t')
-            print(line[0], file=output_src_fh)
-            if output_tgt_fh is not None:
-                print(line[1], file=output_tgt_fh)

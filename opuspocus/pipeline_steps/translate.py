@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import List, Optional
 
-import logging
 from pathlib import Path
+import logging
+import shutil
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-from opuspocus.pipeline_steps.generate_vocab import GenerateVocabStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.pipeline_steps.train_model import TrainModelStep
 
@@ -24,6 +25,7 @@ class TranslateStep(CorpusStep):
         tgt_lang: str,
         previous_corpus_step: CorpusStep,
         model_step: TrainModelStep,
+        beam_size: int = 4,
         output_shard_size: Optional[int] = None,
         model_suffix: str = 'best-chrf',
     ):
@@ -36,26 +38,24 @@ class TranslateStep(CorpusStep):
             tgt_lang=tgt_lang,
             previous_corpus_step=previous_corpus_step,
             model_step=model_step,
+            beam_size=beam_size,
             output_shard_size=output_shard_size,
             model_suffix=model_suffix,
         )
+
+    @property
+    def model_step(self) -> OpusPocusStep:
+        return self.dependencies['model_step']
+
+    @property
+    def _inherits_sharded(self) -> bool:
+        return True
 
     @property
     def input_dir(self) -> Path:
         if self.prev_corpus_step.is_sharded:
             return self.prev_corpus_step.shard_dir
         return self.prev_corpus_step.output_dir
-
-    def register_categories(self) -> None:
-        import shutil
-        shutil.copy(
-            self.prev_corpus_step.categories_path,
-            self.categories_path
-        )
-
-    @property
-    def model_step(self) -> OpusPocusStep:
-        return self.dependencies['model_step']
 
     @property
     def model_config_path(self) -> Path:
@@ -64,86 +64,76 @@ class TranslateStep(CorpusStep):
             '{}.npz.decoder.yml'.format(self.model_suffix)
         )
 
-    def _cmd_header_str(self) -> str:
-        return super()._cmd_header_str(
-            n_cpus=8,
-            n_gpus=8,
-            mem=20
+    def register_categories(self) -> None:
+        shutil.copy(
+            self.prev_corpus_step.categories_path,
+            self.categories_path
         )
 
-    def _cmd_vars_str(self) -> str:
-        return """
-SRC="{src_lang}"
-TGT="{tgt_lang}"
+    def get_command_targets(self) -> List[Path]:
+        file_list = []
+        for dset in self.dataset_list:
+            src_filename = '{}.{}.gz'.format(dset, self.src_lang)
+            if self.prev_corpus_step.is_sharded:
+                shard_stems = [
+                    '.'.join(shard.stem.split('.')[:-1] + [self.tgt_lang])
+                    for shard in self.prev_corpus_step.get_shard_files(src_filename)
+                ]
+                file_list.extend([
+                    Path(self.shard_dir, stem + '.gz')
+                    for stem in shard_stems
+                ])
+            else:
+                file_list.append(self.output_dir, '')
 
-INPUT_DIR="{indir}"
-OUTPUT_DIR="{outdir}"
-LOG_DIR="{logdir}"
+    def infer_input(self, target_file: Path) -> Path:
+        filename = target_file.stem + target_file.suffix
+        if self.prev_corpus_step.is_sharded:
+            return Path(self.prev_corpus_step.shard_dir, filename)
+        return Path(self.prev_corpus_step.output_dir, filename)
 
-MARIAN_DIR="{marian_dir}"
-CONFIG_FILE="{marian_config}"
-        """.format(
-            src_lang=self.src_lang,
-            tgt_lang=self.tgt_lang,
-            indir=self.input_dir,
-            outdir=self.output_dir,
-            logdir=self.log_dir,
-            marian_dir=self.marian_dir,
-            marian_config=self.model_config_path,
+
+    def get_command_targets(self) -> List[Path]:
+        if self.is_sharded:
+            [
+                Path(self.shard_dir, shard_filename)
+                for dset in self.dataset_list
+                for shard_filename in self.get_shard_list[dset]
+            ]
+        return [
+            Path(self.output_dir, '{}.{}.gz'.format(dset, self.tgt_lang))
+            for dset in self.dataset_list
+        ]
+
+    def command(self, target_file: Path) -> None:
+        env = os.environ()
+        n_cpus = env[RunnerResources.get_env_name('cpus')]
+        n_gpus = RunnerResources.n_gpus
+
+        # Hardlink source file
+        input_file = self.infer_input(target_file)
+
+        # Prepare the command
+        marian_path = Path(self.marian_dir, 'bin', 'marian-decoder')
+        cmd = [
+            str(marian_path),
+            '-c', str(self.model_config_path),
+            '-i', str(input_file),
+            '-o', '>(pigz -c > {})'.format(target_file),
+            '--log', '{}/{}.log'.format(self.log_dir, target_file.stem),
+            '-b', self.beam_size,
+        ]
+
+        # Execute the command
+        proc = subprocess.Popen(
+            cmd,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            env=env,
+            text=True
         )
-
-    def _cmd_body_str(self) -> str:
-        return """
-has_equal_num_lines {{
-    f_one=$1
-    f_two=$2
-
-    f_one_lines=$(pigz -dc $f_one | wc -l)
-    f_two_lines=$(pigz -dc $f_two | wc -l)
-    if [[ $f_in_lines -eq $f_out_lines ]]; then
-        return 0
-    else
-        return 1
-    fi
-}}
-
-compute_opt="--cpu-threads 1"
-[[ $SLURM_GPUS_PER_NODE -gt 0 ]] \\
-    && compute_opt="--devices $(seq 0 1 $(expr $SLURM_GPUS_PER_NODE - 1))"
-
-# TODO: parallelization + output merge
-
-# Translate every source file in the input directory
-for f_in in $INPUT_DIR/*$SRC.gz; do
-    f_name=$(basename $f_in)
-    f_out="$OUTPUT_DIR/${{$f_name/.$SRC/.$TGT}}"
-    if [[ -e $f_out ]]; then
-        if has_equal_num_lines $f_in $f_out; then
-            continue
-        else
-            echo "Number of lines does not match ($f_in; $f_out). Removing output." >&2
-            rm $f_out
-        fi
-    fi
-    $MARIAN_DIR/marian-decoder \\
-        -c $CONFIG_FILE \\
-        -i $f_in \\
-        -o >(pigz -c > $f_out) \\
-        --log $LOG_DIR/$f_name.log \\
-        -b 4 \\
-        $compute_opt
-
-    # Sanity check
-    if has_equal_num_lines $f_in $f_out; then
-        continue
-    else
-        echo "Number of lines does not match ($f_in; $f_out). Removing output." >&2
-        echo "Terminating..." >&2
-        exit 1
-    fi
-
-    ln $f_in $OUTPUT_DIR/$fname
-done
-
-# TODO: script resubmission loop?
-        """
+        output, errors = proc.communicate()
+        if proc.returncode or errors:
+            raise Exception(
+                'Process {} exited with non-zero value.'.format(proc.pid)
+            )

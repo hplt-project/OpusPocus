@@ -4,6 +4,13 @@ import subprocess
 import sys
 
 
+def raise_nonzero_error(arguments, pid):
+    raise subprocess.SubprocessError(
+        'Process {} exited with a non-zero value. Wrapper arguments: {}\n'
+        .format(pid, arguments)
+    )
+
+
 def main(argv):
     """Wrapper for executing Bash commands that have process dependencies."""
     cmd_path = argv[1]
@@ -12,11 +19,11 @@ def main(argv):
         proc_ids = [int(proc) for proc in argv[2].split(' ')]
 
     procs = []
-    try:
-        for pid in proc_ids:
+    for pid in proc_ids:
+        try:
             procs.append(psutil.Process(pid))
-    except psutil.NoSuchProcess:
-        print('Process {} does not exist. Ignoring', file=sys.stderr)
+        except psutil.NoSuchProcess:
+            print('Process {} does not exist. Ignoring...', file=sys.stderr)
 
     gone, alive = psutil.wait_procs(procs)
     print(
@@ -25,14 +32,12 @@ def main(argv):
     )
     for proc in gone:
         if proc.returncode is not None and proc.returncode > 0:
-            print('Process {} exited with non-zero value.'.format(proc))
-            sys.exit(1)
+            raise_nonzero_error(argv[1:], proc.pid)
 
-    cmd = ['bash', cmd_path]
-    if len(argv) > 3:
-        cmd += [argv[3]]
-    proc = subprocess.Popen(cmd, shell=False)
-    proc.communicate()
+    proc = subprocess.Popen([cmd_path], shell=False)
+    rc = proc.wait()
+    if rc:
+        raise_nonzero_error(argv[1:], proc.pid)
 
 
 if __name__ == '__main__':

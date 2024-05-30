@@ -1,11 +1,15 @@
 from typing import List, Optional
 
-import os
-import glob
+
+import gzip
 import logging
+import shutil
+import subprocess
+from argparse import Namespace
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
+from opuspocus.tools.decontaminate import main as decontaminate_main
 
 
 logger = logging.getLogger(__name__)
@@ -19,14 +23,12 @@ class DecontaminateCorpusStep(CorpusStep):
         step_label: str,
         pipeline_dir: Path,
         previous_corpus_step: CorpusStep,
-        python_venv_dir: Path,
-        valid_data_dirs: List[Path],
         src_lang: str,
-        tgt_lang: str = None,
+        tgt_lang: Optional[str] = None,
+        valid_data_step: Optional[CorpusStep] = None,
+        test_data_step: Optional[CorpusStep] = None,
         output_shard_size: Optional[int] = None,
-        decontaminate_path: Path = Path('scripts/decontaminate.py'),
         min_length: int = 25,
-        gzipped: bool = True,
     ):
         super().__init__(
             step=step,
@@ -35,146 +37,72 @@ class DecontaminateCorpusStep(CorpusStep):
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
+            valid_data_step=valid_data_step,
+            test_data_step=test_data_step,
             output_shard_size=output_shard_size,
-            python_venv_dir=python_venv_dir,
-            valid_data_dirs=valid_data_dirs,
-            decontaminate_path=decontaminate_path,
             min_length=min_length,
-            gzipped=gzipped,
         )
-        for valid_dir in self.valid_data_dirs:
-            if not valid_dir.exists():
-                raise FileNotFoundError(
-                    'Directory {} does not exist'.format(valid_dir)
-                )
-
-        if not self.decontaminate_path.exists():
-            raise FileNotFoundError(
-                'File {} does not exist'.format(self.decontaminate_path)
+        if self.valid_step is None and self.test_step is None:
+            logger.warn(
+                'No valid_data_step or test_data_step was provided. '
+                'Step {} will do notning when executed'.format(self.step_label)
             )
 
+    @property
+    def valid_step(self) -> CorpusStep:
+        return self.dependencies['valid_data_step']
+
+    @property
+    def test_step(self) -> CorpusStep:
+        return self.dependencies['test_data_step']
+
+    def get_valid_test_corpora(self, language: str) -> List[Path]:
+        valid_corpora = []
+        test_corpora = []
+        if self.valid_step is not None:
+            valid_corpora = [
+                Path(
+                    self.valid_step.output_dir,
+                    '{}.{}.gz'.format(dset, language)
+                )
+                for dset in self.valid_step.dataset_list
+            ]
+        if self.test_step is not None:
+            test_corpora = [
+                Path(
+                    self.test_step.output_dir,
+                    '{}.{}.gz'.format(dset, language)
+                )
+                for dset in self.test_step.dataset_list
+            ]
+        return valid_corpora + test_corpora
+
     def register_categories(self) -> None:
-        import shutil
         shutil.copy(
             self.prev_corpus_step.categories_path,
             self.categories_path
         )
 
-    def _cmd_header_str(self) -> str:
-        return super()._cmd_header_str(
-            n_cpus=8,
-            mem=5,
-        )
+    def get_command_targets(self) -> List[Path]:
+        return [
+            Path(self.output_dir, '{}.{}.gz'.format(dset, self.src_lang))
+            for dset in self.dataset_list
+        ]
 
-    def _cmd_vars_str(self) -> str:
-        tgt_def_str = ''
-        if self.tgt_lang is not None:
-            tgt_def_str = 'TGT="{}"'.format(self.tgt_lang)
-
-        return """export PATH="{python_venv}/bin:$PATH"
-
-SRC="{src_lang}"
-{tgt_def_str}
-
-INPUT_DIR="{indir}"
-OUTPUT_DIR="{outdir}"
-VALID_DIRS="{valdirs}"
-LOG_DIR="{logdir}"
-
-MIN_LENGTH="{min_length}"
-DECONTAMINATE="{decontaminate}"
-        """.format(
-            python_venv=self.python_venv_dir,
-            src_lang=self.src_lang,
-            tgt_def_str=tgt_def_str,
-            indir=self.input_dir,
-            outdir=self.output_dir,
-            valdirs=' '.join([str(v_dir) for v_dir in self.valid_data_dirs]),
-            logdir=self.log_dir,
-            min_length=self.min_length,
-            decontaminate=self.decontaminate_path,
-        )
-
-    def _cmd_body_str(self) -> str:
-        # TODO: parallelize (using hyperqueue)
-
-        # List the validation datasets
-        valid_data_str = """valid_dsets=""
-    for valid_dir in $VALID_DIRS; do
-        valid_dsets="$valid_dir/*$SRC $valid_dsets"
-    done
-"""
-        if self.tgt_lang is not None:
-            valid_data_str = """valid_dsets=""
-    for valid_dir in $VALID_DIRS; do
-        for dset in $valid_dir/*$SRC; do
-            path_prefix=${dset%%.$SRC}
-            [[ -e $path_prefix.$SRC-$TGT ]] \\
-                || paste $path_prefix.$SRC $path_prefix.$TGT \\
-                    | tr -d $'\\r' \\
-                    > $path_prefix.$SRC-$TGT
-            valid_dsets="$path_prefix.$SRC-$TGT $valid_dsets"
-        done
-    done
-"""
-        # decontaminate.py input preprocessing
-        decontaminate_in_str = 'zcat $INPUT_DIR/$dataset.$SRC.gz'
-        if self.tgt_lang is not None:
-            decontaminate_in_str = """paste \\
-        <(zcat $INPUT_DIR/$dataset.$SRC.gz) \\
-        <(zcat $INPUT_DIR/$dataset.$TGT.gz)"""
-
-        # decontaminate.py output postprocessing
-        decontaminate_out_str = """>( \\
-        tee \\
-            >(cut -f1 | gzip -c > $OUTPUT_DIR/$dataset.$SRC.gz) \\
-            > /dev/null \\
-    )"""
-        if self.tgt_lang is not None:
-            decontaminate_out_str = """>( \\
-        tee \\
-            >(cut -f1 | gzip -c > $OUTPUT_DIR/$dataset.$SRC.gz) \\
-            >(cut -f2 | gzip -c > $OUTPUT_DIR/$dataset.$TGT.gz) \\
-            > /dev/null \\
-    )"""
-
-        # decontaminate.py --mono option
-        mono_opt_str = ''
-        if self.tgt_lang is None:
-            mono_opt_str = '--mono'
-
-        # Sanity check of the decontaminate.py output
-        sanity_check_str = ''
-        if self.tgt_lang is not None:
-            sanity_check_str = """# Sanity Check
-    src_lines=$(zcat $OUTPUT_DIR/$dataset.$SRC.gz | wc -l)
-    tgt_lines=$(zcat $OUTPUT_DIR/$dataset.$TGT.gz | wc -l)
-    [[ $src_lines -ne $tgt_lines ]] \\
-        && echo "Lines in the output files do not match ($src_lines != $tgt_lines) >&2" \\
-        && exit 1
-"""
-
-        # Compose the body_cmd string
-        return """
-for dataset in $INPUT_DIR/*.$SRC.gz; do
-    dataset=$(basename $dataset)
-    dataset=${{dataset%%.$SRC.gz}}
-
-    echo "Decontaminating $dataset..." >&2
-    {valid_data_str}
-    {decontaminate_in_str} \\
-    | python $DECONTAMINATE {mono_opt_str} \\
-        --min-length $MIN_LENGTH \\
-        ${{valid_dsets%% }} \\
-    > {decontaminate_out_str} \\
-    2> >(tee $LOG_DIR/decontaminate.$dataset.log >&2)
-
-    {sanity_check_str}
-done
-        """.format(
-            valid_data_str=valid_data_str,
-            decontaminate_in_str=decontaminate_in_str,
-            decontaminate_out_str=decontaminate_out_str,
-            mono_opt_str=mono_opt_str,
-            sanity_check_str=sanity_check_str,
-        )
+    def command(self, target_file: Path) -> None:
+        dset_name = '.'.join(target_file.stem.split('.')[:-1])
+        for lang in self.languages:
+            args = Namespace(**{
+                'mono': True,
+                'input_file': '{}/{}.{}.gz'.format(
+                    self.input_dir, dset_name, lang
+                ),
+                'output_file': '{}/{}.{}.gz'.format(
+                    self.output_dir,dset_name, lang
+                ),
+                'min_length': self.min_length,
+                'test_files': ','.join([
+                    str(f) for f in self.get_valid_test_corpora(lang)
+                ])
+            })
+            decontaminate_main(args)
