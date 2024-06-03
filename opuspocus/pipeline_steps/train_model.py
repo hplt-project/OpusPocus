@@ -157,7 +157,6 @@ class TrainModelStep(OpusPocusStep):
             '--log-level', 'info',
             '--log', '{}/train.log'.format(self.log_dir),
             '--valid-log', '{}/valid.log'.format(self.log_dir),
-            '--cpu-threads', str(n_cpus),
         ]
 
         # Training data
@@ -188,6 +187,8 @@ class TrainModelStep(OpusPocusStep):
         # GPU option
         if n_gpus:
             cmd += ['--devices'] + [str(i) for i in range(n_gpus)]
+        else:
+            cmd += ['--cpu-threads', str(n_cpus)]
 
         # Initial checkpoint option
         if self.model_init_path is not None:
