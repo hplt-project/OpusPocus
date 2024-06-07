@@ -62,6 +62,14 @@ def main_traceback(args, *_):
     pipeline.traceback(args.targets, args.full_trace)
 
 
+def main_status(args, *_):
+    check_pipeline_dir_exists(args.pipeline_dir)
+
+    pipeline = pipelines.load_pipeline(args)
+    steps = pipeline.list_steps()
+    pipeline.status(steps)
+
+
 def main_stop(args, *_):
     """TODO"""
     check_pipeline_dir_exists(args.pipeline_dir)
@@ -70,7 +78,7 @@ def main_stop(args, *_):
     pipeline = pipelines.load_pipeline(args)
 
     # Initialize the runner
-    runner = runners.build_runner(args.runner, args)
+    runner = runners.load_runner(args.pipeline_dir)
 
     # Stop the pipeline execution
     runner.stop_pipeline(pipeline)
@@ -129,6 +137,11 @@ def create_args_parser():
         choices=runners.RUNNER_REGISTRY.keys(),
         help='Pipeline step cancellation command.'
     )
+    parser_stop.set_defaults(fn=main_stop)
+
+    # Pipeline Status
+    parser_status = subparsers.add_parser('status')
+    parser_status.set_defaults(fn=main_status)
 
     # Pipeline Traceback
     parser_traceback = subparsers.add_parser('traceback')

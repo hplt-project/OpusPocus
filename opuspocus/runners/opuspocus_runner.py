@@ -36,6 +36,7 @@ class OpusPocusRunner(object):
     """Base class for OpusPocus runners."""
     parameter_file = 'runner.parameters'
     info_file = 'runner.task_info'
+    submitted_tasks = []
 
     @staticmethod
     def add_args(parser):
@@ -154,6 +155,7 @@ class OpusPocusRunner(object):
     ) -> None:
         """TODO"""
         self.save_parameters()
+        self.submitted_tasks = []
         for step in pipeline.get_targets(targets):
             self.submit_step(step)
         self.run()
@@ -164,7 +166,7 @@ class OpusPocusRunner(object):
 
     def submit_step(self, step: OpusPocusStep) -> Optional[TaskInfo]:
         """TODO"""
-        if step.is_running_or_submitted():
+        if step.is_running_or_submitted:
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
@@ -180,8 +182,11 @@ class OpusPocusRunner(object):
             )
             return None
         elif step.has_state(StepState.FAILED):
-            # TODO: optional resubmission (?)
-            return self.resubmit_step(step)
+            step.clean_directories()
+            logger.info(
+                'Step {} has previously failed. '
+                'Removing previous outputs and resubmitting...'
+            )
         elif not step.has_state(StepState.INITED):
             raise ValueError(
                 'Cannot run step {}. Step is not in INITED state.'
@@ -206,8 +211,8 @@ class OpusPocusRunner(object):
             target_file=None,
             dependencies=[dep['main_task'] for dep in dep_task_info_list],
             step_resources=self.get_resources(step),
-            stdout=open(Path(step.log_dir, '{}.out'.format(self.runner)), 'w'),
-            stderr=open(Path(step.log_dir, '{}.err'.format(self.runner)), 'w'),
+            stdout_file=Path(step.log_dir, '{}.out'.format(self.runner)),
+            stderr_file=Path(step.log_dir, '{}.err'.format(self.runner)),
         )
         task_info = TaskInfo(
             runner=self.runner,
@@ -217,6 +222,7 @@ class OpusPocusRunner(object):
         self.save_task_info(step, task_info)
         step.set_state(StepState.SUBMITTED)
 
+        self.submitted_tasks.append(task_info)
         return task_info
 
     def resubmit_step(self, step: OpusPocusStep) -> Optional[TaskId]:
@@ -242,7 +248,10 @@ class OpusPocusRunner(object):
                 self.cancel(task_id)
 
         # Submit the job again
-        return self.submit_step(step)
+        task_id = self.submit_step(step)
+        self.update_dependants(task_id)
+
+        return task_id
 
     def submit_task(
         self,
@@ -250,10 +259,13 @@ class OpusPocusRunner(object):
         target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None,
-        stdout=sys.stdout,
-        stderr=sys.stderr
+        stdout_file: Optional[Path] = None,
+        stderr_file: Optional[Path] = None,
     ) -> TaskId:
         """TODO"""
+        raise NotImplementedError()
+
+    def update_dependants(self, task_id: TaskId) -> None:
         raise NotImplementedError()
 
     def cancel_task(task_id: TaskId) -> None:

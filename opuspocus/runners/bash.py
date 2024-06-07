@@ -1,12 +1,11 @@
 from typing import Any, Dict, List, Optional
 
-import argparse
 import logging
 import subprocess
 import sys
+import time
 from pathlib import Path
 from psutil import Process, wait_procs
-import time
 
 from opuspocus.runners import (
     OpusPocusRunner,
@@ -52,8 +51,8 @@ class BashRunner(OpusPocusRunner):
         target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None,
-        stdout=sys.stdout,
-        stderr=sys.stderr
+        stdout_file: Optional[Path] = None,
+        stderr_file: Optional[Path] = None
     ) -> TaskId:
         """TODO"""
         dependencies_str = ''
@@ -63,11 +62,17 @@ class BashRunner(OpusPocusRunner):
             )
         env_dict = step_resources.get_env_dict()
 
+        stdout = sys.stdout
+        if stdout_file is not None:
+            stdout = open(stdout_file, 'w')
+        stderr = sys.stderr
+        if stderr_file is not None:
+            stderr = open(stderr_file, 'w')
+
         # Subtasks do not have dependencies, no need for the wrapper
         if target_file is not None:
             proc = subprocess.Popen(
                 [str(cmd_path), str(target_file)],
-                start_new_session=False,
                 stdout=stdout,
                 stderr=stderr,
                 shell=False,
@@ -77,6 +82,11 @@ class BashRunner(OpusPocusRunner):
                 logger.debug('Waiting for process to finish...')
                 subprocess_wait(proc)
         else:
+            if not self.run_subtasks_in_parallel:
+                dependencies_str = ' '.join(
+                    str(task['main_task']['id'])
+                    for task in self.submitted_tasks
+                )
             proc = subprocess.Popen(
                 [
                     self.submit_wrapper,
@@ -92,25 +102,17 @@ class BashRunner(OpusPocusRunner):
 
         return TaskId(filename=str(target_file), id=proc.pid)
 
-    def get_process(self, task_id: TaskId) -> Optional[Process]:
-        """TODO"""
-        try:
-            proc = Process(task_id['id'])
-        except:
-            logger.debug(
-                'Process with pid={} does not exist. Ignoring...'
-                .format(task_id)
-            )
-            return None
-        return proc
+    def update_dependants(self, task_id: TaskId) -> None:
+        return NotImplementedError()
 
     def cancel_task(self, task_id: TaskId) -> None:
         """TODO"""
-        proc = self.get_process(task_id['id'])
-        p.terminate()
+        proc = self._get_process(task_id['id'])
+        if proc is not None:
+            proc.terminate()
 
     def wait_for_task(self, task_id: TaskId) -> None:
-        proc = self.get_process(task_id)
+        proc = self._get_process(task_id)
         if proc is None:
             return
         gone, _ = wait_procs([proc])
@@ -123,5 +125,17 @@ class BashRunner(OpusPocusRunner):
 
     def is_task_running(self, task_id: TaskId) -> bool:
         """TODO"""
-        proc = self.get_process(task_id)
+        proc = self._get_process(task_id)
         return (proc is not None)
+
+    def _get_process(self, task_id: TaskId) -> Optional[Process]:
+        """TODO"""
+        try:
+            proc = Process(task_id['id'])
+        except:
+            logger.debug(
+                'Process with pid={} does not exist. Ignoring...'
+                .format(task_id)
+            )
+            return None
+        return proc

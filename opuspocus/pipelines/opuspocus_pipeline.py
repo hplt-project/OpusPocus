@@ -58,6 +58,10 @@ class OpusPocusPipeline(object):
     def pipeline_dir(self) -> Path:
         return self.pipeline_config.pipeline.pipeline_dir
 
+    @property
+    def steps(self) -> List[OpusPocusStep]:
+        return self.pipeline_graph.values()
+
     @classmethod
     def build_pipeline(
         cls,
@@ -131,7 +135,12 @@ class OpusPocusPipeline(object):
             if 'pipeline_dir' not in pipeline_steps_configs[step_label]:
                 step_args['pipeline_dir'] = pipeline_dir
 
-            pipeline_steps[step_label] = build_step(**step_args)
+            try:
+                pipeline_steps[step_label] = build_step(**step_args)
+            except Exception as e:
+                print('Step parameters:\n{}'.format(step_args))
+                raise e
+
             return pipeline_steps[step_label]
 
         # Create pipeline step objects
@@ -152,6 +161,10 @@ class OpusPocusPipeline(object):
             v.init_step()
         self.save_pipeline()
 
+    def status(self, steps: List[OpusPocusStep]) -> None:
+        for s in steps:
+            print('{}: {}'.format(s.step_label, str(s.state)))
+
     def traceback(
         self,
         targets: List[str] = None,
@@ -163,6 +176,11 @@ class OpusPocusPipeline(object):
             print('Target {}: {}'.format(i, v.step_label))
             v.traceback_step(level=0, full=full)
             print('')
+
+    def list_steps(self) -> List[OpusPocusStep]:
+        return [
+            s for s in self.pipeline_graph.values()
+        ]
 
     def get_targets(self, targets: List[str] = None):
         if targets is not None:

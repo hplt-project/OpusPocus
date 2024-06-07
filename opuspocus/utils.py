@@ -209,14 +209,10 @@ class RunnerResources(object):
         cpus: int = 1,
         gpus: int = 0,
         mem: str = '1g',
-        partition: Optional[str] = None,
-        account: Optional[str] = None,
     ):
         self.cpus = cpus
         self.gpus = gpus
         self.mem = mem
-        self.partition = partition
-        self.account = account
 
     @classmethod
     def list_parameters(cls) -> List[str]:

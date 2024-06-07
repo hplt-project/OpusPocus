@@ -1,16 +1,23 @@
 from typing import Any, Dict, List, Optional
 
-from argparse import Namespace
+import logging
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 from opuspocus.runners import (
     OpusPocusRunner,
     TaskId,
+    TaskInfo,
     register_runner
 )
-from opuspocus.utils import RunnerResources
+from opuspocus.utils import RunnerResources, subprocess_wait
 
-SLEEP_TIME = 0.1
+logger = logging.getLogger(__name__)
+
+SLEEP_TIME = 0.5
+WAIT_TIME = 30
 
 
 @register_runner('slurm')
@@ -20,22 +27,33 @@ class SlurmRunner(OpusPocusRunner):
     @staticmethod
     def add_args(parser):
         """Add runner-specific arguments to the parser."""
-        pass
+        OpusPocusRunner.add_args(parser)
+        parser.add_argument(
+            '--slurm_other_options', type=str, default=None,
+            help='TODO'
+        )
 
     def __init__(
         self,
         runner: str,
         pipeline_dir: Path,
-        args: Namespace,
+        slurm_other_options: str,
     ):
-        super().__init__(runner, args)
+        super().__init__(
+            runner=runner,
+            pipeline_dir=pipeline_dir,
+            slurm_other_options=slurm_other_options
+        )
 
-    def submit(
+    def submit_task(
+        self,
         cmd_path: Path,
-        file_list: Optional[List[str]] = None,
+        target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskId]] = None,
-        step_resources: Optional[RunnerResources] = None
-    ) -> List[TaskId]:
+        step_resources: Optional[RunnerResources] = None,
+        stdout_file: Optional[Path] = None,
+        stderr_file: Optional[Path] = None,
+    ) -> TaskId:
         dep_jids = []
         if dependencies:
             dep_jids = [dep['jid'] for dep in dependencies]
@@ -49,43 +67,67 @@ class SlurmRunner(OpusPocusRunner):
                 ','.join(['afterok:{}'.format(dep) for dep in dep_jids])
             )
 
-        cmd += self.convert_resources(step_resources)
-        cmd += self.add_environment_variables(resources)
+        cmd += self._convert_resources(step_resources)
+        cmd += self._add_environment_variables(resources)
 
-        cmd.append(str(cmd_path))
-        if file_list is not None:
-            new_dependencies = []
-            for f in file_list:
-                proc = subprocess.Popen(
-                    cmd + [f],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=False
-                )
-                new_dependencies.append(
-                    { 'jid': int(proc.stdout.readline()) }
-                )
-                # small delay to avoid overwhelming the scheduler
-                sys.sleep(SLEEP_TIME)
-            return new_dependencies
-
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=False
+        jobname = '{}.{}.{}'.format(
+            runner, pipeline_dir.stem + pipeline_dir.suffix, target_file.stem
         )
-        return [{'jid': int(proc.stdout.readline())}]
+        cmd += ['--jobname', jobname]
+        cmd += ['--signal', 'TERM@10:00']  # send SIGTERM 10m before time-limit
 
-    def update_dependants(self, task_id):
+
+        if stdout_file is not None:
+            cmd += ['-o', stdout_file]
+        if stderr_file is not None:
+            cmd += ['-e', stderr_file]
+        if self.slurm_other_options is not None:
+            cmd += [self.slurm_other_options]
+
+        if target_file is not None:
+            cmd += [str(cmd_path), str(target_file)]
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False
+            )
+        else:
+            cmd += [str(cmd_path)]
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False,
+            )
+        time.sleep(SLEEP_TIME)
+        jid = int(proc.stdout.readline())
+        return TaskId(filename=str(target_file), id=jid)
+
+    def update_dependants(self, task_id: TaskId) -> None:
         raise NotImplementedError()
 
-    def cancel(task_id: TaskId) -> None:
-        proc = subprocess.Popen(
-            ['scancel', str(task_id['jid'])], shell=False
-        )
+    def cancel_task(self, task_id: TaskId) -> None:
+        """TODO"""
+        proc = subprocess.Popen(['scancel', str(task_id['id'])], shell=False)
+        rc = proc.wait()
+        if rc:
+            raise('Failed to cancel SLURM task {}'.format(task_id['id']))
 
-    def convert_resources(resources: RunnerResources) -> List[str]:
+    def wait_for_task(self, task_id: TaskId) -> None:
+        """TODO"""
+        while self.is_task_running(task_id):
+            sys.sleep(WAIT_TIME)
+
+    def is_task_running(self, task_id: TaskId) -> bool:
+        """TODO"""
+        proc = subprocess.Popen(['squeue', '-j', task_id['id']], shell=False)
+        rc = proc.wait()
+        if rc:
+            return False
+        return True
+
+    def _convert_resources(resources: RunnerResources) -> List[str]:
         converted = []
         if resources.cpus is not None:
             converted += ['--cpus', str(resources.cpus)]
@@ -96,20 +138,15 @@ class SlurmRunner(OpusPocusRunner):
         if resources.mem is not None:
             converted += ['--mem', str(resources.mem)]
 
-        if resources.account is not None:
-            converted += ['--account', str(resources.account)]
-
-        if resources.partition is not None:
-            converted += ['--partition', str(resources.partition)]
-
         return converted
 
-    def add_environment_variables(resources: RunnerResources) -> List[str]:
+    def _add_environment_variables(resources: RunnerResources) -> List[str]:
         # TODO finish this
-        pass
-
-    def task_id_to_string(self, task_id: TaskId) -> str:
-        return str(task_id['jid'])
-
-    def string_to_task_id(self, id_str: str) -> TaskId:
-        return {'jid': int(id_str)}
+        return [
+            '--export={}'.format(
+                ','.join([
+                    '{}=\'{}\''.format(k, str(v))
+                    for k, v in resources.get_env_dict().items()
+                ])
+            )
+        ]
