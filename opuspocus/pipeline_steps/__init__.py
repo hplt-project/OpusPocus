@@ -32,10 +32,10 @@ def load_step(step_label: str, pipeline_dir: Path):
     """Load an existing (initialized) pipeline step."""
     step_params = OpusPocusStep.load_parameters(step_label, pipeline_dir)
 
-    step = step_params['step']
-    del step_params['step']
-    del step_params['step_label']
-    del step_params['pipeline_dir']
+    step = step_params["step"]
+    del step_params["step"]
+    del step_params["step_label"]
+    del step_params["pipeline_dir"]
 
     step_deps = OpusPocusStep.load_dependencies(step_label, pipeline_dir)
     for k, v in step_deps.items():
@@ -70,18 +70,18 @@ def register_step(name: str):
 
     def register_step_cls(cls):
         if name in STEP_REGISTRY:
-            raise ValueError(
-                'Cannot register duplicate step ({})'.format(name)
-            )
+            raise ValueError("Cannot register duplicate step ({})".format(name))
         if not issubclass(cls, OpusPocusStep):
             raise ValueError(
-                'Pipeline step ({}: {}) must extend OpusPocusStep'
-                .format(name, cls.__name__)
+                "Pipeline step ({}: {}) must extend OpusPocusStep".format(
+                    name, cls.__name__
+                )
             )
         if cls.__name__ in STEP_CLASS_NAMES:
             raise ValueError(
-                'Cannot register pipeline step with duplicate class name ({})'
-                .format(cls.__name__)
+                "Cannot register pipeline step with duplicate class name ({})".format(
+                    cls.__name__
+                )
             )
         STEP_REGISTRY[name] = cls
         STEP_CLASS_NAMES.add(cls.__name__)
@@ -97,13 +97,10 @@ def get_step(name):
 steps_dir = Path(__file__).parents[0]
 for file in steps_dir.iterdir():
     if (
-        not file.stem.startswith('_')
-        and not file.stem.startswith('.')
-        and file.name.endswith('py')
+        not file.stem.startswith("_")
+        and not file.stem.startswith(".")
+        and file.name.endswith("py")
         and not file.is_dir()
     ):
-        step_label = (
-            file.stem if file.name.endswith('.py')
-            else file
-        )
-        importlib.import_module('opuspocus.pipeline_steps.' + str(step_label))
+        step_label = file.stem if file.name.endswith(".py") else file
+        importlib.import_module("opuspocus.pipeline_steps." + str(step_label))

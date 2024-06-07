@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 import logging
 from pathlib import Path
@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 def extend_dataset_name(dset_name, label):
-    return '{}.{}'.format(label, dset_name)
+    return "{}.{}".format(label, dset_name)
 
 
-@register_step('merge')
+@register_step("merge")
 class MergeStep(CorpusStep):
     """Merge two corpus steps into a single one.
 
@@ -46,12 +46,12 @@ class MergeStep(CorpusStep):
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             output_shard_size=output_shard_size,
-            suffix=suffix
+            suffix=suffix,
         )
 
     @property
     def other_corpus_step(self) -> CorpusStep:
-        return self.dependencies['other_corpus_step']
+        return self.dependencies["other_corpus_step"]
 
     def register_categories(self) -> None:
         categories_dict = self.prev_corpus_step.categories_dict
@@ -59,28 +59,29 @@ class MergeStep(CorpusStep):
         # Merge the category lists
         for cat in self.other_corpus_step.categories:
             if cat not in self.prev_corpus_step.categories:
-                categories_dict['categories'].append({ 'name': cat })
+                categories_dict["categories"].append({"name": cat})
 
         # Extend the filenames of the datasets in prev_corpus_step
-        categories_dict['mapping'] = {
-            cat : [
+        categories_dict["mapping"] = {
+            cat: [
                 extend_dataset_name(dset_name, self.previous_corpus_label)
                 for dset_name in dset_list
-            ] for cat, dset_list in categories_dict['mapping'].items()
+            ]
+            for cat, dset_list in categories_dict["mapping"].items()
         }
 
         # Add the datasets from the other_corpus_step
         for cat, dset_list in self.other_corpus_step.category_mapping.items():
-            if cat not in categories_dict['mapping']:
-                categories_dict['mapping'][cat] = []
+            if cat not in categories_dict["mapping"]:
+                categories_dict["mapping"][cat] = []
             for dset_name in dset_list:
-                categories_dict['mapping'][cat].append(
+                categories_dict["mapping"][cat].append(
                     extend_dataset_name(dset_name, self.other_corpus_label)
                 )
         self.save_categories_dict(categories_dict)
 
     def _cmd_vars_str(self) -> str:
-        tgt_def_str = ''
+        tgt_def_str = ""
         if self.tgt_lang is not None:
             tgt_def_str = 'TGT="{}"'.format(self.tgt_lang)
 
@@ -109,8 +110,8 @@ OTHER_DATASET_LIST="{other_dset_list}"
             logdir=self.log_dir,
             label=self.previous_corpus_label,
             other_label=self.other_corpus_label,
-            dset_list=' '.join(self.prev_corpus_step.dataset_list),
-            other_dset_list=' '.join(self.other_corpus_step.dataset_list)
+            dset_list=" ".join(self.prev_corpus_step.dataset_list),
+            other_dset_list=" ".join(self.other_corpus_step.dataset_list),
         )
 
     def _cmd_body_str(self) -> str:

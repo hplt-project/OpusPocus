@@ -9,39 +9,30 @@ import logging
 import os
 import yaml
 
-from opuspocus.utils import (
-    print_indented,
-    RunnerResources
-)
+from opuspocus.utils import print_indented, RunnerResources
 
 
 logger = logging.getLogger(__name__)
 
 
 class StepState(str, enum.Enum):
-    INIT_INCOMPLETE = 'INIT_INCOMPLETE'
-    FAILED = 'FAILED'
-    INITED = 'INITED'
-    SUBMITTED = 'SUBMITTED'
-    RUNNING = 'RUNNING'
-    DONE = 'DONE'
+    INIT_INCOMPLETE = "INIT_INCOMPLETE"
+    FAILED = "FAILED"
+    INITED = "INITED"
+    SUBMITTED = "SUBMITTED"
+    RUNNING = "RUNNING"
+    DONE = "DONE"
 
 
 class OpusPocusStep(object):
     """Base class for OpusPocus pipeline steps."""
 
-    command_file = 'step.command'
-    dependency_file = 'step.dependencies'
-    state_file = 'step.state'
-    parameter_file = 'step.parameters'
+    command_file = "step.command"
+    dependency_file = "step.dependencies"
+    state_file = "step.state"
+    parameter_file = "step.parameters"
 
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        **kwargs
-    ):
+    def __init__(self, step: str, step_label: str, pipeline_dir: Path, **kwargs):
         """Set the step parameters based on the parameters passed during
         step object initialization.
 
@@ -62,9 +53,9 @@ class OpusPocusStep(object):
 
         if pipeline_dir is None:
             raise ValueError(
-                '{}.pipeline_dir was not specified. Use --pipeline-dir '
-                'option to set global pipeline_dir or set the pipeline_dir '
-                'for the step using the config file.'.format(step_label)
+                "{}.pipeline_dir was not specified. Use --pipeline-dir "
+                "option to set global pipeline_dir or set the pipeline_dir "
+                "for the step using the config file.".format(step_label)
             )
 
         self.register_parameters(**kwargs)
@@ -72,12 +63,8 @@ class OpusPocusStep(object):
 
     @classmethod
     def build_step(
-        cls,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        **kwargs
-    ) -> 'OpusPocusStep':
+        cls, step: str, step_label: str, pipeline_dir: Path, **kwargs
+    ) -> "OpusPocusStep":
         """Build a specified step instance.
 
         Args:
@@ -93,14 +80,13 @@ class OpusPocusStep(object):
         except TypeError as err:
             sig = inspect.signature(cls.__init__)
             logger.error(
-                'Error occured while building step {} ({}).\n'
-                'Step Signature:\n{}\n'
-                .format(
-                    step_label, step,
-                    '\n'.join([
-                        '\t{}'.format(sig.parameters[x])
-                        for x in sig.parameters
-                    ])
+                "Error occured while building step {} ({}).\n"
+                "Step Signature:\n{}\n".format(
+                    step_label,
+                    step,
+                    "\n".join(
+                        ["\t{}".format(sig.parameters[x]) for x in sig.parameters]
+                    ),
                 )
             )
             raise err
@@ -120,9 +106,9 @@ class OpusPocusStep(object):
         """
         param_list = []
         for param in inspect.signature(cls.__init__).parameters:
-            if param == 'self':
+            if param == "self":
                 continue
-            if '_step' in param and exclude_dependencies:
+            if "_step" in param and exclude_dependencies:
                 continue
             param_list.append(param)
         return param_list
@@ -135,24 +121,18 @@ class OpusPocusStep(object):
     ) -> Dict[str, Any]:
         """Load the previously initialized step instance parameters."""
         params_path = Path(pipeline_dir, step_label, cls.parameter_file)
-        logger.debug('Loading step variables from {}'.format(params_path))
+        logger.debug("Loading step variables from {}".format(params_path))
 
-        params_dict = yaml.safe_load(open(params_path, 'r'))
+        params_dict = yaml.safe_load(open(params_path, "r"))
         # TODO: check for missing/unknown parameters
         return params_dict
 
-    def get_parameters_dict(
-        self,
-        exclude_dependencies: bool = True
-    ) -> Dict[str, Any]:
+    def get_parameters_dict(self, exclude_dependencies: bool = True) -> Dict[str, Any]:
         """Serialize the step parameters"""
         param_dict = {}
         for param in self.list_parameters(exclude_dependencies):
-            if '_step' in param:
-                if (
-                    param in self.dependencies
-                    and self.dependencies[param] is not None
-                ):
+            if "_step" in param:
+                if param in self.dependencies and self.dependencies[param] is not None:
                     p = self.dependencies[param].step_label
                 else:
                     p = None
@@ -169,7 +149,7 @@ class OpusPocusStep(object):
         """Save the step instance parameters."""
         yaml.dump(
             self.get_parameters_dict(),
-            open(Path(self.step_dir, self.parameter_file), 'w')
+            open(Path(self.step_dir, self.parameter_file), "w"),
         )
 
     def register_parameters(self, **kwargs) -> None:
@@ -187,11 +167,11 @@ class OpusPocusStep(object):
         of the step dependencies.
         """
         type_hints = get_type_hints(self.__init__)
-        logger.debug('Class type hints: {}'.format(type_hints))
+        logger.debug("Class type hints: {}".format(type_hints))
 
         self.dependencies = {}
         for param, val in kwargs.items():
-            if '_step' in param:
+            if "_step" in param:
                 self.dependencies[param] = val
             else:
                 if type_hints[param] == Path and val is not None:
@@ -201,27 +181,18 @@ class OpusPocusStep(object):
                 setattr(self, param, val)
 
     @classmethod
-    def load_dependencies(
-        cls,
-        step_label: str,
-        pipeline_dir: Path
-    ) -> Dict[str, str]:
+    def load_dependencies(cls, step_label: str, pipeline_dir: Path) -> Dict[str, str]:
         """Load step dependecies based on their unique step_label values."""
         deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
-        logger.debug('Loading dependencies from {}'.format(deps_path))
-        return yaml.safe_load(open(deps_path, 'r'))
+        logger.debug("Loading dependencies from {}".format(deps_path))
+        return yaml.safe_load(open(deps_path, "r"))
 
     def save_dependencies(self) -> None:
         """Save the step dependencies using their unique step_label values."""
         deps_dict = {
-            k: v.step_label
-            for k, v in self.dependencies.items()
-            if v is not None
+            k: v.step_label for k, v in self.dependencies.items() if v is not None
         }
-        yaml.dump(
-            deps_dict,
-            open(Path(self.step_dir, self.dependency_file), 'w')
-        )
+        yaml.dump(deps_dict, open(Path(self.step_dir, self.dependency_file), "w"))
 
     @property
     def step_dir(self) -> Path:
@@ -231,12 +202,12 @@ class OpusPocusStep(object):
     @property
     def output_dir(self) -> Path:
         """Location of the step output directory."""
-        return Path(self.step_dir, 'output')
+        return Path(self.step_dir, "output")
 
     @property
     def log_dir(self) -> Path:
         """Location of the step log directory."""
-        return Path(self.step_dir, 'logs')
+        return Path(self.step_dir, "logs")
 
     @property
     def tmp_dir(self) -> Path:
@@ -245,7 +216,7 @@ class OpusPocusStep(object):
         The contents of this directory get deleted after a successfull step
         completuion.
         """
-        return Path(self.step_dir, 'temp')
+        return Path(self.step_dir, "temp")
 
     def init_step(self) -> None:
         """Step initialization method.
@@ -261,11 +232,11 @@ class OpusPocusStep(object):
         self.state = self.load_state()
         if self.state is not None:
             if self.has_state(StepState.INITED):
-                logger.info('Step already initialized. Skipping...')
+                logger.info("Step already initialized. Skipping...")
                 return None
             else:
                 raise ValueError(
-                    'Trying to initialize step in a {} state.'.format(self.state)
+                    "Trying to initialize step in a {} state.".format(self.state)
                 )
         # Set state to incomplete until finished initializing.
         self.create_directories()
@@ -279,7 +250,7 @@ class OpusPocusStep(object):
         self.create_command()
 
         # initialize state
-        logger.info('[{}] Step Initialized.'.format(self.step_label))
+        logger.info("[{}] Step Initialized.".format(self.step_label))
         self.set_state(StepState.INITED)
 
     def init_dependencies(self) -> None:
@@ -301,11 +272,10 @@ class OpusPocusStep(object):
     def create_directories(self) -> None:
         """Create the internal step directory structure."""
         # create step dir
-        logger.debug('Creating step dir.')
+        logger.debug("Creating step dir.")
         if self.step_dir.is_dir():
             raise FileExistsError(
-                'Cannot create {}. Directory already exists.'
-                .format(self.step_dir)
+                "Cannot create {}. Directory already exists.".format(self.step_dir)
             )
         for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
@@ -318,10 +288,10 @@ class OpusPocusStep(object):
         """
         cmd_path = Path(self.step_dir, self.command_file)
         if cmd_path.exists():
-            raise FileExistsError('File {} already exists.'.format(cmd_path))
+            raise FileExistsError("File {} already exists.".format(cmd_path))
 
-        logger.debug('Creating step command.')
-        print(self.compose_command(), file=open(cmd_path, 'w'))
+        logger.debug("Creating step command.")
+        print(self.compose_command(), file=open(cmd_path, "w"))
         os.chmod(cmd_path, 0o755)
 
     def retry_step(self, args: Namespace):
@@ -340,14 +310,14 @@ class OpusPocusStep(object):
         methods.
         """
         assert level >= 0
-        print_indented('+ {}: {}'.format(self.step_label, self.state), level)
+        print_indented("+ {}: {}".format(self.step_label, self.state), level)
         if full:
             for param in self.list_parameters():
-                print_indented('|-- {} = {}'.format(param, getattr(self, param)), level)
+                print_indented("|-- {} = {}".format(param, getattr(self, param)), level)
         for name, dep in self.dependencies.items():
-            print_indented('└-+ {}'.format(name), level)
+            print_indented("└-+ {}".format(name), level)
             if dep is None:
-                print_indented('+ None', level + 1)
+                print_indented("+ None", level + 1)
                 continue
             dep.traceback_step(level + 1, full)
 
@@ -356,7 +326,7 @@ class OpusPocusStep(object):
         state_file = Path(self.step_dir, self.state_file)
         if state_file.exists():
             state = StepState(
-                json.load(open(Path(self.step_dir, self.state_file), 'r'))
+                json.load(open(Path(self.step_dir, self.state_file), "r"))
             )
             assert state in StepState
             return state
@@ -366,11 +336,11 @@ class OpusPocusStep(object):
         """Change the state of a step and save it into step.state file."""
         assert state in StepState
         if state == self.state:
-            logger.warn('The new step state is identical to the old one.')
+            logger.warn("The new step state is identical to the old one.")
 
-        logger.debug('Old state: {} -> New state: {}'.format(self.state, state))
+        logger.debug("Old state: {} -> New state: {}".format(self.state, state))
         self.state = state
-        json.dump(state, fp=open(Path(self.step_dir, self.state_file), 'w'))
+        json.dump(state, fp=open(Path(self.step_dir, self.state_file), "w"))
 
     def has_state(self, state: StepState) -> bool:
         """Check whether the step is in a specific state."""
@@ -379,10 +349,7 @@ class OpusPocusStep(object):
         return False
 
     def is_running_or_submitted(self) -> bool:
-        if (
-            self.has_state(StepState.RUNNING)
-            or self.has_state(StepState.SUBMITTED)
-        ):
+        if self.has_state(StepState.RUNNING) or self.has_state(StepState.SUBMITTED):
             return True
         return False
 
@@ -395,12 +362,9 @@ class OpusPocusStep(object):
         # TODO: more conditions?, e.g. empty file, timestamp comparison, etc.
         return True
 
-    def is_finished(
-        self,
-        runner: 'OpusPocusRunner'
-    ) -> bool:
+    def is_finished(self, runner: "OpusPocusRunner") -> bool:
         task_info = runner.load_task_info(self)
-        for task_id in task_info['subtasks']:
+        for task_id in task_info["subtasks"]:
             if self.task_is_running(task_id):
                 return False
 

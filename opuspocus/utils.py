@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 from argparse import Namespace
 from pathlib import Path
 
@@ -21,56 +21,54 @@ def get_open_fn(compressed: bool):
 
 
 def open_file(file: Path, mode: str):
-    assert mode == 'r' or mode == 'w'
-    open_fn = get_open_fn(compressed=(file.suffix == '.gz'))
-    return open_fn(file, f'{mode}t')
+    assert mode == "r" or mode == "w"
+    open_fn = get_open_fn(compressed=(file.suffix == ".gz"))
+    return open_fn(file, f"{mode}t")
 
 
 def decompress_file(input_file: Path, output_file: Path) -> None:
-    with gzip.open(input_file, 'rt') as in_fh:
-        with open(output_file, 'wt') as out_fh:
+    with gzip.open(input_file, "rt") as in_fh:
+        with open(output_file, "wt") as out_fh:
             for line in in_fh:
-                print(line, end='', file=out_fh)
+                print(line, end="", file=out_fh)
 
 
 def concat_files(
-    input_files: List[Path],
-    output_file: Path,
-    compressed: bool = True
+    input_files: List[Path], output_file: Path, compressed: bool = True
 ) -> None:
     open_fn = get_open_fn(compressed)
-    with open_fn(output_file, 'wt') as out_fh:
+    with open_fn(output_file, "wt") as out_fh:
         for input_file in input_files:
-            with open_fn(input_file, 'rt') as in_fh:
+            with open_fn(input_file, "rt") as in_fh:
                 for line in in_fh:
-                    print(line, end='', file=out_fh)
+                    print(line, end="", file=out_fh)
 
 
 def paste_files(
     input_files: List[Path],
     output_file: Path,
     compressed: bool = True,
-    delimiter: str = '\t'
+    delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
-    with open_fn(output_file, 'wt') as out_fh:
-        in_fhs = [open_fn(input_file, 'rt') for input_file in input_files]
+    with open_fn(output_file, "wt") as out_fh:
+        in_fhs = [open_fn(input_file, "rt") for input_file in input_files]
         for lines in zip(*in_fhs):
-            print(delimiter.join(lines), end='', file=out_fh)
+            print(delimiter.join(lines), end="", file=out_fh)
 
 
 def cut_file(
     input_file: Path,
     output_files: List[Path],
     compressed: bool = True,
-    delimiter: str = '\t'
+    delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
     cut_filestream(
-        input_stream=open_fn(input_file, 'rt'),
+        input_stream=open_fn(input_file, "rt"),
         output_files=output_files,
         compressed=compressed,
-        delimiter=delimiter
+        delimiter=delimiter,
     )
 
 
@@ -78,16 +76,17 @@ def cut_filestream(
     input_stream,
     output_files: List[Path],
     compressed: bool = True,
-    delimiter: str = '\t'
+    delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
-    out_fhs = [open_fn(output_file, 'wt') for output_file in output_files]
+    out_fhs = [open_fn(output_file, "wt") for output_file in output_files]
     for line in input_stream:
         for i, (l, fh) in enumerate(zip(line.split(delimiter), out_fhs)):
             if i == len(out_fhs) - 1:
-                print(l, end='', file=fh)
+                print(l, end="", file=fh)
             else:
                 print(l, file=fh)
+
 
 def file_to_shards(
     file_path: Path,
@@ -98,15 +97,15 @@ def file_to_shards(
     filename = file_path.stem + file_path.suffix
     shard_list = []
     out_fh = None
-    with open_file(file_path, 'r') as in_fh:
+    with open_file(file_path, "r") as in_fh:
         for i, line in enumerate(in_fh):
             if i % shard_size == 0:
                 n = i // shard_size
-                shard_filename = file_path.stem + f'.{n}' + file_path.suffix
+                shard_filename = file_path.stem + f".{n}" + file_path.suffix
                 shard_list.append(shard_filename)
                 shard_file_path = Path(shard_dir, shard_filename)
-                out_fh = open_file(shard_file_path, 'w')
-            print(line, end='', file=out_fh)
+                out_fh = open_file(shard_file_path, "w")
+            print(line, end="", file=out_fh)
     return shard_list
 
 
@@ -115,28 +114,24 @@ def shards_to_file(
     shard_dir: Path,
     file_path: Path,
 ) -> None:
-    with open_file(file_path, 'w') as out_fh:
+    with open_file(file_path, "w") as out_fh:
         for shard_filename in shard_list:
             shard_file_path = Path(shard_dir, shard_filename)
-            with open_file(shard_file_path, 'r') as in_fh:
+            with open_file(shard_file_path, "r") as in_fh:
                 for line in in_fh:
-                    print(line, end='', file=out_fh)
+                    print(line, end="", file=out_fh)
 
 
 def clean_dir(directory: Path) -> None:
     for file_path in directory.iterdir():
         try:
-            if (
-                file_path.is_file() or
-                file_path.is_symlink()
-            ):
+            if file_path.is_file() or file_path.is_symlink():
                 file_path.unlink()
             elif file_path.is_dir():
                 file_path.rmdir()
         except Exception as e:
             print(
-                'Failed to delete {}. Reason: {}'.format(file_path, e),
-                file=sys.stderr
+                "Failed to delete {}. Reason: {}".format(file_path, e), file=sys.stderr
             )
 
 
@@ -144,8 +139,7 @@ def subprocess_wait(proc: subprocess.Popen) -> None:
     rc = proc.wait()
     if rc:
         raise subprocess.SubprocessError(
-            'Process {} exited with non-zero value.'
-            .format(proc.pid)
+            "Process {} exited with non-zero value.".format(proc.pid)
         )
 
 
@@ -161,8 +155,8 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
     if config_path is None:
         return parser
     if not Path(config_path).exists():
-        raise ValueError('File {} not found.'.format(config_path))
-    config = yaml.safe_load(open(config_path, 'r'))
+        raise ValueError("File {} not found.".format(config_path))
+    config = yaml.safe_load(open(config_path, "r"))
 
     for v in parser._actions:
         if v.dest in config:
@@ -185,7 +179,7 @@ def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
 
 def print_indented(text, level=0):
     """A function wrapper for indented printing (of traceback)."""
-    indent = ' ' * (2 * level)
+    indent = " " * (2 * level)
     print(indent + text)
 
 
@@ -208,7 +202,7 @@ class RunnerResources(object):
         self,
         cpus: int = 1,
         gpus: int = 0,
-        mem: str = '1g',
+        mem: str = "1g",
     ):
         self.cpus = cpus
         self.gpus = gpus
@@ -218,11 +212,12 @@ class RunnerResources(object):
     def list_parameters(cls) -> List[str]:
         """TODO"""
         return [
-            param for param in inspect.signature(cls.__init__).parameters
-            if param != 'self'
+            param
+            for param in inspect.signature(cls.__init__).parameters
+            if param != "self"
         ]
 
-    def overwrite(self, resource_dict: Dict[str, Any]) -> 'RunnerResources':
+    def overwrite(self, resource_dict: Dict[str, Any]) -> "RunnerResources":
         params = {}
         for param in self.list_parameters():
             val = getattr(self, param)
@@ -236,22 +231,19 @@ class RunnerResources(object):
 
         TODO
         """
-        json_dict = {
-            param: getattr(self, param)
-            for param in self.list_parameters()
-        }
-        json.dump(json_dict, open(json_path, 'w'), indent=2)
+        json_dict = {param: getattr(self, param) for param in self.list_parameters()}
+        json.dump(json_dict, open(json_path, "w"), indent=2)
 
     @classmethod
-    def from_json(cls, json_path: Path) -> 'RunnerResources':
+    def from_json(cls, json_path: Path) -> "RunnerResources":
         """TODO"""
-        json_dict = json.load(open(json_path, 'r'))
+        json_dict = json.load(open(json_path, "r"))
 
         cls_params = cls.list_parameters()
         params = {}
         for k, v in json_dict.items():
             if k not in cls_params:
-                logger.warn('Resource {} not supported. Ignoring'.format(k))
+                logger.warn("Resource {} not supported. Ignoring".format(k))
             params[k] = v
         return RunnerResources(**params)
 
@@ -259,7 +251,7 @@ class RunnerResources(object):
     def get_env_name(cls, name) -> str:
         """TODO"""
         assert name in cls.list_parameters()
-        return 'OPUSPOCUS_{}'.format(name)
+        return "OPUSPOCUS_{}".format(name)
 
     def get_env_dict(self) -> Dict[str, str]:
         env_dict = {}

@@ -1,35 +1,25 @@
-from typing import Any, Dict, List, Optional, get_type_hints
+from typing import Dict, List, Optional
 from typing_extensions import TypedDict
 
-import gzip
 import json
 import logging
 import yaml
 from pathlib import Path
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
-from opuspocus.utils import (
-    file_to_shards,
-    open_file,
-    shards_to_file
-)
+from opuspocus.utils import file_to_shards, shards_to_file
 
 
 logger = logging.getLogger(__name__)
 
 # TODO: can we future-proof this against type changes in OpusCleaner?
-CategoryEntry = TypedDict(
-    'CategoryEntry',
-    {
-        'name': str
-    }
-)
+CategoryEntry = TypedDict("CategoryEntry", {"name": str})
 CategoriesDict = TypedDict(
-    'CategoriesDict',
+    "CategoriesDict",
     {
-        'categories': List[CategoryEntry],
-        'mapping': Dict[str, List[str]],
-    }
+        "categories": List[CategoryEntry],
+        "mapping": Dict[str, List[str]],
+    },
 )
 
 
@@ -45,9 +35,10 @@ class CorpusStep(OpusPocusStep):
     Moving this common functionality from the corpus processing steps into
     a single superclass reduces code duplicity.
     """
-    categories_file = 'categories.json'
-    shard_dirname = 'shards'
-    shard_index_file = 'shard_index.yml'
+
+    categories_file = "categories.json"
+    shard_dirname = "shards"
+    shard_index_file = "shard_index.yml"
 
     def __init__(
         self,
@@ -56,9 +47,9 @@ class CorpusStep(OpusPocusStep):
         pipeline_dir: Path,
         src_lang: str,
         tgt_lang: Optional[str] = None,
-        previous_corpus_step: Optional['CorpusStep'] = None,
+        previous_corpus_step: Optional["CorpusStep"] = None,
         output_shard_size: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         """Object initialization.
 
@@ -77,18 +68,17 @@ class CorpusStep(OpusPocusStep):
         )
         if self._inherits_sharded and output_shard_size is not None:
             logger.warn(
-                'Step {} always inherits sharding from its '
-                'previous_corpus_step ({}). Ignoring the output_shard_size '
-                'parameter...'
-                .format(self.step, self.prev_corpus_step.step_label)
+                "Step {} always inherits sharding from its "
+                "previous_corpus_step ({}). Ignoring the output_shard_size "
+                "parameter...".format(self.step, self.prev_corpus_step.step_label)
             )
             if self.prev_corpus_step.is_sharded:
                 self.output_shard_size = self.previous_corpus_step.shard_size
 
     @property
-    def prev_corpus_step(self) -> 'CorpusStep':
+    def prev_corpus_step(self) -> "CorpusStep":
         """Shortcut to the previous corpus step dependency."""
-        return self.dependencies['previous_corpus_step']
+        return self.dependencies["previous_corpus_step"]
 
     @property
     def input_dir(self) -> Optional[Path]:
@@ -133,19 +123,13 @@ class CorpusStep(OpusPocusStep):
         if not self.is_sharded:
             return []
         shard_dict = yaml.safe_load(
-            open(Path(self.shard_dir, self.shard_index_file), 'r')
+            open(Path(self.shard_dir, self.shard_index_file), "r")
         )
-        return {
-            k: [f for f in v]
-            for k, v in shard_dict.items()
-        }
+        return {k: [f for f in v] for k, v in shard_dict.items()}
 
     def save_shard_index(self, shard_dict: Dict[str, List[str]]) -> None:
         assert self.is_sharded
-        yaml.dump(
-            shard_dict,
-            open(Path(self.shard_dir, self.shard_index), 'w')
-        )
+        yaml.dump(shard_dict, open(Path(self.shard_dir, self.shard_index), "w"))
 
     def get_shard_list(self, dset_filename: str) -> List[Path]:
         return self.shard_map(dset_filename)
@@ -157,9 +141,7 @@ class CorpusStep(OpusPocusStep):
             shard_map = {}
             for dset in self.dataset_list:
                 for lang in self.languages:
-                    dset_path = Path(
-                        self.output_dir, '{}.{}.gz'.format(dset, lang)
-                    )
+                    dset_path = Path(self.output_dir, "{}.{}.gz".format(dset, lang))
                     dset_filename = dset_path.stem + dset_path.suffix
                     shard_map[dset_filename] = file_to_shards(
                         file_path=dset_path,
@@ -170,21 +152,20 @@ class CorpusStep(OpusPocusStep):
         elif self._inherits_sharded:
             Path(self.shard_dir, self.shard_index).hardlink_to(
                 Path(
-                    self.prev_corpus_step.shard_dir,
-                    self.prev_corpus_step.shard_index
+                    self.prev_corpus_step.shard_dir, self.prev_corpus_step.shard_index
                 ).resolve()
             )
             # Merge Shards
             for dset in self.dataset_list:
                 for lang in self.languages:
                     dset_file_path = Path(
-                        self.output_dir, '{}.{}.gz'.format(dset, lang)
+                        self.output_dir, "{}.{}.gz".format(dset, lang)
                     )
                     dset_filename = dset_file_path.stem + dset_file_path.suffix
                     shards_to_file(
                         self.get_shard_list(dset_filename),
                         self.shard_dir,
-                        dset_file_path
+                        dset_file_path,
                     )
 
     def create_directories(self) -> None:
@@ -214,7 +195,7 @@ class CorpusStep(OpusPocusStep):
         """Shortcut for the categories list in categories.json."""
         if self.categories_dict is None:
             return None
-        return [cat['name'] for cat in self.categories_dict['categories']]
+        return [cat["name"] for cat in self.categories_dict["categories"]]
 
     @property
     def category_mapping(self) -> Optional[Dict[str, List[str]]]:
@@ -223,28 +204,27 @@ class CorpusStep(OpusPocusStep):
         """
         if self.categories_dict is None:
             return None
-        return self.categories_dict['mapping']
+        return self.categories_dict["mapping"]
 
     @property
     def dataset_list(self) -> List[str]:
         """Return the list of step datasets (indicated by categories.json)."""
         return [
-            dset for dset_list in self.category_mapping.values()
-            for dset in dset_list
+            dset for dset_list in self.category_mapping.values() for dset in dset_list
         ]
 
     # Loading and Saving abstractions
     # (if we want to change the file format in the future)
     def load_categories_dict(self) -> CategoriesDict:
         """Load categories.json file."""
-        return json.load(open(self.categories_path, 'r'))
+        return json.load(open(self.categories_path, "r"))
 
     def save_categories_dict(self, categories_dict: CategoriesDict) -> None:
         """Save the categories dict into categories.json.
 
         TODO: add syntax checking for the categories_dict parameter
         """
-        json.dump(categories_dict, open(self.categories_path, 'w'), indent=2)
+        json.dump(categories_dict, open(self.categories_path, "w"), indent=2)
 
     def init_step(self) -> None:
         """Step initialization method.
@@ -256,11 +236,11 @@ class CorpusStep(OpusPocusStep):
         self.state = self.load_state()
         if self.state is not None:
             if self.has_state(StepState.INITED):
-                logger.info('Step already initialized. Skipping...')
+                logger.info("Step already initialized. Skipping...")
                 return
             else:
                 raise ValueError(
-                    'Trying to initialize step in a {} state.'.format(self.state)
+                    "Trying to initialize step in a {} state.".format(self.state)
                 )
         # Set state to incomplete until finished initializing.
         self.create_directories()
@@ -273,7 +253,7 @@ class CorpusStep(OpusPocusStep):
         self.create_command()
 
         # Initialize state
-        logger.info('[{}] Step Initialized.'.format(self.step_label))
+        logger.info("[{}] Step Initialized.".format(self.step_label))
         self.set_state(StepState.INITED)
 
     def init_categories_file(self) -> None:
@@ -281,9 +261,9 @@ class CorpusStep(OpusPocusStep):
         self.register_categories()
         if not self.categories_path.exists():
             raise FileNotFoundError(
-                '{} not found after initialization. Perhaps there is an issue '
-                'with the register_categories derived method implementation? '
-                ''.format(self.categories_file)
+                "{} not found after initialization. Perhaps there is an issue "
+                "with the register_categories derived method implementation? "
+                "".format(self.categories_file)
             )
 
     def register_categories(self) -> None:

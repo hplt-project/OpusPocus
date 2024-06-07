@@ -2,11 +2,10 @@
 import argparse
 import logging
 import sys
-from pathlib import Path
 
 from opuspocus import pipelines
 from opuspocus import runners
-from opuspocus.utils import load_config_defaults, update_args
+from opuspocus.utils import update_args
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +22,11 @@ def main_init(args, unparsed_args, parser):
     creating the respective directories and saving the step parameters.
     """
 
-    logger.info('Building pipeline...')
+    logger.info("Building pipeline...")
     pipeline = pipelines.build_pipeline(args)
-    logger.info('Initializing pipeline...')
+    logger.info("Initializing pipeline...")
     pipeline.init()
-    logger.info('Pipeline initialized successfully.')
+    logger.info("Pipeline initialized successfully.")
 
 
 def main_run(args, unparsed_args, parser):
@@ -86,73 +85,75 @@ def main_stop(args, *_):
 
 def main_list_commands(args, *_):
     print(
-       'Error: No sub-command specified.\n\n'
-       'Available commands:\n'
-       '  init      Initialize the pipeline.\n'
-       '  run       Execute the pipeline.\n'
-       '  traceback Print the pipeline graph.\n'
-       '', file=sys.stderr
+        "Error: No sub-command specified.\n\n"
+        "Available commands:\n"
+        "  init      Initialize the pipeline.\n"
+        "  run       Execute the pipeline.\n"
+        "  traceback Print the pipeline graph.\n"
+        "",
+        file=sys.stderr,
     )
     sys.exit(1)
 
 
 def create_args_parser():
-    parser = argparse.ArgumentParser(
-        description='OpusPocus NMT Pipeline Manager'
-    )
+    parser = argparse.ArgumentParser(description="OpusPocus NMT Pipeline Manager")
     parser.set_defaults(fn=main_list_commands)
     parser.add_argument(
-        '--log-level', choices=['info', 'debug'], default='info',
-        help='Indicates current logging level.'
+        "--log-level",
+        choices=["info", "debug"],
+        default="info",
+        help="Indicates current logging level.",
     )
-    subparsers = parser.add_subparsers(help='command', dest='command')
+    subparsers = parser.add_subparsers(help="command", dest="command")
 
     # TODO: more arguments (?)
 
     # Pipeline Init
-    parser_init = subparsers.add_parser('init')
+    parser_init = subparsers.add_parser("init")
     parser_init.add_argument(
-        '--pipeline-config', type=str, default=None,
-        help='Pipeline configuration YAML.'
+        "--pipeline-config", type=str, default=None, help="Pipeline configuration YAML."
     )
     parser_init.set_defaults(fn=main_init)
 
     # Pipeline Run
-    parser_run = subparsers.add_parser('run')
+    parser_run = subparsers.add_parser("run")
     parser_run.add_argument(
-        '--runner', type=str, required=True, metavar='RUNNER',
+        "--runner",
+        type=str,
+        required=True,
+        metavar="RUNNER",
         choices=runners.RUNNER_REGISTRY.keys(),
-        help='Pipeline step execution command.'
+        help="Pipeline step execution command.",
     )
-    parser_run.add_argument(
-        '--targets', type=str, nargs='+', default=None,
-        help='TODO'
-    )
+    parser_run.add_argument("--targets", type=str, nargs="+", default=None, help="TODO")
     parser_run.set_defaults(fn=main_run)
 
     # Pipeline Stop
-    parser_stop = subparsers.add_parser('stop')
+    parser_stop = subparsers.add_parser("stop")
     parser_stop.add_argument(
-        '--runner', type=str, required=True, metavar='RUNNER',
+        "--runner",
+        type=str,
+        required=True,
+        metavar="RUNNER",
         choices=runners.RUNNER_REGISTRY.keys(),
-        help='Pipeline step cancellation command.'
+        help="Pipeline step cancellation command.",
     )
     parser_stop.set_defaults(fn=main_stop)
 
     # Pipeline Status
-    parser_status = subparsers.add_parser('status')
+    parser_status = subparsers.add_parser("status")
     parser_status.set_defaults(fn=main_status)
 
     # Pipeline Traceback
-    parser_traceback = subparsers.add_parser('traceback')
+    parser_traceback = subparsers.add_parser("traceback")
     parser_traceback.add_argument(
-        '--full-trace', action='store_true',
-        help='Also print the parameters of the individual '
-             'pipeline steps.'
+        "--full-trace",
+        action="store_true",
+        help="Also print the parameters of the individual " "pipeline steps.",
     )
     parser_traceback.add_argument(
-        '--targets', type=str, nargs='+', default=None,
-        help='TODO'
+        "--targets", type=str, nargs="+", default=None, help="TODO"
     )
     parser_traceback.set_defaults(fn=main_traceback)
 
@@ -165,7 +166,7 @@ def parse_run_args(args, unparsed_args, parser):
     return update_args(args, additional_args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = create_args_parser()
 
     # Parse the main command
@@ -176,7 +177,7 @@ if __name__ == '__main__':
 
     # TODO: fix logging using a global logger
     logging.basicConfig(level=logging.INFO)
-    if args.log_level == 'debug':
+    if args.log_level == "debug":
         logging.basicConfig(level=logging.DEBUG)
 
     args.fn(args, unparsed_args, parser)

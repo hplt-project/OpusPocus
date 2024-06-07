@@ -13,14 +13,14 @@ from opuspocus.utils import (
     concat_files,
     decompress_file,
     RunnerResources,
-    subprocess_wait
+    subprocess_wait,
 )
 
 
 logger = logging.getLogger(__name__)
 
 
-@register_step('generate_vocab')
+@register_step("generate_vocab")
 class GenerateVocabStep(OpusPocusStep):
     def __init__(
         self,
@@ -53,13 +53,14 @@ class GenerateVocabStep(OpusPocusStep):
         for dset in self.datasets:
             if dset not in self.corpus_step.dataset_list:
                 raise ValueError(
-                    'Dataset {} is not registered in the {} categories.json'
-                    .format(dset, self.corpus_step.step_label)
+                    "Dataset {} is not registered in the {} categories.json".format(
+                        dset, self.corpus_step.step_label
+                    )
                 )
 
     @property
     def corpus_step(self) -> OpusPocusStep:
-        return self.dependencies['corpus_step']
+        return self.dependencies["corpus_step"]
 
     @property
     def input_dir(self) -> Path:
@@ -72,26 +73,24 @@ class GenerateVocabStep(OpusPocusStep):
     def get_command_targets(self) -> List[Path]:
         return [
             Path(
-                self.output_dir,
-                'model.{}-{}.spm'.format(self.src_lang, self.tgt_lang)
+                self.output_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang)
             )
         ]
 
     def command(self, target_file: Path) -> None:
-        spm_train_path = Path(self.marian_dir, 'bin', 'spm_train')
-        model_prefix = '{}/{}'.format(
-            self.output_dir, target_file.stem
-        )
-        n_cpus = int(os.environ[RunnerResources.get_env_name('cpus')])
+        spm_train_path = Path(self.marian_dir, "bin", "spm_train")
+        model_prefix = "{}/{}".format(self.output_dir, target_file.stem)
+        n_cpus = int(os.environ[RunnerResources.get_env_name("cpus")])
 
-        train_concat_gz = Path(self.tmp_dir, 'train_concat.gz')
+        train_concat_gz = Path(self.tmp_dir, "train_concat.gz")
         train_concat = Path(self.tmp_dir, train_concat_gz.stem)
         concat_files(
             [
-                Path(self.input_dir, '{}.{}.gz'.format(dset, lang))
-                for dset in self.datasets for lang in self.languages
+                Path(self.input_dir, "{}.{}.gz".format(dset, lang))
+                for dset in self.datasets
+                for lang in self.languages
             ],
-            train_concat_gz
+            train_concat_gz,
         )
         decompress_file(train_concat_gz, train_concat)
 
@@ -99,33 +98,29 @@ class GenerateVocabStep(OpusPocusStep):
         # TODO: make this Unix non-exclusive
         cmd = [
             str(spm_train_path),
-            '--random_seed={}'.format(self.seed),
-            '--bos_id=-1',
-            '--eos_id=0',
-            '--unk_id=1',
-            '--model_prefix={}'.format(model_prefix),
-            '--vocab_size={}'.format(self.vocab_size),
-            '--input={}'.format(str(train_concat)),
-            '--input_sentence_size=10000000',
-            '--shuffle_input_sentence=true',
-            '--train_extremely_large_corpus',
-            '--byte_fallback',
-            '--num_threads={}'.format(n_cpus)
+            "--random_seed={}".format(self.seed),
+            "--bos_id=-1",
+            "--eos_id=0",
+            "--unk_id=1",
+            "--model_prefix={}".format(model_prefix),
+            "--vocab_size={}".format(self.vocab_size),
+            "--input={}".format(str(train_concat)),
+            "--input_sentence_size=10000000",
+            "--shuffle_input_sentence=true",
+            "--train_extremely_large_corpus",
+            "--byte_fallback",
+            "--num_threads={}".format(n_cpus),
         ]
         proc = subprocess.Popen(
-            cmd,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            env=os.environ,
-            text=True
+            cmd, stdout=sys.stdout, stderr=sys.stderr, env=os.environ, text=True
         )
         subprocess_wait(proc)
 
         # Rename the output file
-        shutil.move(model_prefix + '.model', model_prefix + '.spm')
+        shutil.move(model_prefix + ".model", model_prefix + ".spm")
 
-        for suffix in ['spm', 'vocab']:
+        for suffix in ["spm", "vocab"]:
             Path(
                 self.output_dir,
-                'model.{}-{}.{}'.format(self.tgt_lang, self.src_lang, suffix)
+                "model.{}-{}.{}".format(self.tgt_lang, self.src_lang, suffix),
             ).symlink_to(Path(self.output_dir, target_file.stem + suffix))
