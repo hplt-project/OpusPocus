@@ -1,0 +1,147 @@
+global:
+  seed: 42
+  src_lang: en
+  tgt_lang: nn
+
+  preprocess_pipeline_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only
+
+  # we set the "raw" data dir to the output of the preprocess pipeline
+  raw_para_dir: ${.preprocess_pipeline_dir}/gather.${.src_lang}-${.tgt_lang}/output
+  raw_mono_src_dir: ${.preprocess_pipeline_dir}/gather.${.src_lang}/output
+  raw_mono_tgt_dir: ${.preprocess_pipeline_dir}/gather.${.tgt_lang}/output
+  valid_data_dir: ${.preprocess_pipeline_dir}/valid.${.src_lang}-${.tgt_lang}/output
+  test_data_dir: ${.preprocess_pipeline_dir}/test.${.src_lang}-${.tgt_lang}/output
+
+  valid_dataset_prefix: flores200.dev
+
+  decontaminate_min_length: 25
+
+  marian_dir: marian_dir 
+  marian_config: config/marian.train.teacher.base.yml
+
+  shard_size: 10000
+  vocab_size: 64000
+
+pipeline:
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/train_only.backtranslation
+  steps:
+    # Load Datasets
+    # TODO: implement a "step load" mechanism/step for proper source parameter inheritance
+    - step: raw
+      step_label: gather.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.raw_para_dir}
+    - step: raw
+      step_label: gather.${global.src_lang}
+      src_lang: ${global.src_lang}
+      raw_data_dir: ${global.raw_mono_src_dir}
+      output_shard_size: ${global.shard_size}
+    - step: raw
+      step_label: gather.${global.tgt_lang}
+      src_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.raw_mono_tgt_dir}
+      output_shard_size: ${global.shard_size}
+    - step: raw
+      step_label: valid.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.valid_data_dir}
+    - step: raw
+      step_label: test.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.test_data_dir}
+
+    # Train (iter 1)
+    - step: generate_vocab
+      step_label: generate_vocab.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      datasets: 
+        - clean.${global.src_lang}-${global.tgt_lang}
+      marian_dir: ${global.marian_dir}
+      corpus_step: gather.${global.src_lang}-${global.tgt_lang}
+      vocab_size: ${global.vocab_size}
+    - step: train_model
+      step_label: train_model.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      marian_dir: ${global.marian_dir}
+      marian_config: ${global.marian_config}
+      opustrainer_config: null
+      vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
+      train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
+      valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
+      valid_dataset: ${global.valid_dataset_prefix}.${global.src_lang}-${global.tgt_lang}
+    - step: train_model
+      step_label: train_model.${global.tgt_lang}-${global.src_lang}
+      src_lang: ${global.tgt_lang}
+      tgt_lang: ${global.src_lang}
+      marian_dir: ${global.marian_dir}
+      marian_config: ${global.marian_config}
+      opustrainer_config: null
+      vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
+      train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
+      valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
+      valid_dataset: ${global.valid_dataset_prefix}.${global.tgt_lang}-${global.src_lang}
+
+    # Translate "mono" data
+    - step: translate
+      step_label: translate.${global.src_lang}-${global.tgt_lang}
+      marian_dir: ${global.marian_dir}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      previous_corpus_step: gather.${global.src_lang}
+      model_step: train_model.${global.src_lang}-${global.tgt_lang}
+    - step: translate
+      step_label: translate.${global.tgt_lang}-${global.src_lang}
+      marian_dir: ${global.marian_dir}
+      src_lang: ${global.tgt_lang}
+      tgt_lang: ${global.src_lang}
+      previous_corpus_step: gather.${global.tgt_lang}
+      model_step: train_model.${global.tgt_lang}-${global.src_lang}
+    - step: merge
+      step_label: merge.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      previous_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
+      previous_corpus_label: organic
+      other_corpus_step: translate.${global.tgt_lang}-${global.src_lang}
+      other_corpus_label: synthetic
+    - step: merge
+      step_label: merge.${global.tgt_lang}-${global.src_lang}
+      src_lang: ${global.tgt_lang}
+      tgt_lang: ${global.src_lang}
+      previous_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
+      previous_corpus_label: organic
+      other_corpus_step: translate.${global.src_lang}-${global.tgt_lang}
+      other_corpus_label: synthetic
+
+    # Train (iter 2; with bt)
+    - step: train_model
+      step_label: tune_bt_model.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      marian_dir: ${global.marian_dir}
+      marian_config: ${global.marian_config}
+      opustrainer_config: null
+      vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
+      train_corpus_step: merge.${global.src_lang}-${global.tgt_lang}
+      valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
+      valid_dataset: ${global.valid_dataset_prefix}.${global.src_lang}-${global.tgt_lang}
+    - step: train_model
+      step_label: tune_bt_model.${global.tgt_lang}-${global.src_lang}
+      src_lang: ${global.tgt_lang}
+      tgt_lang: ${global.src_lang}
+      marian_dir: ${global.marian_dir}
+      marian_config: ${global.marian_config}
+      opustrainer_config: null
+      vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
+      train_corpus_step: merge.${global.tgt_lang}-${global.src_lang}
+      valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
+      valid_dataset: ${global.valid_dataset_prefix}.${global.tgt_lang}-${global.src_lang}
+
+  default_targets:
+    - tune_bt_model.${global.src_lang}-${global.tgt_lang}
+    - tune_bt_model.${global.tgt_lang}-${global.src_lang}

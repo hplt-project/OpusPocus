@@ -4,9 +4,9 @@ global:
   tgt_lang: nn
 
   # we set the "raw" data dir to the output of the preprocess pipeline
-  raw_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only.simple/gather.${.src_lang}-${.tgt_lang}/output
-  valid_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only.simple/valid.${.src_lang}-${.tgt_lang}/output
-  test_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only.simple/test.${.src_lang}-${.tgt_lang}/output
+  raw_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only/gather.${.src_lang}-${.tgt_lang}/output
+  valid_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only/valid.${.src_lang}-${.tgt_lang}/output
+  test_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only/test.${.src_lang}-${.tgt_lang}/output
 
   valid_dataset_prefix: flores200.dev
 
