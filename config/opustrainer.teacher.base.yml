@@ -1,0 +1,16 @@
+datasets:
+  auth_clean: data/train/clean
+
+stages:
+  - main
+
+main:
+  - auth_clean 1.0
+  - until auth_clean inf
+
+modifiers:
+- UpperCase: 0.01
+- TitleCase: 0.01
+# - Misspelling: ?
+
+seed: 42

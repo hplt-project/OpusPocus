@@ -1,0 +1,81 @@
+global:
+  seed: 42
+  src_lang: en
+  tgt_lang: nn
+
+  raw_para_dir: data/${.src_lang}-${.tgt_lang}/raw
+  # TODO: Replace the mono dirs with proper directories
+  raw_mono_src_dir: data/${.src_lang}-${.tgt_lang}/raw
+  raw_mono_tgt_dir: data/${.src_lang}-${.tgt_lang}/raw
+
+  valid_data_dir: data/${.src_lang}-${.tgt_lang}/valid
+  test_data_dir: data/${.src_lang}-${.tgt_lang}/test
+  valid_dataset: flores200.dev.${.src_lang}-${.tgt_lang}
+
+  opuscleaner_python_venv_dir: opuscleaner-venv
+
+  decontaminate_min_length: 25
+
+pipeline:
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess_only
+  steps:
+    # Load Datasets
+    - step: raw
+      step_label: raw.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.raw_para_dir}
+    - step: raw
+      step_label: raw.${global.src_lang}
+      src_lang: ${global.src_lang}
+      raw_data_dir: ${global.raw_mono_src_dir}
+    - step: raw
+      step_label: raw.${global.tgt_lang}
+      src_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.raw_mono_tgt_dir}
+    - step: raw
+      step_label: valid.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.valid_data_dir}
+      compressed: false
+    - step: raw
+      step_label: test.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.test_data_dir}
+      compressed: false
+
+    # Preprocessing
+    - step: clean
+      step_label: clean.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      python_venv_dir: ${global.opuscleaner_python_venv_dir}
+      previous_corpus_step: raw.${global.src_lang}-${global.tgt_lang}
+    - step: decontaminate
+      step_label: decontaminate.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      previous_corpus_step: clean.${global.src_lang}-${global.tgt_lang}
+      valid_data_step: valid.${global.src_lang}-${global.tgt_lang}
+      test_data_step: test.${global.src_lang}-${global.tgt_lang}
+      min_length: ${global.decontaminate_min_length}
+    - step: gather
+      step_label: gather.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      previous_corpus_step: decontaminate.${global.src_lang}-${global.tgt_lang}
+    - step: gather
+      step_label: gather.${global.src_lang}
+      src_lang: ${global.src_lang}
+      previous_corpus_step: raw.${global.src_lang}
+    - step: gather
+      step_label: gather.${global.tgt_lang}
+      src_lang: ${global.tgt_lang}
+      previous_corpus_step: raw.${global.tgt_lang}
+
+  default_targets:
+    - gather.${global.src_lang}-${global.tgt_lang}
+    - gather.${global.src_lang}
+    - gather.${global.tgt_lang}

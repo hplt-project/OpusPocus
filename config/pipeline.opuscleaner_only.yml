@@ -1,0 +1,25 @@
+global:
+  seed: 42
+  src_lang: en
+  tgt_lang: nn
+
+  raw_data_dir: data/${.src_lang}-${.tgt_lang}/raw
+
+  opuscleaner_python_venv_dir: opuscleaner-venv
+
+pipeline:
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner-only
+  steps:
+    - step: raw
+      step_label: raw.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      raw_data_dir: ${global.raw_data_dir}
+    - step: clean
+      step_label: clean.${global.src_lang}-${global.tgt_lang}
+      src_lang: ${global.src_lang}
+      tgt_lang: ${global.tgt_lang}
+      python_venv_dir: ${global.opuscleaner_python_venv_dir}
+      previous_corpus_step: raw.${global.src_lang}-${global.tgt_lang}
+  default_targets:
+    - clean.${global.src_lang}-${global.tgt_lang}

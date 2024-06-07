@@ -1,0 +1,11 @@
+hyperqueue==0.18.0
+more_itertools
+omegaconf
+opustrainer==0.2
+psutil
+pycld2==0.41
+requests
+sacrebleu
+sacremoses
+spacy-pkuseg
+typing-extensions
