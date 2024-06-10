@@ -6,9 +6,7 @@ from .opuspocus_pipeline import OpusPocusPipeline
 
 
 def build_pipeline(args):
-    return OpusPocusPipeline.build_pipeline(
-        args.pipeline_config, args.pipeline_dir
-    )
+    return OpusPocusPipeline.build_pipeline(args.pipeline_config, args.pipeline_dir)
 
 
 def load_pipeline(args):

@@ -15,10 +15,10 @@ from opuspocus.utils import concat_files, RunnerResources, subprocess_wait
 
 logger = logging.getLogger(__name__)
 
-SLURM_RESUBMIT_TIME=600  # resubmit N seconds before job finishes
+SLURM_RESUBMIT_TIME = 600  # resubmit N seconds before job finishes
 
 
-@register_step('train_model')
+@register_step("train_model")
 class TrainModelStep(OpusPocusStep):
     def __init__(
         self,
@@ -33,10 +33,10 @@ class TrainModelStep(OpusPocusStep):
         vocab_step: GenerateVocabStep,
         train_corpus_step: CorpusStep,
         valid_corpus_step: CorpusStep,
-        model_init_step: Optional['TrainModelStep'] = None,
+        model_init_step: Optional["TrainModelStep"] = None,
         seed: int = 42,
-        train_category: str = 'clean',
-        valid_dataset: str = 'flores200.dev',
+        train_category: str = "clean",
+        valid_dataset: str = "flores200.dev",
     ):
         super().__init__(
             step=step,
@@ -61,21 +61,22 @@ class TrainModelStep(OpusPocusStep):
         super().init_step()
         if self.valid_dataset not in self.valid_corpus_step.dataset_list:
             raise ValueError(
-                'Dataset {} is not registered in the {} categories.json.'
-                .format(self.valid_dataset, self.valid_corpus_step.step_label)
+                "Dataset {} is not registered in the {} categories.json.".format(
+                    self.valid_dataset, self.valid_corpus_step.step_label
+                )
             )
 
     @property
     def train_corpus_step(self) -> CorpusStep:
-        return self.dependencies['train_corpus_step']
+        return self.dependencies["train_corpus_step"]
 
     @property
     def valid_corpus_step(self) -> CorpusStep:
-        return self.dependencies['valid_corpus_step']
+        return self.dependencies["valid_corpus_step"]
 
     @property
     def vocab_step(self) -> OpusPocusStep:
-        return self.dependencies['vocab_step']
+        return self.dependencies["vocab_step"]
 
     @property
     def input_dir(self) -> Path:
@@ -91,8 +92,8 @@ class TrainModelStep(OpusPocusStep):
 
     @property
     def model_init_path(self) -> Path:
-        if self.dependencies['model_init_step'] is not None:
-            return self.dependencies['model_init_step'].model_path
+        if self.dependencies["model_init_step"] is not None:
+            return self.dependencies["model_init_step"].model_path
         return None
 
     @property
@@ -102,7 +103,7 @@ class TrainModelStep(OpusPocusStep):
         # TODO: this should be fetched from the dependency in case that
         # file naming changes in the future
         vocab_path = Path(
-            vocab_dir, 'model.{}-{}.spm'.format(self.src_lang, self.tgt_lang)
+            vocab_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang)
         )
         return vocab_path
 
@@ -112,11 +113,11 @@ class TrainModelStep(OpusPocusStep):
 
     @property
     def model_path(self) -> Path:
-        return Path(self.output_dir, 'model.npz')
+        return Path(self.output_dir, "model.npz")
 
     @property
     def tmp_dir(self) -> Path:
-        return Path(self.step_dir, 'tmp.d')
+        return Path(self.step_dir, "tmp.d")
 
     @property
     def languages(self) -> List[str]:
@@ -124,7 +125,7 @@ class TrainModelStep(OpusPocusStep):
 
     @property
     def langpair(self) -> str:
-        return '-'.join(self.languages)
+        return "-".join(self.languages)
 
     @property
     def default_resources(self) -> RunnerResources:
@@ -137,69 +138,75 @@ class TrainModelStep(OpusPocusStep):
         model_path = target_file  # for better readability
 
         env = os.environ
-        n_cpus = int(env[RunnerResources.get_env_name('cpus')])
+        n_cpus = int(env[RunnerResources.get_env_name("cpus")])
         n_gpus = 0
-        if RunnerResources.get_env_name('gpus') in env:
-            n_gpus = int(env[RunnerResources.get_env_name('gpus')])
+        if RunnerResources.get_env_name("gpus") in env:
+            n_gpus = int(env[RunnerResources.get_env_name("gpus")])
 
         # Prepare the command
-        marian_path = Path(self.marian_dir, 'bin', 'marian')
+        marian_path = Path(self.marian_dir, "bin", "marian")
         cmd = [
             str(marian_path),
-            '-c', str(self.marian_config),
-            '--seed', str(self.seed),
-            '--data-threads', str(n_cpus),
-            '--model', str(model_path),
-            '--vocabs', str(self.vocab_path), str(self.vocab_path),
-            '--dim-vocabs', str(self.vocab_size),
-            '--tempdir', str(self.tmp_dir),
-            '--valid-translation-output', '{}/valid.out'.format(self.log_dir),
-            '--log-level', 'info',
-            '--log', '{}/train.log'.format(self.log_dir),
-            '--valid-log', '{}/valid.log'.format(self.log_dir),
+            "-c",
+            str(self.marian_config),
+            "--seed",
+            str(self.seed),
+            "--data-threads",
+            str(n_cpus),
+            "--model",
+            str(model_path),
+            "--vocabs",
+            str(self.vocab_path),
+            str(self.vocab_path),
+            "--dim-vocabs",
+            str(self.vocab_size),
+            "--tempdir",
+            str(self.tmp_dir),
+            "--valid-translation-output",
+            "{}/valid.out".format(self.log_dir),
+            "--log-level",
+            "info",
+            "--log",
+            "{}/train.log".format(self.log_dir),
+            "--valid-log",
+            "{}/valid.log".format(self.log_dir),
         ]
 
         # Training data
         # TODO: Data concatenation should be removed when opustrainer support
         #       is added
         train_paths = [
-            Path(self.tmp_dir, 'train.{}.gz'.format(lang))
-            for lang in self.languages
+            Path(self.tmp_dir, "train.{}.gz".format(lang)) for lang in self.languages
         ]
         if not all([p.exists() for p in train_paths]):
             for lang, output_file in zip(self.languages, train_paths):
                 concat_files(
                     [
-                        Path(self.input_dir, '{}.{}.gz'.format(dset, lang))
+                        Path(self.input_dir, "{}.{}.gz".format(dset, lang))
                         for dset in self.train_datasets
                     ],
-                    output_file
+                    output_file,
                 )
-        cmd += ['--train-sets'] + [str(p) for p in train_paths]
+        cmd += ["--train-sets"] + [str(p) for p in train_paths]
 
         # Validation data
-        cmd += ['--valid-sets'] + [
-            '{}/{}.{}.gz'.format(
-                self.valid_data_dir, self.valid_dataset, lang
-            ) for lang in self.languages
+        cmd += ["--valid-sets"] + [
+            "{}/{}.{}.gz".format(self.valid_data_dir, self.valid_dataset, lang)
+            for lang in self.languages
         ]
 
         # GPU option
         if n_gpus:
-            cmd += ['--devices'] + [str(i) for i in range(n_gpus)]
+            cmd += ["--devices"] + [str(i) for i in range(n_gpus)]
         else:
-            cmd += ['--cpu-threads', str(n_cpus)]
+            cmd += ["--cpu-threads", str(n_cpus)]
 
         # Initial checkpoint option
         if self.model_init_path is not None:
-            cmd += ['--pretrained-model', str(self.model_init_path)]
+            cmd += ["--pretrained-model", str(self.model_init_path)]
 
         # Execute the command
         proc = subprocess.Popen(
-            cmd,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            env=env,
-            text=True
+            cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True
         )
         subprocess_wait(proc)

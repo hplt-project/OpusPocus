@@ -6,8 +6,9 @@ import sys
 
 def raise_nonzero_error(arguments, pid):
     raise subprocess.SubprocessError(
-        'Process {} exited with a non-zero value. Wrapper arguments: {}\n'
-        .format(pid, arguments)
+        "Process {} exited with a non-zero value. Wrapper arguments: {}\n".format(
+            pid, arguments
+        )
     )
 
 
@@ -16,19 +17,19 @@ def main(argv):
     cmd_path = argv[1]
     proc_ids = []
     if argv[2]:
-        proc_ids = [int(proc) for proc in argv[2].split(' ')]
+        proc_ids = [int(proc) for proc in argv[2].split(" ")]
 
     procs = []
     for pid in proc_ids:
         try:
             procs.append(psutil.Process(pid))
         except psutil.NoSuchProcess:
-            print('Process {} does not exist. Ignoring...', file=sys.stderr)
+            print("Process {} does not exist. Ignoring...", file=sys.stderr)
 
     gone, alive = psutil.wait_procs(procs)
     print(
-        'bash_runner_submit.py: Running command: {}'.format(' '.join(argv)),
-        file=sys.stderr
+        "bash_runner_submit.py: Running command: {}".format(" ".join(argv)),
+        file=sys.stderr,
     )
     for proc in gone:
         if proc.returncode is not None and proc.returncode > 0:
@@ -40,5 +41,5 @@ def main(argv):
         raise_nonzero_error(argv[1:], proc.pid)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)
