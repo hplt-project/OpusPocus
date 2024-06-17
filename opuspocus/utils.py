@@ -81,11 +81,11 @@ def cut_filestream(
     open_fn = get_open_fn(compressed)
     out_fhs = [open_fn(output_file, "wt") for output_file in output_files]
     for line in input_stream:
-        for i, (l, fh) in enumerate(zip(line.split(delimiter), out_fhs)):
+        for i, (col, fh) in enumerate(zip(line.split(delimiter), out_fhs)):
             if i == len(out_fhs) - 1:
-                print(l, end="", file=fh)
+                print(col, end="", file=fh)
             else:
-                print(l, file=fh)
+                print(col, file=fh)
 
 
 def file_to_shards(
@@ -94,14 +94,13 @@ def file_to_shards(
     shard_size: int,
     shard_index_pad_length: int = 4,
 ) -> List[str]:
-    filename = file_path.stem + file_path.suffix
     shard_list = []
     out_fh = None
     with open_file(file_path, "r") as in_fh:
         for i, line in enumerate(in_fh):
             if i % shard_size == 0:
                 n = i // shard_size
-                shard_filename = file_path.stem + f".{n}" + file_path.suffix
+                shard_filename = file_path.stem + file_path.suffix + f".{n}"
                 shard_list.append(shard_filename)
                 shard_file_path = Path(shard_dir, shard_filename)
                 out_fh = open_file(shard_file_path, "w")
@@ -111,19 +110,20 @@ def file_to_shards(
 
 def shards_to_file(
     shard_list: List[str],
-    shard_dir: Path,
     file_path: Path,
 ) -> None:
     with open_file(file_path, "w") as out_fh:
-        for shard_filename in shard_list:
-            shard_file_path = Path(shard_dir, shard_filename)
+        for shard_file_path in shard_list:
             with open_file(shard_file_path, "r") as in_fh:
                 for line in in_fh:
                     print(line, end="", file=out_fh)
 
 
-def clean_dir(directory: Path) -> None:
+def clean_dir(directory: Path, exclude: str = None) -> None:
     for file_path in directory.iterdir():
+        filename = file_path.stem + file_path.suffix
+        if exclude is not None and exclude == filename:
+            continue
         try:
             if file_path.is_file() or file_path.is_symlink():
                 file_path.unlink()
@@ -145,7 +145,7 @@ def subprocess_wait(proc: subprocess.Popen) -> None:
 
 def get_action_type_map(parser) -> Dict[str, Callable]:
     type_map = {}
-    for action in args._actions:
+    for action in parser._actions:
         type_map[action.dest] = action.type
     return type_map
 

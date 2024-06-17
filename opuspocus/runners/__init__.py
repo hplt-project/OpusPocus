@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .opuspocus_runner import OpusPocusRunner, TaskId, TaskInfo
 
+__all__ = [OpusPocusRunner, TaskId, TaskInfo]
 
 RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()

@@ -1,8 +1,6 @@
-import argparse
-import importlib
-from pathlib import Path
-
 from .opuspocus_pipeline import OpusPocusPipeline
+
+__all__ = [OpusPocusPipeline]
 
 
 def build_pipeline(args):

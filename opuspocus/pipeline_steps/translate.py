@@ -2,13 +2,17 @@ from typing import List, Optional
 
 from pathlib import Path
 import logging
+import os
 import shutil
+import signal
+import subprocess
+import sys
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.pipeline_steps.train_model import TrainModelStep
-
+from opuspocus.utils import open_file, RunnerResources, subprocess_wait
 
 logger = logging.getLogger(__name__)
 
@@ -52,57 +56,80 @@ class TranslateStep(CorpusStep):
         return True
 
     @property
-    def input_dir(self) -> Path:
-        if self.prev_corpus_step.is_sharded:
-            return self.prev_corpus_step.shard_dir
-        return self.prev_corpus_step.output_dir
-
-    @property
     def model_config_path(self) -> Path:
         return Path(
-            self.model_step.model_path, "{}.npz.decoder.yml".format(self.model_suffix)
+            "{}.{}.npz.decoder.yml".format(
+                self.model_step.model_path,
+                self.model_suffix
+            )
         )
 
     def register_categories(self) -> None:
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
 
-    def get_command_targets(self) -> List[Path]:
-        file_list = []
-        for dset in self.dataset_list:
-            src_filename = "{}.{}.gz".format(dset, self.src_lang)
-            if self.prev_corpus_step.is_sharded:
-                shard_stems = [
-                    ".".join(shard.stem.split(".")[:-1] + [self.tgt_lang])
-                    for shard in self.prev_corpus_step.get_shard_files(src_filename)
-                ]
-                file_list.extend(
-                    [Path(self.shard_dir, stem + ".gz") for stem in shard_stems]
-                )
-            else:
-                file_list.append(self.output_dir, "")
-
-    def infer_input(self, target_file: Path) -> Path:
-        filename = target_file.stem + target_file.suffix
+    def infer_input(self, tgt_file: Path) -> Path:
+        offset = 2
+        if self.is_sharded:
+            offset = 3
+        tgt_filename = tgt_file.stem + tgt_file.suffix
+        src_filename = ".".join(
+            tgt_filename.split(".")[:-offset]
+            + [self.src_lang]
+            + tgt_filename.split(".")[-(offset - 1):]
+        )
         if self.prev_corpus_step.is_sharded:
-            return Path(self.prev_corpus_step.shard_dir, filename)
-        return Path(self.prev_corpus_step.output_dir, filename)
+            src_file = Path(self.shard_dir, src_filename)
+            if not src_file.exists():
+                src_file.hardlink_to(
+                    Path(self.input_shard_dir, src_filename)
+                )
+        else:
+            src_file = Path(self.output_dir, src_filename)
+            if not src_file.exists():
+                src_file.hardlink_to(
+                    Path(self.prev_corpus_step.output_dir, src_filename)
+                )
+        return src_file
 
     def get_command_targets(self) -> List[Path]:
         if self.is_sharded:
-            [
-                Path(self.shard_dir, shard_filename)
-                for dset in self.dataset_list
-                for shard_filename in self.get_shard_list[dset]
-            ]
+            targets = []
+            for dset in self.dataset_list:
+                dset_filename = "{}.{}.gz".format(dset, self.tgt_lang)
+                targets.extend([
+                    shard_file
+                    for shard_file in self.get_shard_list(dset_filename)
+                ])
+            return targets
         return [
             Path(self.output_dir, "{}.{}.gz".format(dset, self.tgt_lang))
             for dset in self.dataset_list
         ]
 
+    def command_preprocess(self) -> None:
+        if self.is_sharded:
+            shard_dict = {}
+            for d_fname, s_list in self.prev_corpus_step.shard_index.items():
+                s_fname_list = [f.stem + f.suffix for f in s_list]
+                shard_dict[d_fname] = s_fname_list
+                d_fname_target = ".".join(
+                    d_fname.split(".")[:-2] + [self.tgt_lang, "gz"]
+                )
+                shard_dict[d_fname_target] = [
+                    ".".join(
+                        shard.split(".")[:-3]
+                        + [self.tgt_lang]
+                        + shard.split(".")[-2:]
+                    ) for shard in s_fname_list
+                ]
+            self.save_shard_dict(shard_dict)
+
     def command(self, target_file: Path) -> None:
-        env = os.environ()
+        env = os.environ
         n_cpus = env[RunnerResources.get_env_name("cpus")]
-        n_gpus = RunnerResources.n_gpus
+        n_gpus = 0
+        if RunnerResources.get_env_name("gpus") in env:
+            n_gpus = int(env[RunnerResources.get_env_name("gpus")])
 
         # Hardlink source file
         input_file = self.infer_input(target_file)
@@ -113,20 +140,35 @@ class TranslateStep(CorpusStep):
             str(marian_path),
             "-c",
             str(self.model_config_path),
+            "--data-threads",
+            str(n_cpus),
             "-i",
             str(input_file),
-            "-o",
-            ">(pigz -c > {})".format(target_file),
             "--log",
             "{}/{}.log".format(self.log_dir, target_file.stem),
             "-b",
-            self.beam_size,
+            str(self.beam_size),
         ]
+
+        # GPU option
+        if n_gpus:
+            cmd += ["--devices"] + [str(i) for i in range(n_gpus)]
+        else:
+            cmd += ["--cpu-threads", str(n_cpus)]
 
         # Execute the command
         proc = subprocess.Popen(
-            cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True
+            cmd,
+            stdout=open_file(target_file, 'w'),
+            stderr=sys.stderr,
+            env=env,
+            text=True
         )
-        output, errors = proc.communicate()
-        if proc.returncode or errors:
-            raise Exception("Process {} exited with non-zero value.".format(proc.pid))
+
+        def terminate_signal(signalnum, handler):
+            logger.debug("Received SIGTERM, terminating child process...")
+            proc.terminate()
+
+        signal.signal(signal.SIGTERM, terminate_signal)
+
+        subprocess_wait(proc)

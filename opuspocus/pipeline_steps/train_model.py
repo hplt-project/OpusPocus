@@ -3,6 +3,7 @@ from typing import List, Optional
 
 import logging
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -209,4 +210,12 @@ class TrainModelStep(OpusPocusStep):
         proc = subprocess.Popen(
             cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True
         )
+
+        # Propagate the termination signal to the child process
+        def terminate_signal(signalnum, handler):
+            logger.debug("Received SIGTERM, terminating child process...")
+            proc.terminate()
+
+        signal.signal(signal.SIGTERM, terminate_signal)
+
         subprocess_wait(proc)

@@ -103,15 +103,12 @@ class RawCorpusStep(CorpusStep):
             corpus_path = Path(self.raw_data_dir, target_filename)
             if not corpus_path.exists():
                 raise FileNotFoundError(corpus_path)
-
-            Path(self.output_dir, target_filename).hardlink_to(corpus_path.resolve())
+            target_file.hardlink_to(corpus_path.resolve())
         else:
             corpus_path = Path(self.raw_data_dir, target_file.stem)
             if not corpus_path.exists():
                 raise FileNotFoundError(corpus_path)
-
-            compressed_path = Path(self.output_dir, target_filename)
             with open(corpus_path, "r") as f_in:
-                with gzip.open(compressed_path, "wt") as f_out:
+                with gzip.open(target_file, "wt") as f_out:
                     for line in f_in:
                         print(line, end="", file=f_out)
