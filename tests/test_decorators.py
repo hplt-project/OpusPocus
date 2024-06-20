@@ -7,11 +7,14 @@ import opuspocus.runners as runners
 
 # @register_step
 
+
 @pytest.fixture(scope="module")
 def foo_step_cls():
     """Mock class that inherits from OpusPocusStep."""
+
     class FooStep(pipeline_steps.OpusPocusStep):
         pass
+
     return FooStep
 
 
@@ -29,33 +32,38 @@ def test_register_step_name(foo_step_registries, foo_step_cls):
 
 
 def test_register_step_correct_subclass(foo_step_registries):
-    class FooStep():
+    class FooStep:
         pass
-    with pytest.raises(ValueError) as e_info:
+
+    with pytest.raises(ValueError):
         pipeline_steps.register_step("foo")(FooStep)
 
 
 def test_register_step_duplicate_class(foo_step_registries, foo_step_cls):
     pipeline_steps.register_step("foo")(foo_step_cls)
-    with pytest.raises(ValueError) as e_info:
+    with pytest.raises(ValueError):
         pipeline_steps.register_step("bar")(foo_step_cls)
 
 
 def test_register_step_duplicate_name(foo_step_registries, foo_step_cls):
     class BarStep(pipeline_steps.OpusPocusStep):
         pass
+
     pipeline_steps.register_step("foo")(foo_step_cls)
-    with pytest.raises(ValueError) as e_info:
+    with pytest.raises(ValueError):
         pipeline_steps.register_step("foo")(BarStep)
 
 
 # @register_runner
 
+
 @pytest.fixture(scope="module")
 def foo_runner_cls():
     """Mock class that inherits from OpusPocusRunner."""
+
     class FooRunner(runners.OpusPocusRunner):
         pass
+
     return FooRunner
 
 
@@ -73,21 +81,23 @@ def test_register_runner_name(foo_runner_registries, foo_runner_cls):
 
 
 def test_register_runner_correct_subclass(foo_runner_registries):
-    class FooRunner():
+    class FooRunner:
         pass
-    with pytest.raises(ValueError) as e_info:
+
+    with pytest.raises(ValueError):
         runners.register_runner("foo")(FooRunner)
 
 
 def test_register_runner_duplicate_class(foo_runner_registries, foo_runner_cls):
     runners.register_runner("foo")(foo_runner_cls)
-    with pytest.raises(ValueError) as e_info:
+    with pytest.raises(ValueError):
         runners.register_runner("bar")(foo_runner_cls)
 
 
 def test_register_runner_duplicate_name(foo_runner_registries, foo_runner_cls):
     class BarRunner(runners.OpusPocusRunner):
         pass
+
     runners.register_runner("foo")(foo_runner_cls)
-    with pytest.raises(ValueError) as e_info:
+    with pytest.raises(ValueError):
         runners.register_runner("foo")(BarRunner)

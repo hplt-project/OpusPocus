@@ -4,7 +4,7 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-from psutil import Process, wait_procs
+from psutil import NoSuchProcess, Process, wait_procs
 
 from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
 from opuspocus.utils import RunnerResources, subprocess_wait
