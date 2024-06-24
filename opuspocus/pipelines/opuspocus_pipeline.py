@@ -34,9 +34,9 @@ class OpusPocusPipeline(object):
             pipeline_config.pipeline.pipeline_dir = pipeline_dir
 
         # Construct the pipeline graph
-        graph = self.build_pipeline_graph(pipeline_config)
-        self.pipeline_graph = graph[0]
-        self.default_targets = graph[1]
+        graph_tuple = self.build_pipeline_graph(pipeline_config)
+        self.pipeline_graph = graph_tuple[0]
+        self.default_targets = graph_tuple[1]
 
         # Create the pipeline config without the (global) wildcards
         # Actually set the class attribute
@@ -93,6 +93,9 @@ class OpusPocusPipeline(object):
     def build_pipeline_graph(
         self, pipeline_config: Optional[OmegaConf] = None
     ) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
+        # TODO: make this into a separate class -> Pipeline will contain a
+        #   Graph object (motivation: better testing, converting config
+        #   to graph, code maintenance)
         """TODO"""
         pipeline_dir = pipeline_config.pipeline.pipeline_dir
 
@@ -164,9 +167,6 @@ class OpusPocusPipeline(object):
             v.traceback_step(level=0, full=full)
             print("")
 
-    def list_steps(self) -> List[OpusPocusStep]:
-        return [s for s in self.pipeline_graph.values()]
-
     def get_targets(self, targets: List[str] = None):
         if targets is not None:
             return targets
@@ -178,6 +178,18 @@ class OpusPocusPipeline(object):
             'Please specify the targets using the "--pipeline-targets" '
             "option."
         )
+
+    def __eq__(self, other):
+        if self.pipeline_graph != other.pipeline_graph:
+            return False
+        if len(self.default_targets) != len(other.default_targets):
+            return False
+        for target in self.default_targets:
+            if target not in other.default_targets:
+                return False
+        if self.pipeline_config != other.pipeline_config:
+            return False
+        return True
 
 
 class PipelineConfig(OmegaConf):
