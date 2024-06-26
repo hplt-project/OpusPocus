@@ -12,7 +12,7 @@ from opuspocus.utils import RunnerResources
 
 logger = logging.getLogger(__name__)
 
-TaskId = TypedDict("TaskId", {"filename": str, "id": Any})
+TaskId = TypedDict("TaskId", {"file_path": str, "id": Any})
 TaskInfo = TypedDict(
     "TaskInfo", {"runner": str, "main_task": TaskId, "subtasks": List[TaskId]}
 )
@@ -249,6 +249,12 @@ class OpusPocusRunner(object):
     def is_task_running(self, task_id: TaskInfo) -> bool:
         """TODO"""
         raise NotImplementedError()
+
+    def remove_task_file(self, task_id: TaskId) -> bool:
+        """TODO"""
+        file_path = Path(task_id["file_path"])
+        if file_path.exists():
+            file_path.unlink()
 
     def save_task_info(self, step: OpusPocusStep, task_info: TaskInfo) -> None:
         """TODO"""

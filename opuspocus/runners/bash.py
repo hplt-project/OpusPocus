@@ -94,7 +94,7 @@ class BashRunner(OpusPocusRunner):
                 env=env_dict,
             )
 
-        return TaskId(filename=str(target_file), id=proc.pid)
+        return TaskId(file_path=str(target_file), id=proc.pid)
 
     def update_dependants(self, task_id: TaskId) -> None:
         return NotImplementedError()
@@ -112,6 +112,7 @@ class BashRunner(OpusPocusRunner):
         gone, _ = wait_procs([proc])
         for p in gone:
             if p.returncode:
+                self.remove_task_file(task_id)
                 raise subprocess.SubprocessError(
                     "Process {} exited with non-zero " "value.".format(task_id["id"])
                 )

@@ -405,6 +405,10 @@ def run_main(step):
 
     task_ids = []
     for target_file in step.get_command_targets():
+        if target_file.exists():
+            print("File {} already finished. Skipping...".format(target_file))
+            continue
+
         cmd_path = Path(step.step_dir, step.command_file)
         task_id = runner.submit_task(
             cmd_path=cmd_path,

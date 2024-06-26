@@ -12,7 +12,7 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.pipeline_steps.train_model import TrainModelStep
-from opuspocus.utils import open_file, RunnerResources, subprocess_wait
+from opuspocus.utils import RunnerResources, save_filestream, subprocess_wait
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ class TranslateStep(CorpusStep):
         # Execute the command
         proc = subprocess.Popen(
             cmd,
-            stdout=open_file(target_file, 'w'),
+            stdout=subprocess.PIPE,
             stderr=sys.stderr,
             env=env,
             text=True
@@ -171,4 +171,11 @@ class TranslateStep(CorpusStep):
 
         signal.signal(signal.SIGTERM, terminate_signal)
 
-        subprocess_wait(proc)
+        save_filestream(input_stream=proc.stdout, output_file=target_file)
+
+        # Check the return code
+        rc = proc.poll()
+        if rc:
+            raise Exception(
+                "Process {} exited with non-zero value.".format(proc.pid)
+            )

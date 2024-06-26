@@ -48,7 +48,9 @@ class CleanCorpusStep(CorpusStep):
         OpusCleaner server app creates a categories.json file listing locally
         available datasets and their user-specified categorization.
         """
-        shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
+        shutil.copy(
+            self.prev_corpus_step.categories_path, self.categories_path
+        )
 
     def get_command_targets(self) -> List[Path]:
         return [
@@ -62,7 +64,9 @@ class CleanCorpusStep(CorpusStep):
         dataset = ".".join(str(target_filename).split(".")[:-2])
         input_file = Path(self.input_dir, "{}.filters.json".format(dataset))
 
-        opuscleaner_bin_path = Path(self.python_venv_dir, "bin", self.opuscleaner_cmd)
+        opuscleaner_bin_path = Path(
+            self.python_venv_dir, "bin", self.opuscleaner_cmd
+        )
 
         # Run OpusCleaner
         proc = subprocess.Popen(
@@ -82,7 +86,8 @@ class CleanCorpusStep(CorpusStep):
 
         # Get the correct order of languages
         languages = [
-            file.split(".")[-2] for file in json.load(open(input_file, "r"))["files"]
+            file.split(".")[-2]
+            for file in json.load(open(input_file, "r"))["files"]
         ]
 
         # Split OpusCleaner output into files
@@ -95,4 +100,6 @@ class CleanCorpusStep(CorpusStep):
         # Check the return code
         rc = proc.poll()
         if rc:
-            raise Exception("Process {} exited with non-zero value.".format(proc.pid))
+            raise Exception(
+                "Process {} exited with non-zero value.".format(proc.pid)
+            )

@@ -88,6 +88,17 @@ def cut_filestream(
                 print(col, file=fh)
 
 
+def save_filestream(
+    input_stream,
+    output_file: Path,
+    compressed: bool = True,
+) -> None:
+    open_fn = get_open_fn(compressed)
+    out_fh = open_fn(output_file, "wt")
+    for line in input_stream:
+        print(line, end="", file=out_fh)
+
+
 def file_to_shards(
     file_path: Path,
     shard_dir: Path,
