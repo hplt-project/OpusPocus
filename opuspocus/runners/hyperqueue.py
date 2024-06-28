@@ -1,12 +1,11 @@
 from typing import Dict, List, Optional
 
-import argparse
 import hyperqueue
 import subprocess
 from pathlib import Path
 
 from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
-from opuspocus.utils import file_path, RunnerResources
+from opuspocus.utils import RunnerResources, file_path, subprocess_wait
 
 
 @register_runner("hyperqueue")
@@ -15,16 +14,14 @@ class HyperqueueRunner(OpusPocusRunner):
 
     @staticmethod
     def add_args(parser):
-        """Add runner-specific arguments to the parser."""
+        OpusPocusRunner.add_args(parser)
         parser.add_argument(
             "--hq-server-dir",
             type=file_path,
             default="opuspocus_hq_server",
             help="TODO",
         )
-        parser.add_argument(
-            "--hq-path", type=file_path, default="hyperqueue/hq", help="TODO"
-        )
+        parser.add_argument("--hq-path", type=file_path, default="./hq", help="TODO")
         parser.add_argument(
             "--hq-scheduler", type=str, choices=["slurm"], default="slurm", help="TODO"
         )
@@ -43,37 +40,46 @@ class HyperqueueRunner(OpusPocusRunner):
     def __init__(
         self,
         runner: str,
-        args: argparse.Namespace,
+        pipeline_dir: Path,
+        hq_server_dir: Path = "opuspocus_hq_server",
+        hq_path: Path = "./hq",
+        hq_scheduler: str = "slurm",
+        hq_alloc_time_limit: str = "24h",
+        hq_alloc_backlog: int = 1,
+        hq_alloc_range_cpus: str = "0,1",
+        hq_alloc_range_gpus: Optional[str] = None,
+        hq_max_worker_count: int = 1,
     ):
-        super().__init__(runner, args)
-
-        # TODO: args values checking
-        self.hq_server_dir = args.hq_server_dir
-        self.hq_path = args.hq_path
-        self.hq_scheduler = args.hq_scheduler
-
-        self.hq_alloc_time_limit = args.hq_alloc_time_limit
-        self.hq_alloc_backlog = args.hq_alloc_backlog
-
-        self.hq_alloc_range_cpus = args.hq_alloc_range_cpus.split(",")
+        hq_alloc_range_cpus = [int(n) for n in hq_alloc_range_cpus.split(",")]
+        if hq_alloc_range_gpus is not None:
+            hq_alloc_range_gpus = [int(n) for n in hq_alloc_range_gpus.split(",")]
+        super().__init__(
+            runner=runner,
+            pipeline_dir=pipeline_dir,
+            hq_server_dir=hq_server_dir,
+            hq_path=hq_path,
+            hq_scheduler=hq_scheduler,
+            hq_alloc_time_limit=hq_alloc_time_limit,
+            hq_alloc_backlog=hq_alloc_backlog,
+            hq_alloc_range_cpus=hq_alloc_range_cpus,
+            hq_alloc_range_gpus=hq_alloc_range_gpus,
+            hq_max_worker_count=hq_max_worker_count,
+        )
+        # TODO: Better typing and value checking
         assert len(self.hq_alloc_range_cpus) == 2
-
-        self.hq_alloc_range_gpus = None
-        if args.hq_alloc_range_gpus is not None:
-            self.hq_alloc_range_cpus = args.hq_alloc_range_gpus.split(",")
+        if self.hq_alloc_range_gpus is not None:
             assert len(self.hq_alloc_range_gpus) == 2
-
-        self.hq_max_worker_count = args.hq_max_worker_count
 
         # Start the HQ server (if not running)
         # TODO: replace the launcher script with a better alternative
-        subprocess.run(
+        proc = subprocess.run(
             [
                 "scripts/launch_hq_server.sh",
                 str(self.hq_server_dir),
             ],
             shell=False,
         )
+        subprocess_wait(proc)
 
         # Create the client
         self.client = hyperqueue.Client(self.hq_server_dir)
@@ -81,61 +87,69 @@ class HyperqueueRunner(OpusPocusRunner):
         # Initialize the job
         self.job = hyperqueue.Job()
 
-    def _submit_step(
+    def submit_task(
+        self,
         cmd_path: Path,
-        file_list: Optional[List[str]] = None,
+        target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskId]] = None,
         step_resources: Optional[RunnerResources] = None,
-    ) -> List[TaskId]:
+        stdout_file: Optional[Path] = None,
+        stderr_file: Optional[Path] = None,
+    ) -> TaskId:
         """TODO"""
         dep_tasks = []
         if dependencies:
             dep_tasks = [dep["hq_task"] for dep in dependencies]
 
         # Prepare the ENV
-        env_dict = resources.get_env_dict()
+        env_dict = step_resources.get_env_dict()
 
         # Prepare the resource request
         res_request = hyperqueue.ResourceRequest(
             cpus=(step_resources.cpus if step_resources.cpus is not None else 1),
-            resources=self.convert_resources(step_resources),
+            resources=self._convert_resources(step_resources),
         )
 
-        if file_list is not None:
-            return [
-                {
-                    "task_id": self.job.program(
-                        [cmd_path, p],
-                        env=env_dict,
-                        resources=res_request,
-                        name="{}.{}".format(job_name, p),
-                        stdout="{}/logs/{}.hq.log".format(job_dir, p),
-                        stderr="{}/logs/{}.hq.log".format(job_dir, p),
-                        deps=dep_tasks,
-                    ).task_id
-                }
-                for p in param_list
-            ]
-        return [
-            {
-                "task_id": self.job.program(
-                    [cmd_path],
-                    env=env_dict,
-                    resources=res_request,
-                    name="{}".format(job_name),
-                    stdout="{}/logs/hq.log".format(job_dir),
-                    stderr="{}/logs/hq.log".format(job_dir),
-                    deps=dep_tasks,
-                ).task_id
-            }
-        ]
+        jobname = "XXX"  # TODO: fix this
 
-    def cancel(task_id: TaskId) -> None:
+        if target_file is not None:
+            prog = self.job.program(
+                [str(cmd_path), str(target_file)],
+                env=env_dict,
+                resources=res_request,
+                name=jobname,
+                stdout=(str(stdout_file) if stdout_file is not None else None),
+                stderr=(str(stderr_file) if stderr_file is not None else None),
+                deps=dep_tasks,
+            )
+        else:
+            prog = self.job.program(
+                [str(cmd_path)],
+                env=env_dict,
+                resources=res_request,
+                name=jobname,
+                stdout=(str(stdout_file) if stdout_file is not None else None),
+                stderr=(str(stderr_file) if stderr_file is not None else None),
+                deps=dep_tasks,
+            )
+
+        return TaskId(filename=str(target_file), id=prog.task_id)
+
+    def update_dependants(self, task_id: TaskId) -> None:
+        raise NotImplementedError()
+
+    def cancel_task(self, task_id: TaskId) -> None:
         # TODO: Based on this implementation, we also need to adjust the
         # task_id saving/loading methods
         raise NotImplementedError()
 
-    def run():
+    def wait_for_task(self, task_id: TaskId) -> None:
+        raise NotImplementedError()
+
+    def is_task_running(self, task_id: TaskId) -> bool:
+        raise NotImplementedError()
+
+    def run(self) -> None:
         """TODO"""
         # Add an automatic allocation queue
         # TODO: ideally, the allocation queue should be removed after
@@ -166,9 +180,9 @@ class HyperqueueRunner(OpusPocusRunner):
         subprocess.run(hq_cmd)
 
         # TODO: info about the alloc queue
-        client.submit(self.job)
+        self.client.submit(self.job)
 
-    def convert_resources(resources: RunnerResources) -> Dict[str, str]:
+    def _convert_resources(self, resources: RunnerResources) -> Dict[str, str]:
         res_dict = {}
         if resources.cpus is not None:
             res_dict["cpus"] = resources.cpus
@@ -179,7 +193,7 @@ class HyperqueueRunner(OpusPocusRunner):
         if resources.mem is not None:
             res_dict["mem"] = self.convert_memory(resources.mem)
 
-    def convert_memory(self, mem: str) -> int:
+    def _convert_memory(self, mem: str) -> int:
         unit = mem[-1]
         if unit == "g" or unit == "G":
             return int(mem[:-1] * 1024**3)
@@ -188,14 +202,3 @@ class HyperqueueRunner(OpusPocusRunner):
         if unit == "k" or unit == "K":
             return int(mem[:-1] * 1024)
         raise ValueError("Unknown unit of memory ({}).".format(unit))
-
-    def task_id_to_string(self, task_id: TaskId) -> str:
-        tid = task_id["task_id"]
-        jid = task_id["job_id"]
-        if jid is not None:
-            return "{},{}".format(jid, tid)
-        return "X,{}".format(task_id)
-
-    def string_to_task_id(self, id_str: str) -> TaskId:
-        jid, tid = id_str.split(",")
-        return {"task_id": tid, "job_id": jid}

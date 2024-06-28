@@ -12,7 +12,7 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.pipeline_steps.train_model import TrainModelStep
-from opuspocus.utils import RunnerResources, save_filestream, subprocess_wait
+from opuspocus.utils import RunnerResources, save_filestream
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +59,7 @@ class TranslateStep(CorpusStep):
     def model_config_path(self) -> Path:
         return Path(
             "{}.{}.npz.decoder.yml".format(
-                self.model_step.model_path,
-                self.model_suffix
+                self.model_step.model_path, self.model_suffix
             )
         )
 
@@ -75,14 +74,12 @@ class TranslateStep(CorpusStep):
         src_filename = ".".join(
             tgt_filename.split(".")[:-offset]
             + [self.src_lang]
-            + tgt_filename.split(".")[-(offset - 1):]
+            + tgt_filename.split(".")[-(offset - 1) :]
         )
         if self.prev_corpus_step.is_sharded:
             src_file = Path(self.shard_dir, src_filename)
             if not src_file.exists():
-                src_file.hardlink_to(
-                    Path(self.input_shard_dir, src_filename)
-                )
+                src_file.hardlink_to(Path(self.input_shard_dir, src_filename))
         else:
             src_file = Path(self.output_dir, src_filename)
             if not src_file.exists():
@@ -96,10 +93,9 @@ class TranslateStep(CorpusStep):
             targets = []
             for dset in self.dataset_list:
                 dset_filename = "{}.{}.gz".format(dset, self.tgt_lang)
-                targets.extend([
-                    shard_file
-                    for shard_file in self.get_shard_list(dset_filename)
-                ])
+                targets.extend(
+                    [shard_file for shard_file in self.get_shard_list(dset_filename)]
+                )
             return targets
         return [
             Path(self.output_dir, "{}.{}.gz".format(dset, self.tgt_lang))
@@ -117,10 +113,9 @@ class TranslateStep(CorpusStep):
                 )
                 shard_dict[d_fname_target] = [
                     ".".join(
-                        shard.split(".")[:-3]
-                        + [self.tgt_lang]
-                        + shard.split(".")[-2:]
-                    ) for shard in s_fname_list
+                        shard.split(".")[:-3] + [self.tgt_lang] + shard.split(".")[-2:]
+                    )
+                    for shard in s_fname_list
                 ]
             self.save_shard_dict(shard_dict)
 
@@ -158,11 +153,7 @@ class TranslateStep(CorpusStep):
 
         # Execute the command
         proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=sys.stderr,
-            env=env,
-            text=True
+            cmd, stdout=subprocess.PIPE, stderr=sys.stderr, env=env, text=True
         )
 
         def terminate_signal(signalnum, handler):
@@ -176,6 +167,4 @@ class TranslateStep(CorpusStep):
         # Check the return code
         rc = proc.poll()
         if rc:
-            raise Exception(
-                "Process {} exited with non-zero value.".format(proc.pid)
-            )
+            raise Exception("Process {} exited with non-zero value.".format(proc.pid))

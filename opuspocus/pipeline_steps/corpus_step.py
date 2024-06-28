@@ -134,10 +134,7 @@ class CorpusStep(OpusPocusStep):
 
     def save_shard_dict(self, shard_dict: Dict[str, List[str]]) -> None:
         assert self.is_sharded
-        yaml.dump(
-            shard_dict,
-            open(Path(self.shard_dir, self.shard_index_file), "w")
-        )
+        yaml.dump(shard_dict, open(Path(self.shard_dir, self.shard_index_file), "w"))
 
     def get_shard_list(self, dset_filename: str) -> List[Path]:
         assert self.shard_index
