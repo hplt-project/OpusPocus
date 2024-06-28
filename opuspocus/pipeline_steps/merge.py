@@ -55,7 +55,10 @@ class MergeStep(CorpusStep):
 
     def register_categories(self) -> None:
         categories_dict = {}
-        categories_dict["categories"] = self.prev_corpus_step.categories
+        categories_dict["categories"] = [
+            {"name" : cat}
+            for cat in self.prev_corpus_step.categories
+        ]
 
         # Merge the category lists
         for cat in self.other_corpus_step.categories:
@@ -63,14 +66,14 @@ class MergeStep(CorpusStep):
                 categories_dict["categories"].append({"name": cat})
 
         categories_dict["mapping"] = {}
-        for cat, dset_list in self.prev_corpus_step.categories_dict.items():
+        for cat, dset_list in self.prev_corpus_step.category_mapping.items():
             categories_dict["mapping"][cat] = [
                 extend_dataset_name(dset_name, self.previous_corpus_label)
                 for dset_name in dset_list
             ]
-        for cat, dset_list in self.other_corpus_step.categories_dict.items():
+        for cat, dset_list in self.other_corpus_step.category_mapping.items():
             if cat not in categories_dict["mapping"]:
-                categories_dict["mapping"] = []
+                categories_dict["mapping"][cat] = []
             for dset_name in dset_list:
                 categories_dict["mapping"][cat].append(
                     extend_dataset_name(dset_name, self.other_corpus_label)

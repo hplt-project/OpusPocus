@@ -398,7 +398,7 @@ from opuspocus.utils import clean_dir
 
 
 def run_main(step):
-    runner = load_runner(Path('{pipeline_dir}'))
+    runner = load_runner(Path("{pipeline_dir}"))
 
     step.set_state(StepState.RUNNING)
     step.command_preprocess()
@@ -406,7 +406,9 @@ def run_main(step):
     task_ids = []
     for target_file in step.get_command_targets():
         if target_file.exists():
-            print("File {} already finished. Skipping...".format(target_file))
+            print(
+                "File " + str(target_file) + " already finished. Skipping..."
+            )
             continue
 
         cmd_path = Path(step.step_dir, step.command_file)
@@ -436,9 +438,9 @@ def run_main(step):
     step.set_state(StepState.DONE)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        step = load_step('{step_label}', Path('{pipeline_dir}'))
+        step = load_step("{step_label}", Path("{pipeline_dir}"))
 
         if len(sys.argv) == 1:
             run_main(step)
