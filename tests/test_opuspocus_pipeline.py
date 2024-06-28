@@ -1,30 +1,20 @@
 import pytest
 from argparse import Namespace
+from pathlib import Path
+
 from opuspocus.pipelines import build_pipeline, load_pipeline, OpusPocusPipeline
-from tests.utils import minimal_config, pipeline_dir
 
 
-@pytest.fixture(scope="module")
-def minimal_pipeline(minimal_config, pipeline_dir):
-    return OpusPocusPipeline(minimal_config, pipeline_dir)
-
-
-@pytest.fixture(scope="module")
-def initialized_minimal_pipeline(minimal_pipeline):
-    pipeline = minimal_pipeline.init()
-    return pipeline
-
-
-def test_build_pipeline_method(minimal_config, minimal_pipeline, pipeline_dir):
+def test_build_pipeline_method(config_minimal, pipeline_minimal, pipeline_dir):
     args = Namespace(**{
-        "pipeline_config": minimal_config,
+        "pipeline_config": config_minimal,
         "pipline_dir": pipeline_dir
     })
     pipeline = build_pipeline(args)
-    assert pipeline == minimal_pipeline
+    assert pipeline == pipeline_minimal
 
 
-def test_load_pipeline_method(initialized_minimal_pipeline):
+def test_load_pipeline_method(pipeline_minimal_initialized):
     args = Namespace(**{
         "pipeline_dir": pipeline_dir
     })
@@ -32,20 +22,35 @@ def test_load_pipeline_method(initialized_minimal_pipeline):
     assert pipeline == saved_pipeline
 
 
-def test_pipeline_class_init_graph(minimal_config, minimal_pipeline):
+def test_load_pipeline_dir_not_exist():
+    args = Namespace(**{
+        "pipeline_dir": Path("nonexistent", "directory")
+    })
+    with pytest.raises(FileNotFoundError):
+        load_pipeline(args)
+
+
+def test_load_pipeline_dir_not_directory(tmp_path):
+    args = Namespace(**{
+        "pipeline_dir": tmp_path,
+    })
+    with pytest.raises(NotADirectoryError):
+        load_pipeline(args)
+
+def test_pipeline_class_init_graph(config_minimal, pipeline_minimal):
     config_labels = [
         s["step_label"]
-        for s in minimal_config["pipeline"]["steps"]
+        for s in config_minimal["pipeline"]["steps"]
     ]
-    assert len(config_labels) == len(minimal_pipeline.steps)
-    for s in minimal_pipeline.steps:
+    assert len(config_labels) == len(pipeline_minimal.steps)
+    for s in pipeline_minimal.steps:
         assert s.step_label in config_labels
 
 
-def test_pipeline_class_init_default_targets(minimal_config, minimal_pipeline):
-    config_targets = minimal_config["pipeline"]["default_targets"]
-    assert len(config_targets) == len(minimal_pipeline.default_targets)
-    for target_str in minimal_pipeline.default_steps:
+def test_pipeline_class_init_default_targets(config_minimal, pipeline_minimal):
+    config_targets = config_minimal["pipeline"]["default_targets"]
+    assert len(config_targets) == len(pipeline_minimal.default_targets)
+    for target_str in pipeline_minimal.default_steps:
         assert target_str in config_targets
 
 
