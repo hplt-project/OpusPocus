@@ -9,8 +9,7 @@ import logging
 import os
 import yaml
 
-from opuspocus.utils import print_indented, RunnerResources
-
+from opuspocus.utils import clean_dir, print_indented, RunnerResources
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +77,9 @@ class OpusPocusStep(object):
         try:
             cls_inst = cls(step, step_label, pipeline_dir, **kwargs)
         except TypeError as err:
+            import pdb
+
+            pdb.set_trace()
             sig = inspect.signature(cls.__init__)
             logger.error(
                 "Error occured while building step {} ({}).\n"
@@ -280,6 +282,12 @@ class OpusPocusStep(object):
         for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
 
+    def clean_directories(self) -> None:
+        """TODO"""
+        logger.debug("Cleaning step subdirectory contents.")
+        for d in [self.log_dir, self.output_dir, self.tmp_dir]:
+            clean_dir(d, exclude="categories.json")
+
     def create_command(self) -> None:
         """Save the string composed using into the compose_command method.
 
@@ -348,34 +356,13 @@ class OpusPocusStep(object):
             return True
         return False
 
+    @property
     def is_running_or_submitted(self) -> bool:
         if self.has_state(StepState.RUNNING) or self.has_state(StepState.SUBMITTED):
             return True
         return False
 
     def get_command_targets(self) -> List[Path]:
-        raise NotImplementedError()
-
-    def is_target_complete(self, target_file: Path) -> bool:
-        if not target_file.exists():
-            return False
-        # TODO: more conditions?, e.g. empty file, timestamp comparison, etc.
-        return True
-
-    def is_finished(self, runner: "OpusPocusRunner") -> bool:
-        task_info = runner.load_task_info(self)
-        for task_id in task_info["subtasks"]:
-            if self.task_is_running(task_id):
-                return False
-
-        for target_file in self.get_command_targets():
-            if not self.is_target_complete():
-                return False
-
-        return True
-
-    def command(self, target_file: Path) -> None:
-        """TODO"""
         raise NotImplementedError()
 
     def command_preprocess(self) -> None:
@@ -385,6 +372,10 @@ class OpusPocusStep(object):
     def command_postprocess(self) -> None:
         """TODO"""
         pass
+
+    def command(self, target_file: Path) -> None:
+        """TODO"""
+        raise NotImplementedError()
 
     def compose_command(self) -> str:
         """Compose the step command.
@@ -397,6 +388,7 @@ class OpusPocusStep(object):
         method.
         """
         return """#!/usr/bin/env python3
+import signal
 import sys
 from pathlib import Path
 
@@ -406,23 +398,38 @@ from opuspocus.utils import clean_dir
 
 
 def run_main(step):
-    runner = load_runner(Path('{pipeline_dir}'))
+    runner = load_runner(Path("{pipeline_dir}"))
 
     step.set_state(StepState.RUNNING)
     step.command_preprocess()
 
     task_ids = []
     for target_file in step.get_command_targets():
+        if target_file.exists():
+            print(
+                "File " + str(target_file) + " already finished. Skipping..."
+            )
+            continue
+
         cmd_path = Path(step.step_dir, step.command_file)
         task_id = runner.submit_task(
             cmd_path=cmd_path,
             target_file=target_file,
             dependencies=None,
             step_resources=runner.get_resources(step),
-            stdout=sys.stdout,
-            stderr=sys.stderr,
+            stdout_file=None,
+            stderr_file=None,
         )
         task_ids.append(task_id)
+
+    def terminate_signal(signalnum, handler):
+        # If the main task receives SIGTERM, terminate all subtasks,
+        # FAIL and resubmit it
+        for task_id in task_ids:
+            runner.cancel_task(task_id)
+        step.set_state(StepState.FAILED)
+        runner.resubmit_step(step)
+    signal.signal(signal.SIGTERM, terminate_signal)
 
     runner.wait_for_all_tasks(task_ids)
     step.command_postprocess()
@@ -431,9 +438,9 @@ def run_main(step):
     step.set_state(StepState.DONE)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        step = load_step('{step_label}', Path('{pipeline_dir}'))
+        step = load_step("{step_label}", Path("{pipeline_dir}"))
 
         if len(sys.argv) == 1:
             run_main(step)

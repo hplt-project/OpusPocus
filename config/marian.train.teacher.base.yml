@@ -1,4 +1,4 @@
-workspace: 20000
+workspace: 5000
 optimizer-delay: 2
 keep-best: true
 overwrite: true

@@ -66,14 +66,16 @@ class CorpusStep(OpusPocusStep):
             output_shard_size=output_shard_size,
             **kwargs,
         )
-        if self._inherits_sharded and output_shard_size is not None:
-            logger.warn(
-                "Step {} always inherits sharding from its "
-                "previous_corpus_step ({}). Ignoring the output_shard_size "
-                "parameter...".format(self.step, self.prev_corpus_step.step_label)
-            )
-            if self.prev_corpus_step.is_sharded:
-                self.output_shard_size = self.previous_corpus_step.shard_size
+        if self._inherits_sharded and self.prev_corpus_step.is_sharded:
+            if output_shard_size is not None:
+                logger.warn(
+                    "Step {} always inherits sharding from its "
+                    "previous_corpus_step ({}). Ignoring the "
+                    "output_shard_size parameter...".format(
+                        self.step, self.prev_corpus_step.step_label
+                    )
+                )
+            self.output_shard_size = self.prev_corpus_step.shard_size
 
     @property
     def prev_corpus_step(self) -> "CorpusStep":
@@ -125,36 +127,38 @@ class CorpusStep(OpusPocusStep):
         shard_dict = yaml.safe_load(
             open(Path(self.shard_dir, self.shard_index_file), "r")
         )
-        return {k: [f for f in v] for k, v in shard_dict.items()}
+        return {
+            k: [Path(self.shard_dir, fname) for fname in v]
+            for k, v in shard_dict.items()
+        }
 
-    def save_shard_index(self, shard_dict: Dict[str, List[str]]) -> None:
+    def save_shard_dict(self, shard_dict: Dict[str, List[str]]) -> None:
         assert self.is_sharded
-        yaml.dump(shard_dict, open(Path(self.shard_dir, self.shard_index), "w"))
+        yaml.dump(
+            shard_dict,
+            open(Path(self.shard_dir, self.shard_index_file), "w")
+        )
 
     def get_shard_list(self, dset_filename: str) -> List[Path]:
-        return self.shard_map(dset_filename)
+        assert self.shard_index
+        return self.shard_index[dset_filename]
 
     def command_postprocess(self) -> None:
         """TODO"""
         if self.is_sharded and not self._inherits_sharded:
             # Shard Output
-            shard_map = {}
+            shard_dict = {}
             for dset in self.dataset_list:
                 for lang in self.languages:
                     dset_path = Path(self.output_dir, "{}.{}.gz".format(dset, lang))
                     dset_filename = dset_path.stem + dset_path.suffix
-                    shard_map[dset_filename] = file_to_shards(
+                    shard_dict[dset_filename] = file_to_shards(
                         file_path=dset_path,
                         shard_dir=self.shard_dir,
                         shard_size=self.shard_size,
                     )
-            self.save_shard_map(shard_map)
+            self.save_shard_dict(shard_dict)
         elif self._inherits_sharded:
-            Path(self.shard_dir, self.shard_index).hardlink_to(
-                Path(
-                    self.prev_corpus_step.shard_dir, self.prev_corpus_step.shard_index
-                ).resolve()
-            )
             # Merge Shards
             for dset in self.dataset_list:
                 for lang in self.languages:
@@ -164,7 +168,6 @@ class CorpusStep(OpusPocusStep):
                     dset_filename = dset_file_path.stem + dset_file_path.suffix
                     shards_to_file(
                         self.get_shard_list(dset_filename),
-                        self.shard_dir,
                         dset_file_path,
                     )
 

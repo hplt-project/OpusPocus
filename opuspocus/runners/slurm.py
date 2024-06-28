@@ -60,10 +60,12 @@ class SlurmRunner(OpusPocusRunner):
             cmd.append(",".join(["afterok:{}".format(dep) for dep in dep_jids]))
 
         cmd += self._convert_resources(step_resources)
-        cmd += self._add_environment_variables(resources)
+        cmd += self._add_environment_variables(step_resources)
 
         jobname = "{}.{}.{}".format(
-            runner, pipeline_dir.stem + pipeline_dir.suffix, target_file.stem
+            self.runner,
+            self.pipeline_dir.stem + self.pipeline_dir.suffix,
+            target_file.stem,
         )
         cmd += ["--jobname", jobname]
         cmd += ["--signal", "TERM@10:00"]  # send SIGTERM 10m before time-limit
