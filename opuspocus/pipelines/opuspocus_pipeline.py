@@ -82,9 +82,7 @@ class OpusPocusPipeline(object):
                 "Pipeline directory ({}) does not exist.".format(pipeline_dir)
             )
         if not pipeline_dir.is_dir():
-            raise NotADirectoryError(
-                "{} is not a directory.".format(pipeline_dir)
-            )
+            raise NotADirectoryError("{} is not a directory.".format(pipeline_dir))
 
         pipeline_config_path = Path(pipeline_dir, cls.config_file)
         return cls(pipeline_config_path, pipeline_dir)

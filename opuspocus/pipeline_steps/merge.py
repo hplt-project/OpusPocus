@@ -56,8 +56,7 @@ class MergeStep(CorpusStep):
     def register_categories(self) -> None:
         categories_dict = {}
         categories_dict["categories"] = [
-            {"name" : cat}
-            for cat in self.prev_corpus_step.categories
+            {"name": cat} for cat in self.prev_corpus_step.categories
         ]
 
         # Merge the category lists
