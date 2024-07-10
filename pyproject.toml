@@ -1,6 +1,3 @@
-[build-system]
-requires = ["hatchling", "hatch-requirements-txt"]
-build-backend = "hatchling.build"
 
 [project]
 name = "opuspocus"
@@ -9,25 +6,12 @@ readme = "README.md"
 requires-python = ">=3.7"
 license = "MIT"
 keywords = ["OPUS", "HPLT", "pipeline manager"]
-authors = [
-  { name = "Dušan Variš", email = "varis@ufal.mff.cuni.cz" },
-]
+authors = [{ name = "Dušan Variš", email = "varis@ufal.mff.cuni.cz" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dynamic = [
-  "version",
-  "dependencies",
-  "optional-dependencies"
-]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.scripts]
 opuspocus = "go:main_cli"
@@ -37,42 +21,11 @@ Documentation = "https://github.com/hplt-project/opuspocus#readme"
 Issues = "https://github.com/hplt-project/opuspocus/issues"
 Repository = "https://github.com/hplt-project/OpusPocus.git"
 
-[tool.hatch.version]
-path = "opuspocus/__about__.py"
-
-[tool.hatch.envs.default]
-dependencies = [
-  "pytest",
-  "pytest-cov",
-]
-[tool.hatch.envs.default.scripts]
-cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=opuspocus --cov=tests {args}"
-no-cov = "cov --no-cov {args}"
-
-[[tool.hatch.envs.test.matrix]]
-python = ["37", "38", "39", "310", "311"]
-
-[tool.hatch.build]
-include = [
-  "/opuspocus",
-]
-
-[tool.hatch.metadata.hooks.requirements_txt]
-files = ["requirements.txt"]
-
-[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
-all = ["requirements-all.txt"]
 
 [tool.coverage.run]
 branch = true
 parallel = true
-omit = [
-  "opuspocus/__about__.py",
-]
+omit = ["opuspocus/__about__.py"]
 
 [tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
