@@ -21,11 +21,5 @@ Documentation = "https://github.com/hplt-project/opuspocus#readme"
 Issues = "https://github.com/hplt-project/opuspocus/issues"
 Repository = "https://github.com/hplt-project/OpusPocus.git"
 
-
-[tool.coverage.run]
-branch = true
-parallel = true
-omit = ["opuspocus/__about__.py"]
-
-[tool.coverage.report]
-exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+[tool.pytest.ini_options]
+pythonpath = ["."]
