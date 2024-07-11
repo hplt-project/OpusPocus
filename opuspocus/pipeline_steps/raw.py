@@ -2,6 +2,7 @@ from typing import List, Optional
 
 import gzip
 import logging
+import os
 import shutil
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
@@ -103,7 +104,9 @@ class RawCorpusStep(CorpusStep):
             corpus_path = Path(self.raw_data_dir, target_filename)
             if not corpus_path.exists():
                 raise FileNotFoundError(corpus_path)
-            target_file.hardlink_to(corpus_path.resolve())
+            # print(target_file.resolve(), corpus_path.resolve())
+            os.link(corpus_path.resolve(), target_file.resolve() )
+            # target_file.hardlink_to()
         else:
             corpus_path = Path(self.raw_data_dir, target_file.stem)
             if not corpus_path.exists():

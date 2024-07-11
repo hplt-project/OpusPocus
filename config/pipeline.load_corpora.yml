@@ -1,8 +1,8 @@
 global:
   src_lang: en
-  tgt_lang: nn
+  tgt_lang: is
 
-  raw_data_dir: data/${.src_lang}-${.tgt_lang}/raw
+  raw_data_dir: data/${.src_lang}-${.tgt_lang}/v0
   valid_data_dir: data/${.src_lang}-${.tgt_lang}/valid
   test_data_dir: data/${.src_lang}-${.tgt_lang}/test
 
@@ -19,13 +19,13 @@ pipeline:
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
       raw_data_dir: ${global.valid_data_dir}
-      compressed: false
+      compressed: true
     - step: raw
       step_label: test.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
       raw_data_dir: ${global.test_data_dir}
-      compressed: false
+      compressed: true
   default_targets:
     - raw.${global.src_lang}-${global.tgt_lang}
     - valid.${global.src_lang}-${global.tgt_lang}

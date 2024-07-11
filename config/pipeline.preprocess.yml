@@ -1,9 +1,9 @@
 global:
   seed: 42
   src_lang: en
-  tgt_lang: nn
+  tgt_lang: is
 
-  raw_para_dir: data/${.src_lang}-${.tgt_lang}/raw
+  raw_para_dir: data/${.src_lang}-${.tgt_lang}/v0
   # TODO: Replace the mono dirs with proper directories
   raw_mono_src_dir: data/${.src_lang}-${.tgt_lang}/raw
   raw_mono_tgt_dir: data/${.src_lang}-${.tgt_lang}/raw

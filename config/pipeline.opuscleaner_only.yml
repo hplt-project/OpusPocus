@@ -1,11 +1,11 @@
 global:
   seed: 42
   src_lang: en
-  tgt_lang: nn
+  tgt_lang: is
 
-  raw_data_dir: data/${.src_lang}-${.tgt_lang}/raw
+  raw_data_dir: data/${.src_lang}-${.tgt_lang}/v0
 
-  opuscleaner_python_venv_dir: opuscleaner-venv
+  opuscleaner_python_venv_dir: /fs/lofn0/bmalik/miniconda3
 
 pipeline:
   pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner-only

@@ -62,12 +62,17 @@ class CleanCorpusStep(CorpusStep):
         dataset = ".".join(str(target_filename).split(".")[:-2])
         input_file = Path(self.input_dir, "{}.filters.json".format(dataset))
 
-        opuscleaner_bin_path = Path(self.python_venv_dir, "bin", self.opuscleaner_cmd)
+        # opuscleaner_bin_path = Path(self.python_venv_dir, "bin", self.opuscleaner_cmd)
 
         # Run OpusCleaner
         proc = subprocess.Popen(
             [
-                str(opuscleaner_bin_path),
+                "conda",
+                "run",
+                "-n",
+                "opuscleaner",
+                self.opuscleaner_cmd,
+                # opuscleaner_bin_path,
                 str(input_file),
                 "--parallel",
                 os.environ[RunnerResources.get_env_name("cpus")],

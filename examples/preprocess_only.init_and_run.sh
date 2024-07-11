@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
 SRC=en
-TGT=nn
+TGT=is
 EXP_DIR="experiments/$SRC-$TGT/preprocess_only"
+
+export PYTHONPATH="/home/bmalik/OpusPocus/opuspocus/:$PYTHONPATH"
 
 echo Initializing pipeline... >&2
 ./go.py init --pipeline-config config/pipeline.preprocess.yml --pipeline-dir $EXP_DIR
