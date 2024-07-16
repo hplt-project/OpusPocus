@@ -126,11 +126,15 @@ class OpusPocusRunner(object):
         targets: List[str],
     ) -> None:
         """TODO"""
+        logger.info("Submitting pipeline tasks...")
+
         self.save_parameters()
         self.submitted_tasks = []
         for step in pipeline.get_targets(targets):
             self.submit_step(step)
+
         self.run()
+        logger.info("Pipeline tasks submitted successfully.")
 
     def run(self) -> None:
         """TODO"""

@@ -158,9 +158,14 @@ class OpusPocusPipeline(object):
 
     def init(self) -> None:
         """Initialize the pipeline."""
+        logger.info("Initializing pipeline ({})".format(self.pipeline_dir))
         for _, v in self.pipeline_graph.items():
             v.init_step()
+
         self.save_pipeline()
+        logger.info(
+            "Pipeline ({}) initialized successfully.".format(self.pipeline_dir)
+        )
 
     def status(self, steps: List[OpusPocusStep]) -> None:
         for s in steps:
