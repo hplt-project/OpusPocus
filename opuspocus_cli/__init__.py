@@ -1,18 +1,20 @@
-from typing import Optional, Sequence
-from argparse import Namespace
-
+import importlib
+import logging
 import sys
+from argparse import Namespace
+from pathlib import Path
+from typing import Sequence
+
 
 CMD_MODULES = {}
 
 
 def _print_usage():
     print(
-        "Usage: {} [{}] {additional_options}\n".format(
-            sys.argv[0],
-            ",".join([cmd for cmd in CMD_MODULES.keys()]),
-        ),
-        file=sys.stderr
+        "usage: {} ".format(sys.argv[0])
+        + "{"
+        + ",".join(CMD_MODULES.keys())
+        + "} [options]",
     )
 
 
@@ -20,12 +22,12 @@ def parse_args(argv: Sequence[str]) -> Namespace:
     """Call the correct subcommand parser, given the subcommand."""
     if not argv:
         _print_usage()
-        raise ValueError("No options specified.")
+        sys.exit(1)
 
     cmd = argv[0]
     if cmd not in CMD_MODULES:
         _print_usage()
-        raise ValueError("Unknown subcommand: '{}'".format(cmd))
+        sys.exit(1)
 
     args = CMD_MODULES[cmd].parse_args(argv[1:])
     assert not hasattr(args, "command")
@@ -36,7 +38,7 @@ def parse_args(argv: Sequence[str]) -> Namespace:
 
 def main(argv: Sequence[str]) -> int:
     """Process the CLI arguments and call a specific CLI main method."""
-    args = parse_args(argv[1:])
+    args = parse_args(argv)
     if args.log_level == "info":
         logging.basicConfig(level=logging.INFO)
     elif args.log_level == "debug":
@@ -56,6 +58,4 @@ for file in cli_dir.iterdir():
 
         # We import all the CLI modules and register them for later calls
         importlib.import_module("opuspocus_cli.{}".format(cmd_name))
-        CMD_MODULES[command_name] = sys.modules[
-            "opuspocus_cli.{}".format(cmd_name)
-        ]
+        CMD_MODULES[cmd_name] = sys.modules["opuspocus_cli.{}".format(cmd_name)]

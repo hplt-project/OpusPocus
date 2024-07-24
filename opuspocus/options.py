@@ -1,18 +1,23 @@
 import argparse
 import sys
+from typing import Sequence
+
+from opuspocus.pipelines import OpusPocusPipeline
+from opuspocus.runners import RUNNER_REGISTRY
 
 GEN_DESCRIPTION = "OpusPocus NLP Pipeline Manager"
 
 
 class OpusPocusParser(argparse.ArgumentParser):
     """TODO"""
+
     def error(self, message):
         print("Error: {}\n".format(message), file=sys.stderr)
         self.print_help()
         sys.exit(2)
 
-    def parse_args(args=None, namespace=None):
-        if args is None or not args:
+    def parse_args(self, args=None, namespace=None):
+        if namespace is None and (args is None or not args):
             self.print_usage()
             sys.exit(1)
         return super().parse_args(args=args, namespace=namespace)
@@ -27,27 +32,26 @@ def _add_general_arguments(
         type=str,
         choices=["info", "debug"],
         default="info",
-        help="Current logging level."
+        help="Current logging level.",
     )
-    parser.add_argument(
-        "--pipeline-config",
-        type=str,
-        default=,
-        required=pipeline_dir_required,
-        help="Pipeline root directory location."
-    )
+    OpusPocusPipeline.add_args(parser, pipeline_dir_required=pipeline_dir_required)
 
 
-def _add_runner_arguments(
-    parser: argparse.ArgumentParser
-) -> None:
+def _add_runner_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--runner",
         type=str,
         metavar="RUNNER",
         required=True,
-        choices=runners.RUNNER_REGISTRY.keys(),
-        help="Runner used for pipeline execution manipulation."
+        choices=RUNNER_REGISTRY.keys(),
+        help="Runner used for pipeline execution manipulation.",
+    )
+    parser.add_argument(
+        "--targets",
+        type=str,
+        nargs="+",
+        default=None,
+        help="List of steps to be executed together with their dependencies.",
     )
 
 
@@ -57,6 +61,12 @@ def parse_init_args(argv: Sequence[str]) -> argparse.Namespace:
     )
 
     _add_general_arguments(parser, pipeline_dir_required=False)
+    parser.add_argument(
+        "--pipeline-config",
+        type=str,
+        default=None,
+        help="Pipeline configuration YAML file.",
+    )
 
     return parser.parse_args(argv)
 
@@ -69,10 +79,10 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     _add_general_arguments(parser)
     _add_runner_arguments(parser)
 
-    args, unparsed = parser.parser_known_args(argv)
-    runners.RUNNER_REGISTRY[args.runner].add_args(parser)
+    args, unparsed = parser.parse_known_args(argv)
+    RUNNER_REGISTRY[args.runner].add_args(parser)
 
-    return parser.parse_args(unparsed, args)
+    return parser.parse_args(argv)
 
 
 def parse_stop_args(argv: Sequence[str]) -> argparse.Namespace:
@@ -108,12 +118,12 @@ def parse_traceback_args(argv: Sequence[str]) -> argparse.Namespace:
         type=str,
         nargs="+",
         default=None,
-        help="Pipeline targets from which to traceback."
+        help="Pipeline targets from which to traceback.",
     )
-    parser.add_argment(
+    parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Include additional step parameter information."
+        help="Include additional step parameter information.",
     )
 
     return parser.parse_args(argv)

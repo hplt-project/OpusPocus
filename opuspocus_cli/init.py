@@ -4,13 +4,12 @@ from typing import Sequence
 import sys
 from argparse import Namespace
 
-from opuspocus.options import create_init_parser
+from opuspocus.options import parse_init_args
 from opuspocus.pipelines import build_pipeline
 
 
 def parse_args(argv: Sequence[str]) -> Namespace:
-    parser = create_init_parser()
-    return parser.parse_args(argv)
+    return parse_init_args(argv)
 
 
 def main(args: Namespace) -> int:

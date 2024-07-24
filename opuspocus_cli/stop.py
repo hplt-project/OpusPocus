@@ -4,14 +4,13 @@ from typing import Sequence
 import sys
 from argparse import Namespace
 
-from opuspocus.options import create_stop_parser
+from opuspocus.options import parse_stop_args
 from opuspocus.pipelines import load_pipeline
-from opuspocus.runners import build_runner
+from opuspocus.runners import load_runner
 
 
 def parse_args(argv: Sequence[str]) -> Namespace:
-    parser = create_stop_parser()
-    return parser.parse_args(argv)
+    return parse_stop_args(argv)
 
 
 def main(args: Namespace) -> int:
@@ -24,7 +23,7 @@ def main(args: Namespace) -> int:
     to execute the pipeline.
     """
     pipeline = load_pipeline(args)
-    runner = runners.load_runner(args.pipeline_dir)
+    runner = load_runner(args.pipeline_dir)
     runner.stop_pipeline(pipeline)
     return 0
 

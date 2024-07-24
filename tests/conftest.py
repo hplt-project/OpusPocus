@@ -3,6 +3,7 @@ import pytest
 import yaml
 
 from opuspocus.pipelines import OpusPocusPipeline
+from opuspocus.runners.bash import BashRunner
 
 # TODO: add parameterization to some of these methods
 
@@ -92,5 +93,14 @@ def pipeline_minimal(config_minimal, pipeline_dir):
 
 @pytest.fixture(scope="module")
 def pipeline_minimal_initialized(pipeline_minimal):
-    pipeline = pipeline_minimal.init()
-    return pipeline
+    pipeline_minimal.init()
+    return pipeline_minimal
+
+
+@pytest.fixture(scope="module")
+def pipeline_minimal_running_bash(pipeline_minimal_initialized):
+    runner = BashRunner("bash", pipeline_minimal_initialized.pipeline_dir)
+    runner.run_pipeline(
+        pipeline_minimal_initialized, pipeline_minimal_initialized.get_targets()
+    )
+    return pipeline_minimal_initialized

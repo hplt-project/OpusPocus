@@ -4,15 +4,13 @@ from typing import Sequence
 import sys
 from argparse import Namespace
 
-from opuspocus.options import create_run_parser
+from opuspocus.options import parse_run_args
 from opuspocus.pipelines import load_pipeline
 from opuspocus.runners import build_runner
-from opuspocus.utils import check_pipeline_dir_exists
 
 
 def parse_args(argv: Sequence[str]) -> Namespace:
-    parser = create_run_parser()
-    return parser.parse_args(argv)
+    return parse_run_args(argv)
 
 
 def main(args: Namespace) -> int:
@@ -23,7 +21,7 @@ def main(args: Namespace) -> int:
     runner tasks.
     """
     pipeline = load_pipeline(args)
-    runner = runners.build_runner(args.runner, args.pipeline_dir, args)
+    runner = build_runner(args.runner, args.pipeline_dir, args)
     runner.run_pipeline(pipeline, pipeline.get_targets(args.targets))
     return 0
 

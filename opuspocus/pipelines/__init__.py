@@ -4,6 +4,7 @@ from .opuspocus_pipeline import OpusPocusPipeline
 __all__ = [OpusPocusPipeline]
 logger = logging.getLogger(__name__)
 
+
 def build_pipeline(args):
     logger.info("Building pipeline...")
     return OpusPocusPipeline.build_pipeline(args.pipeline_config, args.pipeline_dir)
