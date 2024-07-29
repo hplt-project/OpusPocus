@@ -13,9 +13,6 @@ from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.utils import cut_filestream, RunnerResources
 
 
-logger = logging.getLogger(__name__)
-
-
 @register_step("clean")
 class CleanCorpusStep(CorpusStep):
     def __init__(

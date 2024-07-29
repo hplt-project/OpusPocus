@@ -128,7 +128,7 @@ class BashRunner(OpusPocusRunner):
             proc = Process(task_id["id"])
         except Exception:
             logger.debug(
-                "Process with pid={} does not exist. Ignoring...".format(task_id)
+                "Process with pid=%i does not exist. Ignoring...", task_id
             )
             return None
         return proc

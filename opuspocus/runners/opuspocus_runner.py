@@ -64,7 +64,7 @@ class OpusPocusRunner(object):
     def load_parameters(cls, pipeline_dir: Path) -> Dict[str, Any]:
         """TODO"""
         params_path = Path(pipeline_dir, cls.parameter_file)
-        logger.debug("Loading step variables from {}".format(params_path))
+        logger.debug("Loading step variables from %s", params_path)
 
         params_dict = yaml.safe_load(open(params_path, "r"))
         return params_dict
@@ -91,7 +91,7 @@ class OpusPocusRunner(object):
     def register_parameters(self, **kwargs) -> None:
         """TODO"""
         type_hints = get_type_hints(self.__init__)
-        logger.debug("Class type hints: {}".format(type_hints))
+        logger.debug("Class type hints: $s", type_hints)
 
         for param, val in kwargs.items():
             if type_hints[param] == Path and val is not None:
@@ -113,10 +113,10 @@ class OpusPocusRunner(object):
                         step.step_label, self.runner, task_info["runner"]
                     )
                 )
-            logger.info("Stopping {}. Setting state to FAILED.".format(step.step_label))
+            logger.info("Stopping %s. Setting state to FAILED.", step.step_label)
 
             for task_id in task_info["subtasks"] + [task_info["main_task"]]:
-                logger.debug("Stopping task {}.".format(task_id))
+                logger.debug("Stopping task %i.", task_id)
                 self.cancel_task(task_id)
             step.set_state(StepState.FAILED)
 
@@ -154,14 +154,15 @@ class OpusPocusRunner(object):
             return task_info
         elif step.has_state(StepState.DONE):
             logger.info(
-                "Step {} has already finished. Skipping...".format(step.step_label)
+                "Step %s has already finished. Skipping...", step.step_label
             )
             return None
         elif step.has_state(StepState.FAILED):
             step.clean_directories()
             logger.info(
-                "Step {} has previously failed. "
-                "Removing previous outputs and resubmitting..."
+                "Step %s has previously failed. "
+                "Removing previous outputs and resubmitting...",
+                step.step_label
             )
         elif not step.has_state(StepState.INITED):
             raise ValueError(
@@ -182,7 +183,7 @@ class OpusPocusRunner(object):
         cmd_path = Path(step.step_dir, step.command_file)
 
         # Submit the main step task (which eventually can submit subtasks)
-        logger.info("[{}] Submitting main step task.".format(step.step_label))
+        logger.info("[%s] Submitting main step task.", step.step_label)
         task_id = self.submit_task(
             cmd_path=cmd_path,
             target_file=None,
@@ -211,7 +212,7 @@ class OpusPocusRunner(object):
                     )
                 )
 
-            logger.info("Stopping {}. Setting state to FAILED.".format(step.step_label))
+            logger.info("Stopping %s. Setting state to FAILED.", step.step_label)
             step.set_state(StepState.FAILED)
 
             task_ids = task_info["subtasks"] + [task_info["main_task"]]

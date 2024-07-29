@@ -17,9 +17,6 @@ from opuspocus.utils import (
 )
 
 
-logger = logging.getLogger(__name__)
-
-
 @register_step("generate_vocab")
 class GenerateVocabStep(OpusPocusStep):
     def __init__(

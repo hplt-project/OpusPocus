@@ -52,16 +52,14 @@ class RawCorpusStep(CorpusStep):
         categories_path = Path(self.raw_data_dir, self.categories_file)
         if categories_path.exists():
             logger.info(
-                "[{}] OpusCleaner's categories.json found. Copying.".format(
-                    self.step_label
-                )
+                "[%s] OpusCleaner's categories.json found. Copying.",
+                self.step_label
             )
             shutil.copy(categories_path, self.categories_path)
         else:
             logger.info(
-                "[{}] categories.json not found. Scanning for datasets.".format(
-                    self.step_label
-                )
+                "[%s] categories.json not found. Scanning for datasets.",
+                self.step_label
             )
             categories_dict = {
                 "categories": [{"name": self.default_category}],

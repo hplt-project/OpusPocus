@@ -6,9 +6,6 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 
 
-logger = logging.getLogger(__name__)
-
-
 def extend_dataset_name(dset_name, label):
     return "{}.{}".format(label, dset_name)
 

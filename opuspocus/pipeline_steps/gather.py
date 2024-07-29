@@ -7,9 +7,6 @@ from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.utils import concat_files
 
 
-logger = logging.getLogger(__name__)
-
-
 @register_step("gather")
 class GatherCorpusStep(CorpusStep):
     """Gather the input corpora and merge them into datasets based

@@ -19,7 +19,7 @@ RUNNER_CLASS_NAMES = set()
 
 def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
     """Runner builder function. Use this to create runner objects."""
-    logger.info("Building runner ({})...".format(runner))
+    logger.info("Building runner (%s)...", runner)
 
     kwargs = {}
     for param in RUNNER_REGISTRY[runner].list_parameters():
@@ -41,7 +41,7 @@ def load_runner(pipeline_dir: Path):
     del runner_params["runner"]
     del runner_params["pipeline_dir"]
 
-    logger.info("Loading runner ({})...".format(runner))
+    logger.info("Loading runner (%s)...", runner)
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **runner_params)
 
 

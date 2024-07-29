@@ -69,11 +69,10 @@ class CorpusStep(OpusPocusStep):
         if self._inherits_sharded and self.prev_corpus_step.is_sharded:
             if output_shard_size is not None:
                 logger.warn(
-                    "Step {} always inherits sharding from its "
-                    "previous_corpus_step ({}). Ignoring the "
-                    "output_shard_size parameter...".format(
-                        self.step, self.prev_corpus_step.step_label
-                    )
+                    "Step %s always inherits sharding from its "
+                    "previous_corpus_step (%s). Ignoring the "
+                    "output_shard_size parameter...",
+                    self.step, self.prev_corpus_step.step_label
                 )
             self.output_shard_size = self.prev_corpus_step.shard_size
 
@@ -253,7 +252,7 @@ class CorpusStep(OpusPocusStep):
         self.create_command()
 
         # Initialize state
-        logger.info("[{}] Step Initialized.".format(self.step_label))
+        logger.info("[%s] Step Initialized.", self.step_label)
         self.set_state(StepState.INITED)
 
     def init_categories_file(self) -> None:

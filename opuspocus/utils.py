@@ -141,8 +141,8 @@ def clean_dir(directory: Path, exclude: str = None) -> None:
             elif file_path.is_dir():
                 file_path.rmdir()
         except Exception as e:
-            print(
-                "Failed to delete {}. Reason: {}".format(file_path, e), file=sys.stderr
+            logger.error(
+                "Failed to delete %s. Reason: %s", file_path, e.message
             )
 
 
@@ -254,7 +254,7 @@ class RunnerResources(object):
         params = {}
         for k, v in json_dict.items():
             if k not in cls_params:
-                logger.warn("Resource {} not supported. Ignoring".format(k))
+                logger.warn("Resource %s not supported. Ignoring", k)
             params[k] = v
         return RunnerResources(**params)
 
