@@ -9,7 +9,7 @@ from typing import Sequence
 CMD_MODULES = {}
 
 
-def _print_usage():
+def _print_usage() -> None:
     print(
         "usage: {} ".format(sys.argv[0])
         + "{"

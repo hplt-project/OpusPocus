@@ -5,7 +5,11 @@ from pathlib import Path
 
 from .opuspocus_runner import OpusPocusRunner, TaskId, TaskInfo
 
-__all__ = [OpusPocusRunner, TaskId, TaskInfo]
+__all__ = [
+    "OpusPocusRunner",
+    "TaskId",
+    "TaskInfo",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +31,10 @@ def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
 
 
 def load_runner(pipeline_dir: Path):
-    """TODO"""
+    """Recreate a previously used runner. Required for pipeline execution
+    updates, i.e. execution termination.
+
+    """
     runner_params = OpusPocusRunner.load_parameters(pipeline_dir)
 
     runner = runner_params["runner"]

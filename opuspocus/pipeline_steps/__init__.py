@@ -3,7 +3,10 @@ from pathlib import Path
 
 from .opuspocus_step import OpusPocusStep, StepState
 
-__all__ = [OpusPocusStep, StepState]
+__all__ = [
+    "OpusPocusStep",
+    "StepState",
+]
 
 STEP_REGISTRY = {}
 STEP_INSTANCE_REGISTRY = {}

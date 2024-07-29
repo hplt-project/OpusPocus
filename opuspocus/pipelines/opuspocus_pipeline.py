@@ -17,7 +17,11 @@ class OpusPocusPipeline(object):
     config_file = "pipeline.config"
 
     @staticmethod
-    def add_args(parser, pipeline_dir_required=True):
+    def add_args(
+        parser: argparse.ArgumentParser,
+        *,
+        pipeline_dir_required: bool = True
+    ) -> None:
         """Add pipeline-specific arguments to the parser."""
         parser.add_argument(
             "--pipeline-dir",
