@@ -14,7 +14,7 @@ def extend_dataset_name(dset_name, label):
 
 
 @register_step("merge")
-class MergeStep(CorpusStep):
+class MergeCorpusStep(CorpusStep):
     """Merge two corpus steps into a single one.
 
     Takes the other_corpus_step output_dir contents and adds them

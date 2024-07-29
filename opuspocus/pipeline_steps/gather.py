@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 @register_step("gather")
-class GatherStep(CorpusStep):
+class GatherCorpusStep(CorpusStep):
     """Gather the input corpora and merge them into datasets based
     on the OpusCleaner categories labels.
 
