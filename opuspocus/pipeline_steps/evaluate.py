@@ -1,8 +1,8 @@
-from typing import List
+from typing import List, Optional
 
 import logging
+import sacrebleu
 from pathlib import Path
-from sacrebleu.metrics import METRICS
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 @register_step("evaluate")
 class EvaluateStep(OpusPocusStep):
+    AVAILABLE_METRICS = sacrebleu.metrics.METRICS
+
     def __init__(
         self,
         step: str,
@@ -20,9 +22,9 @@ class EvaluateStep(OpusPocusStep):
         pipeline_dir: Path,
         src_lang: str,
         tgt_lang: str,
-        datasets: List[str],
         translated_corpus_step: CorpusStep,
         reference_corpus_step: CorpusStep,
+        datasets: Optional[List[str]] = None,
         seed: int = 42,
         metrics: List[str] = ["BLEU", "CHRF"],
     ):
@@ -39,14 +41,18 @@ class EvaluateStep(OpusPocusStep):
             metrics=metrics,
         )
         for metric in self.metrics:
-            if metrics not in METRICS:
+            if metric not in self.AVAILABLE_METRICS:
                 raise ValueError(
                     "Unknown metric: {}.\n".format(metric)
-                    + "Supported metrics: {}".format(",".join(METRICS))
+                    + "Supported metrics: {}".format(
+                        ",".join(self.AVAILABLE_METRICS)
+                    )
                 )
 
     def init_step(self) -> None:
         super().init_step()
+        if self.dataset is None:
+            self.dataset = self.translated_step.dataset_list
         for dset in self.datasets:
             if dset not in self.translated_step.dataset_list:
                 raise ValueError(
@@ -83,7 +89,7 @@ class EvaluateStep(OpusPocusStep):
     def command(self, target_file: Path) -> None:
         metric_label = target_file.stem.split(".")[0]
         dset = target_file.stem.split(".")[1:]
-        metric = METRICS[metric_label]()
+        metric = self.AVAILABLE_METRICS[metric_label]()
 
         sys = [
             line.rstrip("\n")
