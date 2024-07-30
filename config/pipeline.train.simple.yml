@@ -3,12 +3,15 @@ global:
   src_lang: en
   tgt_lang: nn
 
-  # we set the "raw" data dir to the output of the preprocess pipeline
-  raw_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example/gather.${.src_lang}-${.tgt_lang}/output
-  valid_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example/valid.${.src_lang}-${.tgt_lang}/output
-  test_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example/test.${.src_lang}-${.tgt_lang}/output
+  preprocess_pipeline_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example
 
-  valid_dataset_prefix: flores200.dev
+  # We set the "raw" data dir to the output of the preprocess pipeline
+  raw_data_dir: ${.preprocess_pipeline_dir}/gather.${.src_lang}-${.tgt_lang}/output
+
+  valid_data_dir: ${.preprocess_pipeline_dir}/valid.${.src_lang}-${.tgt_lang}/output
+  test_data_dir: ${.preprocess_pipeline_dir}/test.${.src_lang}-${.tgt_lang}/output
+
+  valid_dataset: flores200.dev.${.src_lang}-${.tgt_lang}
 
   decontaminate_min_length: 25
 
