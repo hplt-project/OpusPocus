@@ -17,7 +17,7 @@ global:
   decontaminate_min_length: 25
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess_only
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess.example
   steps:
     # Load Datasets
     - step: raw
@@ -79,3 +79,5 @@ pipeline:
     - gather.${global.src_lang}-${global.tgt_lang}
     - gather.${global.src_lang}
     - gather.${global.tgt_lang}
+    - valid.${global.src_lang}-${global.tgt_lang}
+    - test.${global.src_lang}-${global.tgt_lang}

@@ -7,7 +7,7 @@ global:
   test_data_dir: data/${.src_lang}-${.tgt_lang}/test
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/raw_only
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/load_corpora.example
   steps:
     - step: raw
       step_label: raw.${global.src_lang}-${global.tgt_lang}

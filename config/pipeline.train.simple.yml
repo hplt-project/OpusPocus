@@ -4,9 +4,9 @@ global:
   tgt_lang: nn
 
   # we set the "raw" data dir to the output of the preprocess pipeline
-  raw_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only/gather.${.src_lang}-${.tgt_lang}/output
-  valid_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only/valid.${.src_lang}-${.tgt_lang}/output
-  test_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only/test.${.src_lang}-${.tgt_lang}/output
+  raw_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example/gather.${.src_lang}-${.tgt_lang}/output
+  valid_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example/valid.${.src_lang}-${.tgt_lang}/output
+  test_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example/test.${.src_lang}-${.tgt_lang}/output
 
   valid_dataset_prefix: flores200.dev
 
@@ -18,7 +18,7 @@ global:
   vocab_size: 64000
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/train_only.simple
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/train.simple.example
   steps:
     # Load Datasets
     - step: raw
@@ -70,6 +70,34 @@ pipeline:
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
       valid_dataset: ${global.valid_dataset_prefix}.${global.tgt_lang}-${global.src_lang}
 
+  # Eval
+  - step: translate
+    step_label: translate_test.${global.src_lang}-${global.tgt_lang}
+    src_lang: ${global.src_lang}
+    tgt_lang: ${global.tgt_lang}
+    previous_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+    model_step: train_model.${global.src_lang}-${global.tgt_lang}
+    marian_dir: ${global.marian_dir}
+  - step: evaluate
+    step_label: evaluate_test.${global.src_lang}-${global.tgt_lang}
+    src_lang: ${global.src_lang}
+    tgt_lang: ${global.tgt_lang}
+    previous_corpus_step: translate_test.${global.src_lang}-${global.tgt_lang}
+    reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+  - step: translate
+    step_label: translate_test.${global.tgt_lang}-${global.src_lang}
+    src_lang: ${global.tgt_lang}
+    tgt_lang: ${global.src_lang}
+    previous_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+    model_step: train_model.${global.tgt_lang}-${global.src_lang}
+    marian_dir: ${global.marian_dir}
+  - step: evaluate
+    step_label: evaluate_test.${global.tgt_lang}-${global.src_lang}
+    src_lang: ${global.tgt_lang}
+    tgt_lang: ${global.src_lang}
+    previous_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
+    reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+
   default_targets:
-    - train_model.${global.src_lang}-${global.tgt_lang}
-    - train_model.${global.tgt_lang}-${global.src_lang}
+    - evaluate_test.${global.src_lang}-${global.tgt_lang}
+    - evaluate_test.${global.tgt_lang}-${global.src_lang}
