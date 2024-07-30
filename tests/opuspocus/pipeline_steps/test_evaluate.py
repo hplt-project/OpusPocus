@@ -1,6 +1,5 @@
 import pytest
 
-from sacrebleu.metrics import METRICS
 
 from opuspocus.pipeline_steps import StepState
 from opuspocus.pipeline_steps.evaluate import EvaluateStep
@@ -24,7 +23,7 @@ def evaluate_step(request, raw_step_train_minimal):
 
 def test_evaluate_step_unknown_metric(raw_step_train_minimal):
     with pytest.raises(ValueError):
-        step = EvaluateStep(
+        EvaluateStep(
             step="evaluate",
             step_label="evaluate.test",
             pipeline_dir=raw_step_train_minimal.pipeline_dir,
@@ -33,7 +32,7 @@ def test_evaluate_step_unknown_metric(raw_step_train_minimal):
             datasets=raw_step_train_minimal.dataset_list,
             translated_corpus_step=raw_step_train_minimal,
             reference_corpus_step=raw_step_train_minimal,
-            metrics=["foo"]
+            metrics=["foo"],
         )
 
 

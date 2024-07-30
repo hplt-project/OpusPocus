@@ -1,24 +1,25 @@
 import pytest
+import yaml
+from argparse import Namespace
 from pathlib import Path
 
 from opuspocus.pipeline_steps import StepState
-from opuspocus.pipelines import build_pipeline, load_pipeline
+from opuspocus.pipelines import build_pipeline
 from opuspocus.runners import build_runner
 
 
 PIPELINE_TRAIN_CONFIGS = [
     Path("config", "pipeline.train.simple.yml"),
-    Path("config", "pipeline.train.backtranslation.yml")
+    Path("config", "pipeline.train.backtranslation.yml"),
 ]
 
 
 ## DATA PREPROCESSING ##
 
+
 @pytest.fixture(scope="module")
 def pipeline_preprocess_config(
-    data_train_minimal,
-    data_train_minimal_decompressed,
-    languages
+    data_train_minimal, data_train_minimal_decompressed, languages
 ):
     """Edit example config file using mock dataset."""
     config_file = Path("config", "pipeline.preprocess.yaml")
@@ -44,10 +45,12 @@ def pipeline_preprocess_config(
 @pytest.fixutre(scope="module")
 def pipeline_preprocess_init(pipeline_preprocess_config, tmp_path_factory):
     """Initialize mock dataset preprocessing pipeline."""
-    args = Namespace(**{
-        "pipeline_config": pipeline_preprocess_config,
-        "pipeline_dir": tmp_path_factory.mktemp("test_pipeline_preprocess")
-    })
+    args = Namespace(
+        **{
+            "pipeline_config": pipeline_preprocess_config,
+            "pipeline_dir": tmp_path_factory.mktemp("test_pipeline_preprocess"),
+        }
+    )
     pipeline = build_pipeline(args)
     pipeline.init()
     return pipeline
@@ -76,22 +79,27 @@ def test_pipeline_preprocess_done(pipeline_preprocess_done):
 
 ## MODEL TRAINING ##
 
+
 @pytest.fixture(scope="module", params=PIPELINE_TRAIN_CONFIGS)
-def pipeline_train_config(request, pipeline_preprocess_done)
+def pipeline_train_config(request, pipeline_preprocess_done):
     config = yaml.safe_load(open(request.param, "r"))
 
     config["global"]["preprocess_pipeline_dir"] = pipeline_preprocess_done.pipeline_dir
-    config["global"]["valid_dataset"] = test_pipeline_preprocess_done.pipeline_config["global"]["valid_dataset"]
+    config["global"]["valid_dataset"] = test_pipeline_preprocess_done.pipeline_config[
+        "global"
+    ]["valid_dataset"]
 
     return config
 
 
 @pytest.fixture(scope="module")
 def pipeline_train_init(pipeline_train_config, tmp_path_factory):
-    args = Namespace(**{
-        "pipeline_config": pipeline_train_config,
-        "pipeline_dir": tmp_path_factory.mktemp("test_pipeline_train")
-    })
+    args = Namespace(
+        **{
+            "pipeline_config": pipeline_train_config,
+            "pipeline_dir": tmp_path_factory.mktemp("test_pipeline_train"),
+        }
+    )
     pipeline = build_pipeline(args)
     pipeline.init()
     return pipeline

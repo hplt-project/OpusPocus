@@ -44,9 +44,7 @@ class EvaluateStep(OpusPocusStep):
             if metric not in self.AVAILABLE_METRICS:
                 raise ValueError(
                     "Unknown metric: {}.\n".format(metric)
-                    + "Supported metrics: {}".format(
-                        ",".join(self.AVAILABLE_METRICS)
-                    )
+                    + "Supported metrics: {}".format(",".join(self.AVAILABLE_METRICS))
                 )
 
     def init_step(self) -> None:

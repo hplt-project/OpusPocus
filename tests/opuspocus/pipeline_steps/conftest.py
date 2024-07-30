@@ -20,7 +20,7 @@ def raw_step_train_minimal(pipeline_dir, data_train_minimal):
 
 
 @pytest.fixture(scope="module")
-def raw_step_train_minimal_reversed(pipelin_dir, data_train_minimal):
+def raw_step_train_minimal_reversed(pipeline_dir, data_train_minimal):
     src_lang = data_train_minimal[1].suffix
     tgt_lang = data_train_minimal[0].suffix
     step = RawCorpusStep(
@@ -29,7 +29,7 @@ def raw_step_train_minimal_reversed(pipelin_dir, data_train_minimal):
         pipeline_dir=pipeline_dir,
         raw_data_dir=data_train_minimal[0].parent,
         src_lang=src_lang,
-        tgt_lang=tgt_lang
+        tgt_lang=tgt_lang,
     )
     step.init_step()
     return step
