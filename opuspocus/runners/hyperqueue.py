@@ -143,7 +143,7 @@ class HyperqueueRunner(OpusPocusRunner):
         # task_id saving/loading methods
         raise NotImplementedError()
 
-    def wait_for_task(self, task_id: TaskId) -> None:
+    def wait_for_single_task(self, task_id: TaskId) -> None:
         raise NotImplementedError()
 
     def is_task_running(self, task_id: TaskId) -> bool:

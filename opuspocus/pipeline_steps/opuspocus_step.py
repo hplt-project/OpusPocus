@@ -427,7 +427,7 @@ def run_main(step):
         runner.resubmit_step(step)
     signal.signal(signal.SIGTERM, terminate_signal)
 
-    runner.wait_for_all_tasks(task_ids)
+    runner.wait_for_tasks(task_ids)
     step.command_postprocess()
 
     clean_dir(step.tmp_dir)

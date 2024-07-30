@@ -105,7 +105,7 @@ class BashRunner(OpusPocusRunner):
         if proc is not None:
             proc.terminate()
 
-    def wait_for_task(self, task_id: TaskId) -> None:
+    def wait_for_single_task(self, task_id: TaskId) -> None:
         proc = self._get_process(task_id)
         if proc is None:
             return
