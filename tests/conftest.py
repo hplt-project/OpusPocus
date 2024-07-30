@@ -6,6 +6,7 @@ import opuspocus.pipeline_steps as pipeline_steps
 import opuspocus.runners as runners
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runners.bash import BashRunner
+from opuspocus.utils import decompress_file, open_file
 
 # TODO: add parameterization to some of these methods
 
@@ -39,10 +40,13 @@ def pipeline_dir(tmp_path_factory):
 @pytest.fixture(scope="session")
 def data_train_minimal(tmp_path_factory, languages):
     src_file = Path(
-        tmp_path_factory.mktemp("data"), "-".join(languages), "minimal", "train.src"
+        tmp_path_factory.mktemp("data"),
+        "-".join(languages),
+        "minimal",
+        "train.{}.gz".format(languages[0])
     )
     src_file.parent.mkdir(parents=True)
-    with open(src_file, "w") as fh:
+    with open_file(src_file, "w") as fh:
         print(
             "\n".join(
                 [
@@ -56,8 +60,8 @@ def data_train_minimal(tmp_path_factory, languages):
             file=fh,
         )
 
-    tgt_file = Path(src_file.parent, "train.tgt")
-    with open(tgt_file, "w") as fh:
+    tgt_file = Path(src_file.parent, "train.{}.gz".format(langauges[1]))
+    with open_file(tgt_file, "w") as fh:
         print(
             "\n".join(
                 [
@@ -70,6 +74,23 @@ def data_train_minimal(tmp_path_factory, languages):
             ),
             file=fh,
         )
+    return (src_file, tgt_file)
+
+
+@pytest.fixture(scope="session")
+def data_train_minimal_decompressed(data_train_minimal):
+    src_file = Path(
+        data_train_minimal[0].parent,
+        "decompressed",
+        data_train_minimal[0].stem
+    )
+    decompress_file(data_train_minimal[0], src_file)
+
+    tgt_file = Path(
+        src_file.parent,
+        data_train_minimal[1].stem
+    )
+    decompress_file(data_train_minimal[1], tgt_file)
     return (src_file, tgt_file)
 
 
