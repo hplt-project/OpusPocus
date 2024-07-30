@@ -6,6 +6,7 @@ from omegaconf import OmegaConf
 from pathlib import Path
 
 from opuspocus.pipeline_steps import build_step, OpusPocusStep
+from opuspocus.utils import file_path
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +17,16 @@ class OpusPocusPipeline(object):
     config_file = "pipeline.config"
 
     @staticmethod
-    def add_args(parser):
+    def add_args(
+        parser: argparse.ArgumentParser, *, pipeline_dir_required: bool = True
+    ) -> None:
         """Add pipeline-specific arguments to the parser."""
         parser.add_argument(
-            "--pipeline-dir", type=str, default=None, help="Pipeline root directory."
+            "--pipeline-dir",
+            type=file_path,
+            default=None,
+            required=pipeline_dir_required,
+            help="Pipeline root directory location.",
         )
 
     def __init__(
@@ -158,9 +165,12 @@ class OpusPocusPipeline(object):
 
     def init(self) -> None:
         """Initialize the pipeline."""
+        logger.info("Initializing pipeline ({})".format(self.pipeline_dir))
         for _, v in self.pipeline_graph.items():
             v.init_step()
+
         self.save_pipeline()
+        logger.info("Pipeline ({}) initialized successfully.".format(self.pipeline_dir))
 
     def status(self, steps: List[OpusPocusStep]) -> None:
         for s in steps:
@@ -187,6 +197,7 @@ class OpusPocusPipeline(object):
         )
 
     def __eq__(self, other):
+        """Object comparison logic."""
         if self.pipeline_graph != other.pipeline_graph:
             return False
         if len(self.default_targets) != len(other.default_targets):

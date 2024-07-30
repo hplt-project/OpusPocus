@@ -1,6 +1,5 @@
 from typing import List
 
-import logging
 import os
 import shutil
 import subprocess
@@ -15,9 +14,6 @@ from opuspocus.utils import (
     RunnerResources,
     subprocess_wait,
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 @register_step("generate_vocab")

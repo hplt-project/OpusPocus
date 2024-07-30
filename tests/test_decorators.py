@@ -18,20 +18,13 @@ def foo_step_cls():
     return FooStep
 
 
-@pytest.fixture(scope="function")
-def foo_step_registries(monkeypatch):
-    """Test the decorator with clean registry."""
-    monkeypatch.setattr(pipeline_steps, "STEP_REGISTRY", {})
-    monkeypatch.setattr(pipeline_steps, "STEP_CLASS_NAMES", set())
-
-
-def test_register_step_name(foo_step_registries, foo_step_cls):
+def test_register_step_name(clear_registries, foo_step_cls):
     step_name = "foo"
     pipeline_steps.register_step(step_name)(foo_step_cls)
     assert step_name in pipeline_steps.STEP_REGISTRY
 
 
-def test_register_step_correct_subclass(foo_step_registries):
+def test_register_step_correct_subclass(clear_registries):
     class FooStep:
         pass
 
@@ -39,13 +32,13 @@ def test_register_step_correct_subclass(foo_step_registries):
         pipeline_steps.register_step("foo")(FooStep)
 
 
-def test_register_step_duplicate_class(foo_step_registries, foo_step_cls):
+def test_register_step_duplicate_class(clear_registries, foo_step_cls):
     pipeline_steps.register_step("foo")(foo_step_cls)
     with pytest.raises(ValueError):
         pipeline_steps.register_step("bar")(foo_step_cls)
 
 
-def test_register_step_duplicate_name(foo_step_registries, foo_step_cls):
+def test_register_step_duplicate_name(clear_registries, foo_step_cls):
     class BarStep(pipeline_steps.OpusPocusStep):
         pass
 
@@ -67,20 +60,13 @@ def foo_runner_cls():
     return FooRunner
 
 
-@pytest.fixture(scope="function")
-def foo_runner_registries(monkeypatch):
-    """Test the decorator with clean registry."""
-    monkeypatch.setattr(runners, "RUNNER_REGISTRY", {})
-    monkeypatch.setattr(runners, "RUNNER_CLASS_NAMES", set())
-
-
-def test_register_runner_name(foo_runner_registries, foo_runner_cls):
+def test_register_runner_name(clear_registries, foo_runner_cls):
     runner_name = "foo"
     runners.register_runner(runner_name)(foo_runner_cls)
     assert runner_name in runners.RUNNER_REGISTRY
 
 
-def test_register_runner_correct_subclass(foo_runner_registries):
+def test_register_runner_correct_subclass(clear_registries):
     class FooRunner:
         pass
 
@@ -88,13 +74,13 @@ def test_register_runner_correct_subclass(foo_runner_registries):
         runners.register_runner("foo")(FooRunner)
 
 
-def test_register_runner_duplicate_class(foo_runner_registries, foo_runner_cls):
+def test_register_runner_duplicate_class(clear_registries, foo_runner_cls):
     runners.register_runner("foo")(foo_runner_cls)
     with pytest.raises(ValueError):
         runners.register_runner("bar")(foo_runner_cls)
 
 
-def test_register_runner_duplicate_name(foo_runner_registries, foo_runner_cls):
+def test_register_runner_duplicate_name(clear_registries, foo_runner_cls):
     class BarRunner(runners.OpusPocusRunner):
         pass
 

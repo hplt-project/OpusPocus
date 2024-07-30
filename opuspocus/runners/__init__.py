@@ -1,10 +1,17 @@
-from argparse import Namespace
 import importlib
+import logging
+from argparse import Namespace
 from pathlib import Path
 
 from .opuspocus_runner import OpusPocusRunner, TaskId, TaskInfo
 
-__all__ = [OpusPocusRunner, TaskId, TaskInfo]
+__all__ = [
+    "OpusPocusRunner",
+    "TaskId",
+    "TaskInfo",
+]
+
+logger = logging.getLogger(__name__)
 
 RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()
@@ -12,6 +19,8 @@ RUNNER_CLASS_NAMES = set()
 
 def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
     """Runner builder function. Use this to create runner objects."""
+    logger.info("Building runner (%s)...", runner)
+
     kwargs = {}
     for param in RUNNER_REGISTRY[runner].list_parameters():
         if param == "runner" or param == "pipeline_dir":
@@ -22,12 +31,17 @@ def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
 
 
 def load_runner(pipeline_dir: Path):
+    """Recreate a previously used runner. Required for pipeline execution
+    updates, i.e. execution termination.
+
+    """
     runner_params = OpusPocusRunner.load_parameters(pipeline_dir)
 
     runner = runner_params["runner"]
     del runner_params["runner"]
     del runner_params["pipeline_dir"]
 
+    logger.info("Loading runner (%s)...", runner)
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **runner_params)
 
 

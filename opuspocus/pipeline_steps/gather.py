@@ -1,17 +1,13 @@
 from typing import List, Optional
 
-import logging
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.utils import concat_files
 
 
-logger = logging.getLogger(__name__)
-
-
 @register_step("gather")
-class GatherStep(CorpusStep):
+class GatherCorpusStep(CorpusStep):
     """Gather the input corpora and merge them into datasets based
     on the OpusCleaner categories labels.
 

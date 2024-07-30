@@ -1,7 +1,6 @@
 from typing import List, Optional
 
 import json
-import logging
 import os
 import shutil
 import subprocess
@@ -11,9 +10,6 @@ from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.utils import cut_filestream, RunnerResources
-
-
-logger = logging.getLogger(__name__)
 
 
 @register_step("clean")

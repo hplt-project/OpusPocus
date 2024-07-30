@@ -1,9 +1,10 @@
 import pytest
+
 from opuspocus.pipeline_steps import (
     build_step,
     STEP_REGISTRY,
 )
-from opuspocus.pipeline_steps.raw import RawStep
+from opuspocus.pipeline_steps.raw import RawCorpusStep
 
 
 @pytest.fixture(scope="function", params=STEP_REGISTRY.keys())
@@ -35,7 +36,7 @@ def mock_step_parameters(languages, data_train_minimal):
 
 @pytest.fixture(scope="module")
 def mock_step():
-    return RawStep(**mock_step_parameters)
+    return RawCorpusStep(**mock_step_parameters)
 
 
 @pytest.fixture(scope="module")

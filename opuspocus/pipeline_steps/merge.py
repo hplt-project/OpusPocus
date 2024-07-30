@@ -1,12 +1,8 @@
 from typing import List, Optional
 
-import logging
 from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-
-
-logger = logging.getLogger(__name__)
 
 
 def extend_dataset_name(dset_name, label):
@@ -14,7 +10,7 @@ def extend_dataset_name(dset_name, label):
 
 
 @register_step("merge")
-class MergeStep(CorpusStep):
+class MergeCorpusStep(CorpusStep):
     """Merge two corpus steps into a single one.
 
     Takes the other_corpus_step output_dir contents and adds them

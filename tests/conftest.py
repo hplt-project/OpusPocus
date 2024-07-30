@@ -2,9 +2,28 @@ from pathlib import Path
 import pytest
 import yaml
 
+import opuspocus.pipeline_steps as pipeline_steps
+import opuspocus.runners as runners
 from opuspocus.pipelines import OpusPocusPipeline
+from opuspocus.runners.bash import BashRunner
 
 # TODO: add parameterization to some of these methods
+
+
+@pytest.fixture(scope="function")
+def clear_instance_registry(monkeypatch):
+    """Clear the initialized step instances (to reuse step labels)."""
+    monkeypatch.setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
+
+
+@pytest.fixture(scope="function")
+def clear_registries(monkeypatch):
+    """Clear all the registries."""
+    monkeypatch.setattr(pipeline_steps, "STEP_REGISTRY", {})
+    monkeypatch.setattr(pipeline_steps, "STEP_CLASS_NAMES", set())
+
+    monkeypatch.setattr(runners, "RUNNER_REGISTRY", {})
+    monkeypatch.setattr(runners, "RUNNER_CLASS_NAMES", set())
 
 
 @pytest.fixture(scope="session")
@@ -12,7 +31,7 @@ def languages():
     return ("en", "fr")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def pipeline_dir(tmp_path_factory):
     return tmp_path_factory.mktemp("test_pipeline")
 
@@ -57,8 +76,8 @@ def data_train_minimal(tmp_path_factory, languages):
 ### Change the following when dataclasses are properly implemented
 
 
-@pytest.fixture(scope="session")
-def config_minimal(tmp_path_factory, data_train_minimal, pipeline_dir, languages):
+@pytest.fixture(scope="function")
+def config_file_minimal(tmp_path_factory, data_train_minimal, pipeline_dir, languages):
     config_file = Path(tmp_path_factory.mktemp("test_configs"), "config_minimal.yml")
     src_file, tgt_file = data_train_minimal
 
@@ -82,15 +101,37 @@ def config_minimal(tmp_path_factory, data_train_minimal, pipeline_dir, languages
     return config_file
 
 
+@pytest.fixture(scope="function")
+def config_minimal(config_file_minimal):
+    return yaml.safe_load(open(config_file_minimal, "r"))
+
+
 ###
 
 
-@pytest.fixture(scope="module")
-def pipeline_minimal(config_minimal, pipeline_dir):
-    return OpusPocusPipeline(config_minimal, pipeline_dir)
+@pytest.fixture(scope="function")
+def pipeline_minimal(config_file_minimal, clear_instance_registry):
+    config_dict = yaml.safe_load(open(config_file_minimal, "r"))
+    pipeline_dir = config_dict["pipeline"]["pipeline_dir"]
+    return OpusPocusPipeline(config_file_minimal, pipeline_dir)
 
 
-@pytest.fixture(scope="module")
-def pipeline_minimal_initialized(pipeline_minimal):
-    pipeline = pipeline_minimal.init()
-    return pipeline
+@pytest.fixture(scope="function")
+def pipeline_minimal_inited(pipeline_minimal):
+    pipeline_minimal.init()
+    return pipeline_minimal
+
+
+@pytest.fixture(scope="function")
+def pipeline_minimal_running(pipeline_minimal_inited):
+    runner = BashRunner("bash", pipeline_minimal_inited.pipeline_dir)
+    runner.run_pipeline(pipeline_minimal_inited, pipeline_minimal_inited.get_targets())
+    return pipeline_minimal_inited
+
+
+@pytest.fixture(scope="function")
+def pipeline_minimal_done(pipeline_minimal_inited):
+    runner = BashRunner("bash", pipeline_minimal_inited.pipeline_dir)
+    runner.run_pipeline(pipeline_minimal_inited, pipeline_minimal_inited.get_targets())
+    runner.wait_for_all_tasks(t.task_id for t in runner.submitted_tasks)
+    return pipeline_minimal_inited

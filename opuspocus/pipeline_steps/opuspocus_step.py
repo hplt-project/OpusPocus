@@ -82,14 +82,10 @@ class OpusPocusStep(object):
             pdb.set_trace()
             sig = inspect.signature(cls.__init__)
             logger.error(
-                "Error occured while building step {} ({}).\n"
-                "Step Signature:\n{}\n".format(
-                    step_label,
-                    step,
-                    "\n".join(
-                        ["\t{}".format(sig.parameters[x]) for x in sig.parameters]
-                    ),
-                )
+                "Error occured while building step %s (%s).\n" "Step Signature:\n%s\n",
+                step_label,
+                step,
+                "\n".join(["\t{}".format(sig.parameters[x]) for x in sig.parameters]),
             )
             raise err
         return cls_inst
@@ -123,7 +119,7 @@ class OpusPocusStep(object):
     ) -> Dict[str, Any]:
         """Load the previously initialized step instance parameters."""
         params_path = Path(pipeline_dir, step_label, cls.parameter_file)
-        logger.debug("Loading step variables from {}".format(params_path))
+        logger.debug("Loading step variables from %s", params_path)
 
         params_dict = yaml.safe_load(open(params_path, "r"))
         # TODO: check for missing/unknown parameters
@@ -169,7 +165,7 @@ class OpusPocusStep(object):
         of the step dependencies.
         """
         type_hints = get_type_hints(self.__init__)
-        logger.debug("Class type hints: {}".format(type_hints))
+        logger.debug("Class type hints: %s", type_hints)
 
         self.dependencies = {}
         for param, val in kwargs.items():
@@ -186,7 +182,7 @@ class OpusPocusStep(object):
     def load_dependencies(cls, step_label: str, pipeline_dir: Path) -> Dict[str, str]:
         """Load step dependecies based on their unique step_label values."""
         deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
-        logger.debug("Loading dependencies from {}".format(deps_path))
+        logger.debug("Loading dependencies from %s", deps_path)
         return yaml.safe_load(open(deps_path, "r"))
 
     def save_dependencies(self) -> None:
@@ -252,7 +248,7 @@ class OpusPocusStep(object):
         self.create_command()
 
         # initialize state
-        logger.info("[{}] Step Initialized.".format(self.step_label))
+        logger.info("[%s] Step Initialized.", self.step_label)
         self.set_state(StepState.INITED)
 
     def init_dependencies(self) -> None:
@@ -346,7 +342,7 @@ class OpusPocusStep(object):
         if state == self.state:
             logger.warn("The new step state is identical to the old one.")
 
-        logger.debug("Old state: {} -> New state: {}".format(self.state, state))
+        logger.debug("Old state: %s -> New state: %s", self.state, state)
         self.state = state
         json.dump(state, fp=open(Path(self.step_dir, self.state_file), "w"))
 
@@ -461,3 +457,10 @@ if __name__ == "__main__":
     def default_resources(self) -> RunnerResources:
         """Definition of defeault runner resources for a specific step."""
         return RunnerResources()
+
+    def __eq__(self, other):
+        """Object comparison logic."""
+        for param in self.list_parameters(exclude_dependencies=False):
+            if getattr(self, param, None) != getattr(other, param, None):
+                return False
+        return True

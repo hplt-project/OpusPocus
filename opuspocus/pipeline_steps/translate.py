@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @register_step("translate")
-class TranslateStep(CorpusStep):
+class TranslateCorpusStep(CorpusStep):
     def __init__(
         self,
         step: str,
