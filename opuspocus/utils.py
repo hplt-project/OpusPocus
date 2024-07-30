@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import subprocess
-import sys
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -141,9 +140,7 @@ def clean_dir(directory: Path, exclude: str = None) -> None:
             elif file_path.is_dir():
                 file_path.rmdir()
         except Exception as e:
-            logger.error(
-                "Failed to delete %s. Reason: %s", file_path, e.message
-            )
+            logger.error("Failed to delete %s. Reason: %s", file_path, e.message)
 
 
 def subprocess_wait(proc: subprocess.Popen) -> None:

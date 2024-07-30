@@ -82,12 +82,10 @@ class OpusPocusStep(object):
             pdb.set_trace()
             sig = inspect.signature(cls.__init__)
             logger.error(
-                "Error occured while building step %s (%s).\n"
-                "Step Signature:\n%s\n",
-                step_label, step,
-                "\n".join(
-                    ["\t{}".format(sig.parameters[x]) for x in sig.parameters]
-                ),
+                "Error occured while building step %s (%s).\n" "Step Signature:\n%s\n",
+                step_label,
+                step,
+                "\n".join(["\t{}".format(sig.parameters[x]) for x in sig.parameters]),
             )
             raise err
         return cls_inst
@@ -459,3 +457,10 @@ if __name__ == "__main__":
     def default_resources(self) -> RunnerResources:
         """Definition of defeault runner resources for a specific step."""
         return RunnerResources()
+
+    def __eq__(self, other):
+        """Object comparison logic."""
+        for param in self.list_parameters(exclude_dependencies=False):
+            if getattr(self, param, None) != getattr(other, param, None):
+                return False
+        return True

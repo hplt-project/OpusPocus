@@ -23,9 +23,7 @@ class OpusPocusParser(argparse.ArgumentParser):
         sys.exit(2)
 
     def parse_args(
-        self,
-        args: Optional[Sequence[str]] = None,
-        namespace: argparse.Namespace = None
+        self, args: Optional[Sequence[str]] = None, namespace: argparse.Namespace = None
     ) -> argparse.Namespace:
         if namespace is None and (args is None or not args):
             self.print_usage()

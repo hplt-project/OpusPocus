@@ -44,7 +44,7 @@ class DecontaminateCorpusStep(CorpusStep):
             logger.warn(
                 "No valid_data_step or test_data_step was provided. "
                 "Step %s will do notning when executed",
-                self.step_label
+                self.step_label,
             )
 
     @property

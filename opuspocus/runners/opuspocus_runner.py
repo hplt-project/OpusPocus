@@ -153,16 +153,14 @@ class OpusPocusRunner(object):
                 )
             return task_info
         elif step.has_state(StepState.DONE):
-            logger.info(
-                "Step %s has already finished. Skipping...", step.step_label
-            )
+            logger.info("Step %s has already finished. Skipping...", step.step_label)
             return None
         elif step.has_state(StepState.FAILED):
             step.clean_directories()
             logger.info(
                 "Step %s has previously failed. "
                 "Removing previous outputs and resubmitting...",
-                step.step_label
+                step.step_label,
             )
         elif not step.has_state(StepState.INITED):
             raise ValueError(
@@ -276,3 +274,10 @@ class OpusPocusRunner(object):
         """TODO"""
         # TODO: expand the logic here
         return step.default_resources
+
+    def __eq__(self, other):
+        """Object comparison logic."""
+        for param in self.list_parameters():
+            if getattr(self, param, None) != getattr(other, param, None):
+                return False
+        return True

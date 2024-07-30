@@ -72,7 +72,8 @@ class CorpusStep(OpusPocusStep):
                     "Step %s always inherits sharding from its "
                     "previous_corpus_step (%s). Ignoring the "
                     "output_shard_size parameter...",
-                    self.step, self.prev_corpus_step.step_label
+                    self.step,
+                    self.prev_corpus_step.step_label,
                 )
             self.output_shard_size = self.prev_corpus_step.shard_size
 

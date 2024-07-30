@@ -18,9 +18,7 @@ class OpusPocusPipeline(object):
 
     @staticmethod
     def add_args(
-        parser: argparse.ArgumentParser,
-        *,
-        pipeline_dir_required: bool = True
+        parser: argparse.ArgumentParser, *, pipeline_dir_required: bool = True
     ) -> None:
         """Add pipeline-specific arguments to the parser."""
         parser.add_argument(
@@ -199,6 +197,7 @@ class OpusPocusPipeline(object):
         )
 
     def __eq__(self, other):
+        """Object comparison logic."""
         if self.pipeline_graph != other.pipeline_graph:
             return False
         if len(self.default_targets) != len(other.default_targets):
