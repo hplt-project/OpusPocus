@@ -28,7 +28,6 @@ def parsed_runner_args(request, pipeline_minimal_inited):
     )
 
 
-
 def test_build_runner_method(parsed_runner_args):
     """Create runner with default args."""
     runner = build_runner(

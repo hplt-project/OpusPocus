@@ -42,7 +42,7 @@ def pipeline_preprocess_config(
     return config
 
 
-@pytest.fixutre(scope="module")
+@pytest.fixture(scope="module")
 def pipeline_preprocess_init(pipeline_preprocess_config, tmp_path_factory):
     """Initialize mock dataset preprocessing pipeline."""
     args = Namespace(
