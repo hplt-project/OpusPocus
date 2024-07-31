@@ -10,6 +10,7 @@ global:
 
   valid_data_dir: data/${.src_lang}-${.tgt_lang}/valid
   test_data_dir: data/${.src_lang}-${.tgt_lang}/test
+
   valid_dataset: flores200.dev.${.src_lang}-${.tgt_lang}
 
   opuscleaner_python_venv_dir: opuscleaner-venv
@@ -17,7 +18,7 @@ global:
   decontaminate_min_length: 25
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess_only
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess.example
   steps:
     # Load Datasets
     - step: raw
@@ -79,3 +80,5 @@ pipeline:
     - gather.${global.src_lang}-${global.tgt_lang}
     - gather.${global.src_lang}
     - gather.${global.tgt_lang}
+    - valid.${global.src_lang}-${global.tgt_lang}
+    - test.${global.src_lang}-${global.tgt_lang}

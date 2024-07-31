@@ -8,7 +8,7 @@ global:
   opuscleaner_python_venv_dir: opuscleaner-venv
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner-only
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner_only.example
   steps:
     - step: raw
       step_label: raw.${global.src_lang}-${global.tgt_lang}

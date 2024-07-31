@@ -104,7 +104,7 @@ class SlurmRunner(OpusPocusRunner):
         if rc:
             raise ("Failed to cancel SLURM task {}".format(task_id["id"]))
 
-    def wait_for_task(self, task_id: TaskId) -> None:
+    def wait_for_single_task(self, task_id: TaskId) -> None:
         """TODO"""
         while self.is_task_running(task_id):
             sys.sleep(WAIT_TIME)

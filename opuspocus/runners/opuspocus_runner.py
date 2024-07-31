@@ -242,11 +242,14 @@ class OpusPocusRunner(object):
         """TODO"""
         raise NotImplementedError()
 
-    def wait_for_all_tasks(self, task_ids: List[TaskId]) -> None:
+    def wait_for_tasks(self, task_ids: Optional[List[TaskId]] = None) -> None:
+        # Wait for all tasks by default
+        if task_ids is None:
+            task_ids = [t["main_task"] for t in self.submitted_tasks]
         for task_id in task_ids:
-            self.wait_for_task(task_id)
+            self.wait_for_single_task(task_id)
 
-    def wait_for_task(self, task_id: TaskId) -> None:
+    def wait_for_single_task(self, task_id: TaskId) -> None:
         raise NotImplementedError()
 
     def is_task_running(self, task_id: TaskInfo) -> bool:

@@ -6,18 +6,15 @@ from opuspocus.pipelines import build_pipeline, load_pipeline
 
 
 def test_build_pipeline_method(config_file_minimal, pipeline_minimal, pipeline_dir):
-    args = Namespace(**{
-        "pipeline_config": config_file_minimal,
-        "pipeline_dir": Path(pipeline_dir)
-    })
+    args = Namespace(
+        **{"pipeline_config": config_file_minimal, "pipeline_dir": Path(pipeline_dir)}
+    )
     pipeline = build_pipeline(args)
     assert pipeline == pipeline_minimal
 
 
 def test_load_pipeline_method(pipeline_minimal_inited):
-    args = Namespace(**{
-        "pipeline_dir": Path(pipeline_minimal_inited.pipeline_dir)
-    })
+    args = Namespace(**{"pipeline_dir": Path(pipeline_minimal_inited.pipeline_dir)})
     pipeline = load_pipeline(args)
     assert pipeline == pipeline_minimal_inited
 
@@ -33,7 +30,7 @@ def test_load_pipeline_dir_not_directory(pipeline_minimal_inited):
         **{
             "pipeline_dir": Path(
                 pipeline_minimal_inited.pipeline_dir,
-                pipeline_minimal_inited.config_file
+                pipeline_minimal_inited.config_file,
             ),
         }
     )
