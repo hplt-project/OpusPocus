@@ -82,6 +82,7 @@ def data_train_minimal_decompressed(data_train_minimal):
     src_file = Path(
         data_train_minimal[0].parent, "decompressed", data_train_minimal[0].stem
     )
+    src_file.parent.mkdir(parents=True)
     decompress_file(data_train_minimal[0], src_file)
 
     tgt_file = Path(src_file.parent, data_train_minimal[1].stem)

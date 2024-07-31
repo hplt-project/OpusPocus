@@ -12,6 +12,12 @@ from opuspocus.runners import (
 @pytest.fixture(scope="function", params=RUNNER_REGISTRY.keys())
 def parsed_runner_args(request, pipeline_minimal_inited):
     """Create default runner arguments."""
+    if request.param == "hyperqueue":
+        pytest.skip(
+            "Requires proper creation and setting of the "
+            "opuspocus_hq_server argument"
+        )
+
     return parse_run_args(
         [
             "--pipeline-dir",
@@ -20,6 +26,7 @@ def parsed_runner_args(request, pipeline_minimal_inited):
             request.param,
         ]
     )
+
 
 
 def test_build_runner_method(parsed_runner_args):

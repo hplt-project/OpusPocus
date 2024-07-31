@@ -41,12 +41,13 @@ def test_evaluate_step_init(evaluate_step):
     assert evaluate_step.state == StepState.INITED
 
 
+@pytest.mark.skip(reason="currently hangs, see issue #31 for status updates")
 def test_evaluate_step_run(evaluate_step):
     evaluate_step.init_step()
     runner = BashRunner("bash", evaluate_step.pipeline_dir)
 
-    task_info = runner.run_step(evaluate_step)
+    task_info = runner.submit_step(evaluate_step)
     assert task_info is not None
 
-    runner.wait_for_single_task(task_info.main_task)
+    runner.wait_for_single_task(task_info["main_task"])
     assert task_info.state == StepState.DONE

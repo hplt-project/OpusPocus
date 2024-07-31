@@ -49,8 +49,8 @@ class EvaluateStep(OpusPocusStep):
 
     def init_step(self) -> None:
         super().init_step()
-        if self.dataset is None:
-            self.dataset = self.translated_step.dataset_list
+        if self.datasets is None:
+            self.datasets = self.translated_step.dataset_list
         for dset in self.datasets:
             if dset not in self.translated_step.dataset_list:
                 raise ValueError(

@@ -245,7 +245,7 @@ class OpusPocusRunner(object):
     def wait_for_tasks(self, task_ids: Optional[List[TaskId]] = None) -> None:
         # Wait for all tasks by default
         if task_ids is None:
-            task_ids = self.submitted_tasks
+            task_ids = [t["main_task"] for t in self.submitted_tasks]
         for task_id in task_ids:
             self.wait_for_single_task(task_id)
 
