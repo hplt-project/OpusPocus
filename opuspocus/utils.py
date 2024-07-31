@@ -143,6 +143,11 @@ def clean_dir(directory: Path, exclude: str = None) -> None:
             logger.error("Failed to delete %s. Reason: %s", file_path, e.message)
 
 
+def count_lines(file_path: Path) -> int:
+    with open_file(file_path, "r") as fh:
+        return len(fh.readlines())
+
+
 def subprocess_wait(proc: subprocess.Popen) -> None:
     rc = proc.wait()
     if rc:
