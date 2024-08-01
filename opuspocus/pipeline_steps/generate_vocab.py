@@ -1,5 +1,6 @@
 from typing import List
 
+import logging
 import os
 import shutil
 import subprocess
@@ -14,6 +15,8 @@ from opuspocus.utils import (
     RunnerResources,
     subprocess_wait,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @register_step("generate_vocab")
@@ -48,6 +51,11 @@ class GenerateVocabStep(OpusPocusStep):
         super().init_step()
         for dset in self.datasets:
             if dset not in self.corpus_step.dataset_list:
+                logger.debug(
+                    "Step %s categories.json: %s",
+                    self.corpus_step.step_label,
+                    self.corpus_step.categories_dict,
+                )
                 raise ValueError(
                     "Dataset {} is not registered in the {} categories.json".format(
                         dset, self.corpus_step.step_label
