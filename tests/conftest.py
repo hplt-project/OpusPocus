@@ -11,6 +11,14 @@ from opuspocus.utils import decompress_file, open_file
 # TODO: add parameterization to some of these methods
 
 
+@pytest.fixture(scope="session")
+def marian_dir():
+    marian_dir = Path("marian_dir")
+    if not marian_dir.exists():
+        pytest.skip(reason="A compiled version of Marian NMT must be available.")
+    return marian_dir
+
+
 @pytest.fixture(scope="function")
 def clear_instance_registry(monkeypatch):
     """Clear the initialized step instances (to reuse step labels)."""
