@@ -11,7 +11,7 @@ global:
   valid_data_dir: ${.preprocess_pipeline_dir}/valid.${.src_lang}-${.tgt_lang}/output
   test_data_dir: ${.preprocess_pipeline_dir}/test.${.src_lang}-${.tgt_lang}/output
 
-  valid_dataset: flores200.dev.${.src_lang}-${.tgt_lang}
+  valid_dataset_prefix: flores200.dev.${.src_lang}-${.tgt_lang}
 
   decontaminate_min_length: 25
 
@@ -60,7 +60,7 @@ pipeline:
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset_prefix}.${global.src_lang}-${global.tgt_lang}
+      valid_dataset: ${global.valid_dataset_prefix}
     - step: train_model
       step_label: train_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
@@ -71,7 +71,7 @@ pipeline:
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset_prefix}.${global.tgt_lang}-${global.src_lang}
+      valid_dataset: ${global.valid_dataset_prefix}
 
     # Eval
     - step: translate
@@ -85,7 +85,7 @@ pipeline:
       step_label: evaluate_test.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
-      previous_corpus_step: translate_test.${global.src_lang}-${global.tgt_lang}
+      translated_corpus_step: translate_test.${global.src_lang}-${global.tgt_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
     - step: translate
       step_label: translate_test.${global.tgt_lang}-${global.src_lang}
@@ -98,7 +98,7 @@ pipeline:
       step_label: evaluate_test.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
       tgt_lang: ${global.src_lang}
-      previous_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
+      translated_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
 
   default_targets:
