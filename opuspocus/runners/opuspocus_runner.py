@@ -182,17 +182,26 @@ class OpusPocusRunner(object):
 
         # Submit the main step task (which eventually can submit subtasks)
         logger.info("[%s] Submitting main step task.", step.step_label)
-        task_id = self.submit_task(
-            cmd_path=cmd_path,
-            target_file=None,
-            dependencies=[dep["main_task"] for dep in dep_task_info_list],
-            step_resources=self.get_resources(step),
-            stdout_file=Path(step.log_dir, "{}.out".format(self.runner)),
-            stderr_file=Path(step.log_dir, "{}.err".format(self.runner)),
-        )
+
+        # We set the state to SUBMITTED befor actual submit to avoid possible
+        # race conditions
+        step.set_state(StepState.SUBMITTED)
+
+        try:
+            task_id = self.submit_task(
+                cmd_path=cmd_path,
+                target_file=None,
+                dependencies=[dep["main_task"] for dep in dep_task_info_list],
+                step_resources=self.get_resources(step),
+                stdout_file=Path(step.log_dir, "{}.out".format(self.runner)),
+                stderr_file=Path(step.log_dir, "{}.err".format(self.runner)),
+            )
+        except Exception as e:
+            step.set_state(StepState.FAILED)
+            raise e
+
         task_info = TaskInfo(runner=self.runner, main_task=task_id, subtasks=[])
         self.save_task_info(step, task_info)
-        step.set_state(StepState.SUBMITTED)
 
         self.submitted_tasks.append(task_info)
         return task_info
