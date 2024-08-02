@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-import importlib
 import logging
 import os
 from pathlib import Path
@@ -24,6 +23,7 @@ class DebugRunner(OpusPocusRunner):
             the execution happens in the same process as the pipeline manager
             execution.
     """
+
     def __init__(
         self,
         runner: str,
@@ -66,7 +66,7 @@ class DebugRunner(OpusPocusRunner):
                 cmd_path=cmd_path,
                 target_file=t_file,
                 dependencies=None,
-                step_resources=self.get_resources(step)
+                step_resources=self.get_resources(step),
             )
         step.command_postprocess()
         clean_dir(step.tmp_dir)

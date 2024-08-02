@@ -64,33 +64,28 @@ class DecontaminateCorpusStep(CorpusStep):
             for dset in self.valid_step.dataset_list:
                 infile = Path(
                     self.tmp_dir,
-                    "valid.{}.{}.gz".format(dset, "-".join(self.languages))
+                    "valid.{}.{}.gz".format(dset, "-".join(self.languages)),
                 )
                 paste_files(
                     [
-                        Path(
-                            self.valid_step.output_dir,
-                            "{}.{}.gz".format(dset, lang)
-                        ) for lang in self.languages
+                        Path(self.valid_step.output_dir, "{}.{}.gz".format(dset, lang))
+                        for lang in self.languages
                     ],
-                    infile
+                    infile,
                 )
                 valid_corpora.append(infile)
         if self.test_step is not None:
             test_corpora = []
             for dset in self.test_step.dataset_list:
                 infile = Path(
-                    self.tmp_dir,
-                    "test.{}.{}.gz".format(dset, "-".join(self.languages))
+                    self.tmp_dir, "test.{}.{}.gz".format(dset, "-".join(self.languages))
                 )
                 paste_files(
                     [
-                        Path(
-                            self.test_step.output_dir,
-                            "{}.{}.gz".format(dset, lang)
-                        ) for lang in self.languages
+                        Path(self.test_step.output_dir, "{}.{}.gz".format(dset, lang))
+                        for lang in self.languages
                     ],
-                    infile
+                    infile,
                 )
                 test_corpora.append(infile)
         return valid_corpora + test_corpora
@@ -108,19 +103,15 @@ class DecontaminateCorpusStep(CorpusStep):
         dset_name = ".".join(target_file.stem.split(".")[:-1])
 
         # Combine the corpora before decontaminating
-        infile = Path(
-            self.tmp_dir, "input.{}.gz".format("-".join(self.languages))
-        )
-        outfile = Path(
-            self.tmp_dir, "output.{}.gz".format("-".join(self.languages))
-        )
+        infile = Path(self.tmp_dir, "input.{}.gz".format("-".join(self.languages)))
+        outfile = Path(self.tmp_dir, "output.{}.gz".format("-".join(self.languages)))
 
         paste_files(
             [
                 Path(self.input_dir, "{}.{}.gz".format(dset_name, lang))
                 for lang in self.languages
             ],
-            infile
+            infile,
         )
 
         # Run decontamination
@@ -130,9 +121,7 @@ class DecontaminateCorpusStep(CorpusStep):
                 "input_file": str(infile),
                 "output_file": str(outfile),
                 "min_length": self.min_length,
-                "test_files": ",".join(
-                    [str(f) for f in self.get_valid_test_corpora()]
-                ),
+                "test_files": ",".join([str(f) for f in self.get_valid_test_corpora()]),
             }
         )
         decontaminate_main(args)
@@ -142,5 +131,5 @@ class DecontaminateCorpusStep(CorpusStep):
             [
                 Path(self.output_dir, "{}.{}.gz".format(dset_name, lang))
                 for lang in self.languages
-            ]
+            ],
         )
