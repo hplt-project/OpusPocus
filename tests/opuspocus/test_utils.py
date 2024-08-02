@@ -1,16 +1,13 @@
 import pytest
 
-from opuspocus.utils import *
+from opuspocus.utils import count_lines
 
 
 @pytest.mark.parametrize(
-    "train_data",
-    [
-        data_train_minimal,
-        data_train_minimal_decompressed
-    ]
+    "train_data_fixture", ["data_train_minimal", "data_train_minimal_decompressed"]
 )
-def test_count_lines(train_data):
+def test_count_lines(train_data_fixture, request):
     """Test line counting."""
-    res = count_lines(train_data[0])
+    data = request.getfixturevalue(train_data_fixture)
+    res = count_lines(data[0])
     assert res == 5
