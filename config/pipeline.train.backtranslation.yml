@@ -13,7 +13,7 @@ global:
   valid_data_dir: ${.preprocess_pipeline_dir}/valid.${.src_lang}-${.tgt_lang}/output
   test_data_dir: ${.preprocess_pipeline_dir}/test.${.src_lang}-${.tgt_lang}/output
 
-  valid_dataset_prefix: flores200.dev.${.src_lang}-${.tgt_lang}
+  valid_dataset: flores200.dev.${.src_lang}-${.tgt_lang}
 
   decontaminate_min_length: 25
 
@@ -74,7 +74,7 @@ pipeline:
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset_prefix}.${global.src_lang}-${global.tgt_lang}
+      valid_dataset: ${global.valid_dataset}
     - step: train_model
       step_label: train_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
@@ -85,7 +85,7 @@ pipeline:
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset_prefix}.${global.tgt_lang}-${global.src_lang}
+      valid_dataset: ${global.valid_dataset}
 
     # Translate "mono" data
     - step: translate
@@ -130,7 +130,7 @@ pipeline:
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: merge.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset_prefix}.${global.src_lang}-${global.tgt_lang}
+      valid_dataset: ${global.valid_dataset}
     - step: train_model
       step_label: tune_bt_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
@@ -141,7 +141,7 @@ pipeline:
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: merge.${global.tgt_lang}-${global.src_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset_prefix}.${global.tgt_lang}-${global.src_lang}
+      valid_dataset: ${global.valid_dataset}
 
     # Eval (iter 2)
     - step: translate
