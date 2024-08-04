@@ -205,8 +205,8 @@ class OpusPocusPipeline(object):
         for target in self.default_targets:
             if target not in other.default_targets:
                 return False
-        if self.pipeline_config != other.pipeline_config:
-            return False
+        #if self.pipeline_config != other.pipeline_config:
+        #    return False
         return True
 
 
