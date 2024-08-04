@@ -1,8 +1,8 @@
 import logging
 import argparse
-from .opuspocus_pipeline import OpusPocusPipeline
+from .opuspocus_pipeline import OpusPocusPipeline, PipelineConfig
 
-__all__ = ["OpusPocusPipeline"]
+__all__ = ["OpusPocusPipeline", "PipelineConfig"]
 logger = logging.getLogger(__name__)
 
 
