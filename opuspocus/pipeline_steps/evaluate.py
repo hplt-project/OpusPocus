@@ -7,6 +7,7 @@ from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+from opuspocus.utils import open_file
 
 logger = logging.getLogger(__name__)
 
@@ -86,12 +87,12 @@ class EvaluateStep(OpusPocusStep):
 
     def command(self, target_file: Path) -> None:
         metric_label = target_file.stem.split(".")[0]
-        dset = target_file.stem.split(".")[1:]
+        dset = ".".join(target_file.stem.split(".")[1:])
         metric = self.AVAILABLE_METRICS[metric_label]()
 
         sys = [
             line.rstrip("\n")
-            for line in open(
+            for line in open_file(
                 Path(
                     self.translated_step.output_dir,
                     "{}.{}.gz".format(dset, self.tgt_lang),
@@ -102,7 +103,7 @@ class EvaluateStep(OpusPocusStep):
         # TODO: multi-reference support
         ref = [
             line.rstrip("\n")
-            for line in open(
+            for line in open_file(
                 Path(
                     self.reference_step.output_dir,
                     "{}.{}.gz".format(dset, self.tgt_lang),
@@ -110,6 +111,6 @@ class EvaluateStep(OpusPocusStep):
                 "r",
             ).readlines()
         ]
-        with open(target_file, "w") as fh:
+        with open_file(target_file, "w") as fh:
             print(metric.corpus_score(sys, [ref]), file=fh)
             print(metric.get_signature(), file=fh)
