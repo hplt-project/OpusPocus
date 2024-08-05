@@ -53,7 +53,8 @@ def paste_files(
     with open_fn(output_file, "wt") as out_fh:
         in_fhs = [open_fn(input_file, "rt") for input_file in input_files]
         for lines in zip(*in_fhs):
-            print(delimiter.join(lines), end="", file=out_fh)
+            lines = [line.rstrip("\n") for line in lines]
+            print(delimiter.join(lines), end="\n", file=out_fh)
 
 
 def cut_file(
@@ -141,6 +142,11 @@ def clean_dir(directory: Path, exclude: str = None) -> None:
                 file_path.rmdir()
         except Exception as e:
             logger.error("Failed to delete %s. Reason: %s", file_path, e.message)
+
+
+def count_lines(file_path: Path) -> int:
+    with open_file(file_path, "r") as fh:
+        return len(fh.readlines())
 
 
 def subprocess_wait(proc: subprocess.Popen) -> None:

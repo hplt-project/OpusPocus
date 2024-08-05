@@ -77,9 +77,6 @@ class OpusPocusStep(object):
         try:
             cls_inst = cls(step, step_label, pipeline_dir, **kwargs)
         except TypeError as err:
-            import pdb
-
-            pdb.set_trace()
             sig = inspect.signature(cls.__init__)
             logger.error(
                 "Error occured while building step %s (%s).\n" "Step Signature:\n%s\n",

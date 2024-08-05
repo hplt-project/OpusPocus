@@ -117,10 +117,6 @@ class TrainModelStep(OpusPocusStep):
         return Path(self.output_dir, "model.npz")
 
     @property
-    def tmp_dir(self) -> Path:
-        return Path(self.step_dir, "tmp.d")
-
-    @property
     def languages(self) -> List[str]:
         return [self.src_lang, self.tgt_lang]
 
