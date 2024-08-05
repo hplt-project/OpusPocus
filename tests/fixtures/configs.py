@@ -98,13 +98,16 @@ def pipeline_train_tiny_config_file(
     config["global"]["marian_config"] = str(marian_tiny_config_file)
 
     # NOTE(varisd): value chosen to satisfy generate_vocab training
-    config["global"]["vocab_size"] = 280
+    config["global"]["vocab_size"] = 275
 
     # NOTE(varisd): A bit hacky way of getting the test dataset name from
     #   the preprocessing pipeline
     for step in pipeline_preprocess_tiny_done.steps:
         if "test" in step.step_label:
             config["global"]["valid_dataset"] = step.dataset_list[0]
+
+    if "shard_size" in config["global"]:
+        config["global"]["shard_size"] = 2
 
     config_file = Path(config_dir, "pipeline.train.tiny.yml")
     yaml.dump(config, open(config_file, "w"))
