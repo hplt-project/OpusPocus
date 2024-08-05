@@ -1,6 +1,5 @@
 import pytest
 
-import yaml
 from argparse import Namespace
 from pathlib import Path
 

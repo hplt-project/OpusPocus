@@ -15,7 +15,7 @@ def train_model_step_inited(
     train_data_parallel_tiny_raw_step_inited,
     train_data_parallel_tiny_vocab_step_inited,
     marian_tiny_config_file,
-    opustrainer_tiny_config_file
+    opustrainer_tiny_config_file,
 ):
     """Create and initialize the train_model step."""
     marian_dir = request.getfixturevalue(request.param)
@@ -35,7 +35,7 @@ def train_model_step_inited(
             "valid_corpus_step": train_data_parallel_tiny_raw_step_inited,
             "train_category": train_data_parallel_tiny_raw_step_inited.categories[0],
             "valid_dataset": train_data_parallel_tiny_raw_step_inited.dataset_list[0],
-        }
+        },
     )
     step.init_step()
     return step

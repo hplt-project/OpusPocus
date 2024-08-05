@@ -1,6 +1,5 @@
 import pytest
 
-import yaml
 from argparse import Namespace
 from pathlib import Path
 
@@ -36,8 +35,7 @@ def pipeline_preprocess_tiny_done(pipeline_preprocess_tiny_inited):
     """Run mock dataset preprocessing pipeline."""
     runner = DebugRunner("debug", pipeline_preprocess_tiny_inited.pipeline_dir)
     runner.run_pipeline(
-        pipeline_preprocess_tiny_inited,
-        pipeline_preprocess_tiny_inited.get_targets()
+        pipeline_preprocess_tiny_inited, pipeline_preprocess_tiny_inited.get_targets()
     )
     return pipeline_preprocess_tiny_inited
 

@@ -22,33 +22,22 @@ class HyperqueueRunner(OpusPocusRunner):
             help="TODO",
         )
         parser.add_argument(
-            "--hq-path", type=file_path, default="hyperqueue/bin/hq",
-            help="TODO"
+            "--hq-path", type=file_path, default="hyperqueue/bin/hq", help="TODO"
         )
         parser.add_argument(
-            "--hq-scheduler", type=str, choices=["slurm"], default="slurm",
-            help="TODO"
+            "--hq-scheduler", type=str, choices=["slurm"], default="slurm", help="TODO"
         )
         parser.add_argument(
-            "--hq-alloc-time-limit", type=str, default="24h",
-            help="TODO"
+            "--hq-alloc-time-limit", type=str, default="24h", help="TODO"
+        )
+        parser.add_argument("--hq-alloc-backlog", type=int, default=1, help="TODO")
+        parser.add_argument(
+            "--hq-alloc-range-cpus", type=str, default="0,1", help="TODO"
         )
         parser.add_argument(
-            "--hq-alloc-backlog", type=int, default=1,
-            help="TODO"
+            "--hq-alloc-range-gpus", type=str, default=None, help="TODO"
         )
-        parser.add_argument(
-            "--hq-alloc-range-cpus", type=str, default="0,1",
-            help="TODO"
-        )
-        parser.add_argument(
-            "--hq-alloc-range-gpus", type=str, default=None,
-            help="TODO"
-        )
-        parser.add_argument(
-            "--hq-max-worker-count", type=int, default=1,
-            help="TODO"
-        )
+        parser.add_argument("--hq-max-worker-count", type=int, default=1, help="TODO")
 
     def __init__(
         self,

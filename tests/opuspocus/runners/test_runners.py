@@ -13,17 +13,16 @@ from opuspocus.runners import (
 
 @pytest.fixture(scope="module", params=RUNNER_REGISTRY.keys())
 def parsed_runner_args(
-    request,
-    pipeline_preprocess_tiny_inited,
-    opuspocus_hq_server_dir,
-    hyperqueue_dir
+    request, pipeline_preprocess_tiny_inited, opuspocus_hq_server_dir, hyperqueue_dir
 ):
     """Create default runner arguments."""
     extra = []
     if request.param == "hyperqueue":
         extra = [
-            "--hq-server-dir", str(opuspocus_hq_server_dir),
-            "--hq-path", "{}/bin/hq".format(str(hyperqueue_dir))
+            "--hq-server-dir",
+            str(opuspocus_hq_server_dir),
+            "--hq-path",
+            "{}/bin/hq".format(str(hyperqueue_dir)),
         ]
 
     args = parse_run_args(
@@ -32,7 +31,8 @@ def parsed_runner_args(
             pipeline_preprocess_tiny_inited.pipeline_dir,
             "--runner",
             request.param,
-        ] + extra
+        ]
+        + extra
     )
     return args
 

@@ -71,11 +71,7 @@ def test_required_pipeline_dir_option(cmd_name, capsys):
 
 def test_defaults_init(pipeline_preprocess_tiny_config_file):
     """Execute init subcommand with default arguments."""
-    rc = main([
-        "init",
-        "--pipeline-config",
-        str(pipeline_preprocess_tiny_config_file)
-    ])
+    rc = main(["init", "--pipeline-config", str(pipeline_preprocess_tiny_config_file)])
     assert rc == 0
 
 
@@ -99,15 +95,9 @@ def test_defaults_stop(pipeline):
     "cmd_name, non_default_opts",
     [("run", "--runner bash"), ("status", ""), ("traceback", "")],
 )
-def test_defaults_other(
-    cmd_name, non_default_opts, pipeline_preprocess_tiny_inited
-):
+def test_defaults_other(cmd_name, non_default_opts, pipeline_preprocess_tiny_inited):
     """Run the rest of the subcommands with default arguments."""
-    argv = [
-        cmd_name,
-        "--pipeline-dir",
-        pipeline_preprocess_tiny_inited.pipeline_dir
-    ]
+    argv = [cmd_name, "--pipeline-dir", pipeline_preprocess_tiny_inited.pipeline_dir]
     if non_default_opts:
         argv += non_default_opts.split(" ")
     rc = main(argv)

@@ -1,12 +1,8 @@
-import pytest
-
-from argparse import Namespace
-from pathlib import Path
-
 from opuspocus.pipeline_steps import StepState
 
 
 ## DATA PREPROCESSING ##
+
 
 def test_pipeline_preprocess_tiny_inited(pipeline_preprocess_tiny_inited):
     """Test mock dataset preprocessing pipeline initialization."""
@@ -21,6 +17,7 @@ def test_pipeline_preprocess_tiny_done(pipeline_preprocess_tiny_done):
 
 
 ## MODEL TRAINING ##
+
 
 def test_pipeline_train_tiny_inited(pipeline_train_tiny_inited):
     """Test mock training pipeline initialization."""

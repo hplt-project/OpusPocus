@@ -50,7 +50,7 @@ def train_data_parallel_tiny_decompressed(
     """Creates a decompressed version of the tiny mock corpora."""
     src_file = Path(
         tmp_path_factory.mktemp("train_data_parallel_tiny_decompressed"),
-        train_data_parallel_tiny[0].stem
+        train_data_parallel_tiny[0].stem,
     )
     decompress_file(train_data_parallel_tiny[0], src_file)
 
