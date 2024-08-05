@@ -7,38 +7,33 @@ from opuspocus.runners.debug import DebugRunner
 from opuspocus.utils import count_lines
 
 
-@pytest.fixture(scope="session")
-def decontaminate_step(raw_step_train_minimal):
-    """Build mock decontaminate step."""
-    return build_step(
+@pytest.fixture(scope="function")
+def decontaminate_step_inited(train_data_parallel_tiny_raw_step_inited):
+    """Create and initialize the decontaminate step."""
+    step = build_step(
         step="decontaminate",
         step_label="decontaminate.test",
-        pipeline_dir=raw_step_train_minimal.pipeline_dir,
+        pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
-            "previous_corpus_step": raw_step_train_minimal,
-            "src_lang": raw_step_train_minimal.src_lang,
-            "tgt_lang": raw_step_train_minimal.tgt_lang,
-            "valid_data_step": raw_step_train_minimal,
-            "test_data_step": raw_step_train_minimal,
+            "previous_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
+            "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
+            "valid_data_step": train_data_parallel_tiny_raw_step_inited,
+            "test_data_step": train_data_parallel_tiny_raw_step_inited,
         },
     )
-
-
-@pytest.fixture(scope="session")
-def decontaminate_step_inited(decontaminate_step):
-    """Initialize the step."""
-    decontaminate_step.init_step()
-    return decontaminate_step
+    step.init_step()
+    return step
 
 
 def test_decontaminate_step_inited(decontaminate_step_inited):
-    """Test the initialization."""
+    """Test whether the step was initialized successfully."""
     assert decontaminate_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def decontaminate_step_done(decontaminate_step_inited):
-    """Run the step."""
+    """Execute the decontaminate step."""
     runner = DebugRunner("debug", decontaminate_step_inited.pipeline_dir)
     runner.submit_step(decontaminate_step_inited)
     return decontaminate_step_inited

@@ -1,22 +1,25 @@
 import pytest
 
-from pathlib import Path
-
+import opuspocus.pipeline_steps as pipeline_steps
 from opuspocus.pipeline_steps import build_step
 
 
-@pytest.fixture(scope="session")
-def raw_step_train_minimal(data_train_minimal_decompressed, tmp_path_factory):
-    pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_dir.unittest"))
+@pytest.fixture(scope="function")
+def train_data_parallel_tiny_raw_step_inited(
+    tmp_path_factory, train_data_parallel_tiny_decompressed
+):
+    """Load the mock tiny dataset."""
+    setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
+    pipeline_dir = tmp_path_factory.mktemp("test_pipeline_steps")
 
-    src_lang = data_train_minimal_decompressed[0].suffix.lstrip(".")
-    tgt_lang = data_train_minimal_decompressed[1].suffix.lstrip(".")
+    src_lang = train_data_parallel_tiny_decompressed[0].suffix.lstrip(".")
+    tgt_lang = train_data_parallel_tiny_decompressed[1].suffix.lstrip(".")
     step = build_step(
         step="raw",
         step_label="raw.{}-{}.mock".format(src_lang, tgt_lang),
         pipeline_dir=pipeline_dir,
         **{
-            "raw_data_dir": data_train_minimal_decompressed[0].parent,
+            "raw_data_dir": train_data_parallel_tiny_decompressed[0].parent,
             "src_lang": src_lang,
             "tgt_lang": tgt_lang,
             "compressed": False,
@@ -26,21 +29,24 @@ def raw_step_train_minimal(data_train_minimal_decompressed, tmp_path_factory):
     return step
 
 
-@pytest.fixture(scope="session")
-def raw_step_train_minimal_reversed(data_train_minimal_decompressed, tmp_path_factory):
-    pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_dir.unittest"))
-
-    src_lang = data_train_minimal_decompressed[1].suffix.lstrip(".")
-    tgt_lang = data_train_minimal_decompressed[0].suffix.lstrip(".")
+@pytest.fixture(scope="function")
+def train_data_parallel_tiny_vocab_step_inited(
+    train_data_parallel_tiny_raw_step_inited, marian_cpu_dir
+):
+    """Create the mock vocabulary from the tiny dataset."""
+    src_lang = train_data_parallel_tiny_raw_step_inited.src_lang
+    tgt_lang = train_data_parallel_tiny_raw_step_inited.tgt_lang
     step = build_step(
-        step="raw",
-        step_label="raw.{}-{}.mock".format(src_lang, tgt_lang),
-        pipeline_dir=pipeline_dir,
+        step="generate_vocab",
+        step_label="generate_vocab.{}-{}".format(src_lang, tgt_lang),
+        pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
-            "raw_data_dir": data_train_minimal_decompressed[0].parent,
             "src_lang": src_lang,
             "tgt_lang": tgt_lang,
-            "compressed": False,
+            "datasets": train_data_parallel_tiny_raw_step_inited.dataset_list,
+            "marian_dir": marian_cpu_dir,
+            "corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "vocab_size": 300,
         },
     )
     step.init_step()

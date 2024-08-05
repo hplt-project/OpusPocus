@@ -21,7 +21,9 @@ class HyperqueueRunner(OpusPocusRunner):
             default="opuspocus_hq_server",
             help="TODO",
         )
-        parser.add_argument("--hq-path", type=file_path, default="./hq", help="TODO")
+        parser.add_argument(
+            "--hq-path", type=file_path, default="hyperqueue/bin/hq", help="TODO"
+        )
         parser.add_argument(
             "--hq-scheduler", type=str, choices=["slurm"], default="slurm", help="TODO"
         )

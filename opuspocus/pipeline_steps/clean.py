@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -10,6 +11,8 @@ from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.utils import cut_filestream, RunnerResources
+
+logger = logging.getLogger(__name__)
 
 
 @register_step("clean")
@@ -59,6 +62,15 @@ class CleanCorpusStep(CorpusStep):
         input_file = Path(self.input_dir, "{}.filters.json".format(dataset))
 
         opuscleaner_bin_path = Path(self.python_venv_dir, "bin", self.opuscleaner_cmd)
+        if not input_file.exists():
+            logger.info(
+                "%s file not found. Copying input corpora to output.", input_file
+            )
+            for lang in self.languages:
+                Path(self.output_dir, "{}.{}.gz".format(dataset, lang)).hardlink_to(
+                    Path(self.input_dir, "{}.{}.gz".format(dataset, lang))
+                )
+            return
 
         # Run OpusCleaner
         proc = subprocess.Popen(
@@ -80,6 +92,11 @@ class CleanCorpusStep(CorpusStep):
         languages = [
             file.split(".")[-2] for file in json.load(open(input_file, "r"))["files"]
         ]
+        # TODO(varisd): replace these asserts with something more clever
+        for lang in self.languages:
+            assert lang in languages
+        for lang in languages:
+            assert lang in self.languages
 
         # Split OpusCleaner output into files
         output_files = [

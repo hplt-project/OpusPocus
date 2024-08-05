@@ -8,24 +8,33 @@ from opuspocus.runners import (
     RUNNER_REGISTRY,
 )
 
+# TODO(varisd): add more tests (test_list_parameters, etc.)
 
-@pytest.fixture(scope="function", params=RUNNER_REGISTRY.keys())
-def parsed_runner_args(request, pipeline_minimal_inited):
+
+@pytest.fixture(scope="module", params=RUNNER_REGISTRY.keys())
+def parsed_runner_args(
+    request, pipeline_preprocess_tiny_inited, opuspocus_hq_server_dir, hyperqueue_dir
+):
     """Create default runner arguments."""
+    extra = []
     if request.param == "hyperqueue":
-        pytest.skip(
-            "Requires proper creation and setting of the "
-            "opuspocus_hq_server argument"
-        )
+        extra = [
+            "--hq-server-dir",
+            str(opuspocus_hq_server_dir),
+            "--hq-path",
+            "{}/bin/hq".format(str(hyperqueue_dir)),
+        ]
 
-    return parse_run_args(
+    args = parse_run_args(
         [
             "--pipeline-dir",
-            pipeline_minimal_inited.pipeline_dir,
+            pipeline_preprocess_tiny_inited.pipeline_dir,
             "--runner",
             request.param,
         ]
+        + extra
     )
+    return args
 
 
 def test_build_runner_method(parsed_runner_args):
@@ -34,6 +43,12 @@ def test_build_runner_method(parsed_runner_args):
         parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args
     )
     assert isinstance(runner, OpusPocusRunner)
+
+
+def test_load_runner_before_save(pipeline_preprocess_tiny_inited):
+    """Fail loading runner that was not previously created."""
+    with pytest.raises(FileNotFoundError):
+        load_runner(pipeline_preprocess_tiny_inited.pipeline_dir)
 
 
 def test_load_runner_method(parsed_runner_args):
@@ -45,18 +60,3 @@ def test_load_runner_method(parsed_runner_args):
 
     runner_loaded = load_runner(parsed_runner_args.pipeline_dir)
     assert runner == runner_loaded
-
-
-def test_load_runner_before_save(pipeline_minimal_inited):
-    """Fail loading runner that was not previously created."""
-    with pytest.raises(FileNotFoundError):
-        load_runner(pipeline_minimal_inited.pipeline_dir)
-
-
-#    for runner_default
-
-
-# def test_list_parameters():
-
-
-# def test_pipeline_class_...():

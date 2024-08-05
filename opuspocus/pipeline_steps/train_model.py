@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-
 import logging
 import os
 import signal

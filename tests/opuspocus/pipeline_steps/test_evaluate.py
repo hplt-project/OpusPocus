@@ -1,53 +1,61 @@
 import pytest
 
-
-from opuspocus.pipeline_steps import StepState
+from opuspocus.pipeline_steps import build_step, StepState
 from opuspocus.pipeline_steps.evaluate import EvaluateStep
-from opuspocus.runners.bash import BashRunner
+from opuspocus.runners.debug import DebugRunner
 
 
 @pytest.fixture(scope="function", params=EvaluateStep.AVAILABLE_METRICS)
-def evaluate_step(request, raw_step_train_minimal):
-    return EvaluateStep(
+def evaluate_step_inited(request, train_data_parallel_tiny_raw_step_inited):
+    """Create and initialize the evaluate step."""
+    step = build_step(
         step="evaluate",
-        step_label="evaluate.test",
-        pipeline_dir=raw_step_train_minimal.pipeline_dir,
-        src_lang=raw_step_train_minimal.src_lang,
-        tgt_lang=raw_step_train_minimal.tgt_lang,
-        datasets=raw_step_train_minimal.dataset_list,
-        translated_corpus_step=raw_step_train_minimal,
-        reference_corpus_step=raw_step_train_minimal,
-        metrics=[request.param],
+        step_label="evaluate.{}.test".format(request.param),
+        pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
+        **{
+            "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
+            "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
+            "datasets": train_data_parallel_tiny_raw_step_inited.dataset_list,
+            "translated_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "reference_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "metrics": [request.param],
+        },
     )
+    step.init_step()
+    return step
 
 
-def test_evaluate_step_unknown_metric(raw_step_train_minimal):
+def test_evaluate_step_unknown_metric(train_data_parallel_tiny_raw_step_inited):
+    """Step construction fails when presented with unknown metric."""
     with pytest.raises(ValueError):
-        EvaluateStep(
+        build_step(
             step="evaluate",
-            step_label="evaluate.test",
-            pipeline_dir=raw_step_train_minimal.pipeline_dir,
-            src_lang=raw_step_train_minimal.src_lang,
-            tgt_lang=raw_step_train_minimal.tgt_lang,
-            datasets=raw_step_train_minimal.dataset_list,
-            translated_corpus_step=raw_step_train_minimal,
-            reference_corpus_step=raw_step_train_minimal,
-            metrics=["foo"],
+            step_label="evaluate.foo.test",
+            pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
+            **{
+                "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
+                "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
+                "datasets": train_data_parallel_tiny_raw_step_inited.dataset_list,
+                "translated_corpus_step": train_data_parallel_tiny_raw_step_inited,
+                "reference_corpus_step": train_data_parallel_tiny_raw_step_inited,
+                "metrics": ["foo"],
+            },
         )
 
 
-def test_evaluate_step_init(evaluate_step):
-    evaluate_step.init_step()
-    assert evaluate_step.state == StepState.INITED
+def test_evaluate_step_inited(evaluate_step_inited):
+    """Test whether the step was initialized successfully."""
+    assert evaluate_step_inited.state == StepState.INITED
 
 
-@pytest.mark.skip(reason="currently hangs, see issue #31 for status updates")
-def test_evaluate_step_run(evaluate_step):
-    evaluate_step.init_step()
-    runner = BashRunner("bash", evaluate_step.pipeline_dir)
+@pytest.fixture(scope="function")
+def evaluate_step_done(evaluate_step_inited):
+    """Execute the evaluate step."""
+    runner = DebugRunner("debug", evaluate_step_inited.pipeline_dir)
+    runner.submit_step(evaluate_step_inited)
+    return evaluate_step_inited
 
-    task_info = runner.submit_step(evaluate_step)
-    assert task_info is not None
 
-    runner.wait_for_single_task(task_info["main_task"])
-    assert task_info.state == StepState.DONE
+def test_evaluate_step_done(evaluate_step_done):
+    """Test whether the step execution finished successfully."""
+    assert evaluate_step_done.state == StepState.DONE

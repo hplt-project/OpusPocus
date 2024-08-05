@@ -4,7 +4,8 @@ from opuspocus.utils import count_lines
 
 
 @pytest.mark.parametrize(
-    "train_data_fixture", ["data_train_minimal", "data_train_minimal_decompressed"]
+    "train_data_fixture",
+    ["train_data_parallel_tiny", "train_data_parallel_tiny_decompressed"],
 )
 def test_count_lines(train_data_fixture, request):
     """Test line counting."""

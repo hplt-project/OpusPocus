@@ -11,8 +11,6 @@ global:
   valid_data_dir: data/${.src_lang}-${.tgt_lang}/valid
   test_data_dir: data/${.src_lang}-${.tgt_lang}/test
 
-  valid_dataset: flores200.dev.${.src_lang}-${.tgt_lang}
-
   opuscleaner_python_venv_dir: opuscleaner-venv
 
   decontaminate_min_length: 25
