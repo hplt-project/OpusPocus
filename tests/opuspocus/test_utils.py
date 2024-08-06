@@ -32,7 +32,10 @@ def test_file_line_index_length(sample_file, shard_index):
 @pytest.mark.parametrize("start,size", [(1, 2), (2, 3), (4, 5)])
 def test_read_shard(sample_file, shard_index, start, size):
     lines = read_shard(sample_file, shard_index, start, size)
-    with open_file(sample_file, "r",) as fh:
+    with open_file(
+        sample_file,
+        "r",
+    ) as fh:
         for i, line in enumerate(fh):
             if i >= start and i < start + size:
                 assert lines[i - start] == line

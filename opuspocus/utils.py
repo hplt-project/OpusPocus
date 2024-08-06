@@ -35,10 +35,7 @@ def file_line_index(file: Path) -> List[int]:
 
 
 def read_shard(
-    file: Path,
-    file_line_index: List[int],
-    start: int,
-    shard_size: int
+    file: Path, file_line_index: List[int], start: int, shard_size: int
 ) -> List[str]:
     lines = []
     with open_file(file, "r") as fh:
@@ -121,37 +118,6 @@ def save_filestream(
     out_fh = open_fn(output_file, "wt")
     for line in input_stream:
         print(line, end="", file=out_fh)
-
-
-def file_to_shards(
-    file_path: Path,
-    shard_dir: Path,
-    shard_size: int,
-    shard_index_pad_length: int = 4,  # noqa: ARG001
-) -> List[str]:
-    shard_list = []
-    out_fh = None
-    with open_file(file_path, "r") as in_fh:
-        for i, line in enumerate(in_fh):
-            if i % shard_size == 0:
-                n = i // shard_size
-                shard_filename = file_path.stem + file_path.suffix + f".{n}"
-                shard_list.append(shard_filename)
-                shard_file_path = Path(shard_dir, shard_filename)
-                out_fh = open_file(shard_file_path, "w")
-            print(line, end="", file=out_fh)
-    return shard_list
-
-
-def shards_to_file(
-    shard_list: List[str],
-    file_path: Path,
-) -> None:
-    with open_file(file_path, "w") as out_fh:
-        for shard_file_path in shard_list:
-            with open_file(shard_file_path, "r") as in_fh:
-                for line in in_fh:
-                    print(line, end="", file=out_fh)
 
 
 def clean_dir(directory: Path, exclude: str = None) -> None:  # noqa: RUF013
