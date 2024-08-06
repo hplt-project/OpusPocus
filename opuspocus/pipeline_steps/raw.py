@@ -28,7 +28,7 @@ class RawCorpusStep(CorpusStep):
         raw_data_dir: Path,
         src_lang: str,
         tgt_lang: Optional[str] = None,
-        output_shard_size: Optional[int] = None,
+        shard_size: Optional[int] = None,
         compressed: bool = True,  # noqa: FBT001, FBT002
     ) -> None:
         super().__init__(
@@ -38,7 +38,7 @@ class RawCorpusStep(CorpusStep):
             raw_data_dir=raw_data_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
-            output_shard_size=output_shard_size,
+            shard_size=shard_size,
             compressed=compressed,
         )
 

@@ -37,12 +37,12 @@ pipeline:
       step_label: gather.${global.src_lang}
       src_lang: ${global.src_lang}
       raw_data_dir: ${global.raw_mono_src_dir}
-      output_shard_size: ${global.shard_size}
+      shard_size: ${global.shard_size}
     - step: raw
       step_label: gather.${global.tgt_lang}
       src_lang: ${global.tgt_lang}
       raw_data_dir: ${global.raw_mono_tgt_dir}
-      output_shard_size: ${global.shard_size}
+      shard_size: ${global.shard_size}
     - step: raw
       step_label: valid.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}

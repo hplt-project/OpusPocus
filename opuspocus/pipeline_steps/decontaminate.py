@@ -24,7 +24,7 @@ class DecontaminateCorpusStep(CorpusStep):
         tgt_lang: Optional[str] = None,
         valid_data_step: Optional[CorpusStep] = None,
         test_data_step: Optional[CorpusStep] = None,
-        output_shard_size: Optional[int] = None,
+        shard_size: Optional[int] = None,
         min_length: int = 25,
     ) -> None:
         super().__init__(
@@ -36,7 +36,7 @@ class DecontaminateCorpusStep(CorpusStep):
             tgt_lang=tgt_lang,
             valid_data_step=valid_data_step,
             test_data_step=test_data_step,
-            output_shard_size=output_shard_size,
+            shard_size=shard_size,
             min_length=min_length,
         )
         if self.valid_step is None and self.test_step is None:

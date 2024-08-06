@@ -55,9 +55,13 @@ def pipeline_preprocess_tiny_config_file(
     train_data_parallel_tiny,
     train_data_parallel_tiny_decompressed,
     languages,
+    tmp_path_factory,
 ):
     """Prepares small-data preprocessing pipeline config for unit testing."""
-    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml")))  # noqa: PTH123, SIM115
+    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml"), "r"))
+    config["pipeline"]["pipeline_dir"] = str(
+        tmp_path_factory.mktemp("pipeline_preprocess_tiny_default")
+    )
 
     config["global"]["src_lang"] = languages[0]
     config["global"]["tgt_lang"] = languages[1]
@@ -83,9 +87,13 @@ def pipeline_train_tiny_config_file(
     marian_tiny_config_file,
     pipeline_preprocess_tiny_done,
     languages,
+    tmp_path_factory,
 ):
     """Prepares small-data training pipeline config for unit testing."""
-    config = yaml.safe_load(open(request.param))  # noqa: PTH123, SIM115
+    config = yaml.safe_load(open(request.param, "r"))
+    config["pipeline"]["pipeline_dir"] = str(
+        tmp_path_factory.mktemp("pipeline_train_tiny_default")
+    )
 
     config["global"]["original_config_file"] = str(request.param)
     config["global"]["src_lang"] = languages[0]

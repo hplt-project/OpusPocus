@@ -30,8 +30,8 @@ class MergeCorpusStep(CorpusStep):
         other_corpus_label: str,
         src_lang: str,
         tgt_lang: str = None,  # noqa: RUF013
-        output_shard_size: Optional[int] = None,
-    ) -> None:
+        shard_size: Optional[int] = None,
+    ):
         super().__init__(
             step=step,
             step_label=step_label,
@@ -42,7 +42,7 @@ class MergeCorpusStep(CorpusStep):
             other_corpus_label=other_corpus_label,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
-            output_shard_size=output_shard_size,
+            shard_size=shard_size,
         )
 
     @property
