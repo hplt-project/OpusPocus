@@ -27,8 +27,10 @@ def train_data_parallel_tiny_raw_step_inited(tmp_path_factory, train_data_parall
     return step
 
 
-@pytest.fixture(scope="function")  # noqa: PT003
-def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_raw_step_inited, marian_cpu_dir):
+@pytest.fixture(scope="function")
+def train_data_parallel_tiny_vocab_step_inited(
+    train_data_parallel_tiny_raw_step_inited, marian_dir
+):
     """Create the mock vocabulary from the tiny dataset."""
     src_lang = train_data_parallel_tiny_raw_step_inited.src_lang
     tgt_lang = train_data_parallel_tiny_raw_step_inited.tgt_lang
@@ -40,7 +42,7 @@ def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_raw_step
             "src_lang": src_lang,
             "tgt_lang": tgt_lang,
             "datasets": train_data_parallel_tiny_raw_step_inited.dataset_list,
-            "marian_dir": marian_cpu_dir,
+            "marian_dir": marian_dir,
             "corpus_step": train_data_parallel_tiny_raw_step_inited,
             "vocab_size": 300,
         },
