@@ -25,6 +25,32 @@ def open_file(file: Path, mode: str):  # noqa: ANN201
     return open_fn(file, f"{mode}t")
 
 
+def file_line_index(file: Path) -> List[int]:
+    offsets = []
+    offset = 0
+    for line in open_file(file, "r"):
+        offsets.append(offset)
+        offset += len(line)
+    return offsets
+
+
+def read_shard(
+    file: Path,
+    file_line_index: List[int],
+    start: int,
+    shard_size: int
+) -> List[str]:
+    lines = []
+    with open_file(file, "r") as fh:
+        fh.seek(file_line_index[start])
+        for line in fh:
+            lines.append(line)
+            shard_size -= 1
+            if shard_size == 0:
+                break
+    return lines
+
+
 def decompress_file(input_file: Path, output_file: Path) -> None:
     with gzip.open(input_file, "rt") as in_fh:  # noqa: SIM117
         with open(output_file, "w") as out_fh:  # noqa: PTH123
