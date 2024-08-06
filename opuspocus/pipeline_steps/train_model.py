@@ -143,9 +143,13 @@ class TrainModelStep(OpusPocusStep):
         n_gpus = 0
         if RunnerResources.get_env_name("gpus") in env:
             n_gpus = int(env[RunnerResources.get_env_name("gpus")])
+            
+            n_cpus = 16
+            n_gpus = 4  # hard-coded to try running on 4 GPUs
+
 
         # Prepare the command
-        marian_path = Path(self.marian_dir, "bin", "marian")
+        marian_path = Path(self.marian_dir, "build", "marian")
         cmd = [
             str(marian_path),
             "-c",

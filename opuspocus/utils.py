@@ -41,7 +41,8 @@ def concat_files(
         for input_file in input_files:
             with open_fn(input_file, "rt") as in_fh:
                 for line in in_fh:
-                    print(line, end="", file=out_fh)
+                    if line.strip():
+                        print(line, end="", file=out_fh)
 
 
 def paste_files(

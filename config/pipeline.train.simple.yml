@@ -1,7 +1,7 @@
 global:
   seed: 42
   src_lang: en
-  tgt_lang: nn
+  tgt_lang: is
 
   # we set the "raw" data dir to the output of the preprocess pipeline
   raw_data_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess_only/gather.${.src_lang}-${.tgt_lang}/output
@@ -12,10 +12,10 @@ global:
 
   decontaminate_min_length: 25
 
-  marian_dir: marian_dir 
+  marian_dir: /home/bmalik/marian 
   marian_config: config/marian.train.teacher.base.yml
 
-  vocab_size: 64000
+  vocab_size: 32000
 
 pipeline:
   pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/train_only.simple

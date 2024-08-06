@@ -78,7 +78,7 @@ class GenerateVocabStep(OpusPocusStep):
         ]
 
     def command(self, target_file: Path) -> None:
-        spm_train_path = Path(self.marian_dir, "bin", "spm_train")
+        spm_train_path = Path(self.marian_dir, "build", "spm_train")
         model_prefix = "{}/{}".format(self.output_dir, target_file.stem)
         n_cpus = int(os.environ[RunnerResources.get_env_name("cpus")])
 
@@ -105,7 +105,7 @@ class GenerateVocabStep(OpusPocusStep):
             "--model_prefix={}".format(model_prefix),
             "--vocab_size={}".format(self.vocab_size),
             "--input={}".format(str(train_concat)),
-            "--input_sentence_size=10000000",
+            "--input_sentence_size=1000000",
             "--shuffle_input_sentence=true",
             "--train_extremely_large_corpus",
             "--byte_fallback",
