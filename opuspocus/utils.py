@@ -37,6 +37,8 @@ def file_line_index(file: Path) -> List[int]:
 def read_shard(
     file: Path, file_line_index: List[int], start: int, shard_size: int
 ) -> List[str]:
+    assert shard_size > 0
+    assert start >= 0
     lines = []
     with open_file(file, "r") as fh:
         fh.seek(file_line_index[start])

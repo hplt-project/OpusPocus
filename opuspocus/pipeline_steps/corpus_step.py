@@ -11,15 +11,15 @@ from opuspocus.utils import concat_files, file_line_index, read_shard
 
 logger = logging.getLogger(__name__)
 
-
-# TODO: can we future-proof this against type changes in OpusCleaner?
-class CategoryEntry(TypedDict):
-    name: str
-
-
-class CategoriesDict(TypedDict):
-    categories: List[CategoryEntry]
-    mapping: Dict[str, List[str]]
+# TODO(varisd): can we future-proof this against type changes in OpusCleaner?
+CategoryEntry = TypedDict("CategoryEntry", {"name": str})
+CategoriesDict = TypedDict(
+    "CategoriesDict",
+    {
+        "categories": List[CategoryEntry],
+        "mapping": Dict[str, List[str]],
+    },
+)
 
 
 class CorpusStep(OpusPocusStep):
@@ -53,6 +53,13 @@ class CorpusStep(OpusPocusStep):
         Definition of common corpus step attributes such as corpora language,
         previous corpus step or sharding size.
         """
+        if src_lang is None:
+            raise ValueError("src_lang value cannot by NoneType.")
+        if shard_size is not None and shard_size <= 0:
+            raise ValueError(
+                "shard_size must be a positive integer value "
+                "(value: {}).".format(shard_size)
+            )
         super().__init__(
             step=step,
             step_label=step_label,
@@ -78,6 +85,13 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def line_index_dict(self) -> Dict[str, List[int]]:
+        assert (
+            step.state == StepState.DONE,
+            "{}.output_dir dataset's line index can only be construceted "
+            "after the step successfully finished execution."
+            .format(self.step_label)
+        )
+
         idx_dict = {}
         for f_name in self.dataset_filename_list:
             idx_dict[f_name] = file_line_index(Path(self.output_dir, f_name))
@@ -99,6 +113,17 @@ class CorpusStep(OpusPocusStep):
         return read_shard(file_path, self.line_index_dict[filename], start, shard_size)
 
     def get_dataset_filename_shard_list(self, filename: str) -> List[Path]:
+        # The sharding is based on the size of the input files
+        assert (
+            self.prev_corpus_step is not None,
+            "({step_label}).previous_corpus_step is not specified. Sharding "
+            "of the {dataset} dataset in the ({step_label}).output_dir is "
+            "determined using ({step_label}).previvous_corpus_step.output_dir "
+            "{dataset} file".format(
+                step_label=self.step_label,
+                dataset=filename
+            )
+        )
         n_lines = len(self.line_index_dict[filename])
         n_shards = n_lines // self.shard_size
         if n_lines % self.shard_size != 0:
