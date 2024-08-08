@@ -133,9 +133,8 @@ class OpusPocusStep:
                 p = getattr(self, param)
                 if isinstance(p, Path):
                     p = str(p)
-                if (
-                    (isinstance(p, list) or isinstance(p, tuple))
-                    and isinstance(p[0], Path)
+                if (isinstance(p, list) or isinstance(p, tuple)) and isinstance(
+                    p[0], Path
                 ):
                     p = [str(v) for v in p]
             param_dict[param] = p
