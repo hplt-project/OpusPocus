@@ -31,8 +31,6 @@ class CorpusStep(OpusPocusStep):
     Compared to OpusPocusStep, it provides additional functionality, such as
     file sharding or indication of the corpora provided by the step at the end
     of its execution.
-    Moving this common functionality from the corpus processing steps into
-    a single superclass reduces code duplicity.
     """
 
     categories_file = "categories.json"
@@ -52,6 +50,15 @@ class CorpusStep(OpusPocusStep):
 
         Definition of common corpus step attributes such as corpora language,
         previous corpus step or sharding size.
+
+        Args:
+            step: string used for step class registration
+            step_label: unique label of the step instance
+            pipeline_dir: root directory of a pipeline
+            src_lang: source-side language
+            tgt_lang: target-side language
+            prev_corpus_step: previous CorpusStep (being processed by the step)
+            shard_size: number of lines per individual dataset shards
         """
         if src_lang is None:
             raise ValueError("src_lang value cannot by NoneType.")
@@ -86,6 +93,13 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def line_index_dict(self) -> Dict[str, List[int]]:
+        """Provides a list of file seek indices for each registered dataset.
+
+        Return:
+            A dictionary with keys reflecting the .output_dir filenames
+            and values containing the lists of seek indices indicating
+            beginning of line in the respective files.
+        """
         assert self.state == StepState.DONE, (
             "{}.output_dir dataset's line index can only be construceted "
             "after the step successfully finished execution.".format(self.step_label)
@@ -99,6 +113,12 @@ class CorpusStep(OpusPocusStep):
     def read_shard_from_dataset_file(
         self, filename: str, start: int, shard_size: int
     ) -> List[str]:
+        """Provides input by reading a part of an input (.prev_corpus_step)
+        dataset corpus with regard to the output dataset shard.
+
+        Args:
+            filename: filename within a directory (without full path)
+        """
         if filename not in self.dataset_filename_list:
             raise ValueError(
                 "{} is not in the list of dataset files ({})".format(
@@ -113,6 +133,19 @@ class CorpusStep(OpusPocusStep):
         return read_shard(file_path, self.line_index_dict[filename], start, shard_size)
 
     def get_input_dataset_shard_path_list(self, filename: str) -> List[Path]:
+        """Gets a list of shard files useful for prallel data processing.
+
+        The shard filenames are computed based on the size of the respective
+        input .prev_corpus_step dataset. The CorpusStep suporting sharding
+        should implement .command in a way that fetches the relevant shard
+        input using the .prev_corpus_step.line_index_dict method.
+
+        Args:
+            filename: dataset's filename
+
+        Returns:
+            List of full paths to the respective dataset output shards.
+        """
         # Get list of indexed filenames based on the prev_corpus_step dataset size
         assert self.prev_corpus_step is not None, (
             "({step_label}).previous_corpus_step is not specified. Sharding "
@@ -129,7 +162,9 @@ class CorpusStep(OpusPocusStep):
         ]
 
     def command_postprocess(self) -> None:
-        """TODO"""
+        """By default merges all output dataset shards (if shard_size is not
+        None) into the single dataset file.
+        """
         # By default, all dataset files must be available after a successful
         # step command execution. If not, there must be sharded output that can
         # be concatenated into the target file
@@ -177,6 +212,7 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def dataset_filename_list(self) -> List[str]:
+        """Full list of all the output_dir dataset filenames."""
         dset_list = []
         for dset in self.dataset_list:
             for lang in self.languages:
