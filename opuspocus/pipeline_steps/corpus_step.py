@@ -57,8 +57,9 @@ class CorpusStep(OpusPocusStep):
             raise ValueError("src_lang value cannot by NoneType.")
         if shard_size is not None and shard_size <= 0:
             raise ValueError(
-                "shard_size must be a positive integer value "
-                "(value: {}).".format(shard_size)
+                "shard_size must be a positive integer value " "(value: {}).".format(
+                    shard_size
+                )
             )
         super().__init__(
             step=step,
@@ -85,16 +86,15 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def line_index_dict(self) -> Dict[str, List[int]]:
-        assert (
-            step.state == StepState.DONE,
+        assert self.state == StepState.DONE, (
             "{}.output_dir dataset's line index can only be construceted "
-            "after the step successfully finished execution."
-            .format(self.step_label)
+            "after the step successfully finished execution.".format(self.step_label)
         )
 
         idx_dict = {}
         for f_name in self.dataset_filename_list:
             idx_dict[f_name] = file_line_index(Path(self.output_dir, f_name))
+        return idx_dict
 
     def read_shard_from_dataset_file(
         self, filename: str, start: int, shard_size: int
@@ -112,19 +112,15 @@ class CorpusStep(OpusPocusStep):
 
         return read_shard(file_path, self.line_index_dict[filename], start, shard_size)
 
-    def get_dataset_filename_shard_list(self, filename: str) -> List[Path]:
-        # The sharding is based on the size of the input files
-        assert (
-            self.prev_corpus_step is not None,
+    def get_input_dataset_shard_path_list(self, filename: str) -> List[Path]:
+        # Get list of indexed filenames based on the prev_corpus_step dataset size
+        assert self.prev_corpus_step is not None, (
             "({step_label}).previous_corpus_step is not specified. Sharding "
             "of the {dataset} dataset in the ({step_label}).output_dir is "
             "determined using ({step_label}).previvous_corpus_step.output_dir "
-            "{dataset} file".format(
-                step_label=self.step_label,
-                dataset=filename
-            )
+            "{dataset} file".format(step_label=self.step_label, dataset=filename)
         )
-        n_lines = len(self.line_index_dict[filename])
+        n_lines = len(self.prev_corpus_step.line_index_dict[filename])
         n_shards = n_lines // self.shard_size
         if n_lines % self.shard_size != 0:
             n_shards += 1
@@ -141,7 +137,7 @@ class CorpusStep(OpusPocusStep):
             target_file = Path(self.output_dir, f_name)
             if not target_file.exists():
                 concat_files(
-                    self.get_dataset_filename_shard_list(f_name),
+                    self.get_input_dataset_shard_path_list(f_name),
                     target_file,
                     compressed=True,
                 )
@@ -181,9 +177,11 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def dataset_filename_list(self) -> List[str]:
+        dset_list = []
         for dset in self.dataset_list:
             for lang in self.languages:
-                return ["{}.{}.gz".format(dset, lang)]
+                dset_list.append("{}.{}.gz".format(dset, lang))
+        return dset_list
 
     # Loading and Saving abstractions
     # (if we want to change the file format in the future)
