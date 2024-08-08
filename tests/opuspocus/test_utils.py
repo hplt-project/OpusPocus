@@ -14,7 +14,10 @@ def test_count_lines(train_data_fixture, request):
     assert res == 5  # noqa: PLR2004
 
 
-@pytest.fixture(scope="function", params=["train_data_parallel_tiny"])
+@pytest.fixture(
+    scope="function",
+    params=["train_data_parallel_tiny", "train_data_parallel_tiny_decompressed"],
+)
 def sample_file(request):
     src_file, _ = request.getfixturevalue(request.param)
     return src_file
