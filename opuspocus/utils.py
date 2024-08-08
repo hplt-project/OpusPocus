@@ -30,7 +30,8 @@ def file_line_index(file: Path) -> List[int]:
     offset = 0
     for line in open_file(file, "r"):
         offsets.append(offset)
-        offset += len(line)
+        # Correctly measure the length of string with unicode characters
+        offset += len(bytes(line, "utf-8"))
     return offsets
 
 
