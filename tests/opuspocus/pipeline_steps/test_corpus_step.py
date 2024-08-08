@@ -20,7 +20,10 @@ from opuspocus.utils import count_lines, open_file, read_shard
 
 @register_step("foo")
 class FooCorpusStep(CorpusStep):
-    """Mock that copies the input dataset files into the output_dir."""
+    """Mock that copies the input dataset files into the .output_dir, or copies
+    the dataset files from the .prev_corpus_step .output_dir
+
+    """
 
     CATEGORIES = ["foo", "bar"]
 
@@ -45,11 +48,13 @@ class FooCorpusStep(CorpusStep):
             previous_corpus_step=previous_corpus_step,
             shard_size=shard_size,
         )
+        """Minimal init implementation."""
         if dataset_files is not None:
             for file in self.dataset_files:
                 assert file.suffix == ".gz"
 
     def register_categories(self) -> None:
+        """Register categories based on the presence of .prev_corpus_step."""
         if self.prev_corpus_step is not None:
             self.categories_path.hardlink_to(self.prev_corpus_step.categories_path)
             return
@@ -64,6 +69,7 @@ class FooCorpusStep(CorpusStep):
         self.save_categories_dict(cat_dict)
 
     def get_command_targets(self) -> List[Path]:
+        """Create targets."""
         if self.shard_size is not None and self.prev_corpus_step is not None:
             return [
                 shard
@@ -73,6 +79,7 @@ class FooCorpusStep(CorpusStep):
         return [Path(self.output_dir, f_name) for f_name in self.dataset_filename_list]
 
     def command(self, target_file: Path) -> None:
+        """Process command, either normally or using the file shards."""
         target_filename_stem_split = target_file.stem.split(".")
         if target_filename_stem_split[-2] == "gz":
             assert self.prev_corpus_step is not None
@@ -101,12 +108,14 @@ class FooCorpusStep(CorpusStep):
 
 @pytest.fixture(scope="function")
 def train_data_parallel_tiny_dataset(train_data_parallel_tiny):
+    """Get the name of the mock dataset for testing."""
     assert train_data_parallel_tiny[0].suffix == ".gz"
     return ".".join(train_data_parallel_tiny[0].stem.split(".")[:-1])
 
 
 @pytest.fixture(scope="function", params=["monolingual", "bilingual"])
 def foo_corpus_languages(request, languages):
+    """List of languages based on the version of tested corpus."""
     if request.param == "monolingual":
         return [languages[0]]
     return languages
@@ -118,6 +127,7 @@ def foo_corpus_languages(request, languages):
 def test_foo_corpus_invalid_values(
     foo_languages, shard_size, train_data_parallel_tiny, tmp_path_factory
 ):
+    """Test invalid langauge combination or shard_size values."""
     setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
     if shard_size == "null":
         shard_size = None
@@ -149,6 +159,7 @@ def test_foo_corpus_invalid_values(
 def foo_corpus_step_inited(
     foo_corpus_languages, train_data_parallel_tiny, tmp_path_factory
 ):
+    """Create and initialize the mock corpus."""
     setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
     pipeline_dir = tmp_path_factory.mktemp(
         "foo.mock.{}".format("-".join(foo_corpus_languages))
@@ -176,6 +187,7 @@ def foo_corpus_step_inited(
 
 @pytest.fixture(scope="function", params=["1", "3", "dataset", "dataset+1"])
 def foo_shard_size(request, foo_corpus_step_inited):
+    """Provides sharding test examples."""
     dset_size = count_lines(foo_corpus_step_inited.dataset_files[0])
     if request.param == "dataset":
         return dset_size
@@ -186,6 +198,7 @@ def foo_shard_size(request, foo_corpus_step_inited):
 
 @pytest.fixture(scope="function")
 def bar_corpus_step_inited(foo_shard_size, foo_corpus_step_inited):
+    """Create and initialize the follow up mock corpus step."""
     step = build_step(
         step="foo",
         step_label="bar.test",
@@ -204,6 +217,9 @@ def bar_corpus_step_inited(foo_shard_size, foo_corpus_step_inited):
 
 @pytest.fixture(scope="function", params=["foo_corpus", "bar_corpus"])
 def corpus_step_inited(request, foo_corpus_step_inited, bar_corpus_step_inited):
+    """Fixture wrapper. Returns a respective corpus step based on the param
+    value.
+    """
     if request.param == "foo_corpus":
         return foo_corpus_step_inited
     elif request.param == "bar_corpus":
@@ -216,6 +232,7 @@ def corpus_step_done(
     foo_corpus_step_inited,
     bar_corpus_step_inited,
 ):
+    """Run the respective corpus steps and return a finished version."""
     if request.param == "foo_corpus":
         runner = DebugRunner("debug", foo_corpus_step_inited.pipeline_dir)
         runner.submit_step(foo_corpus_step_inited)
@@ -227,10 +244,12 @@ def corpus_step_done(
 
 
 def test_corpus_step_inited(corpus_step_inited):
+    """Test whether the initialization was successful."""
     assert corpus_step_inited.state == StepState.INITED
 
 
 def test_output_filename_format(corpus_step_inited):
+    """Test the correctness of the filename format."""
     for f_name in corpus_step_inited.dataset_filename_list:
         f_name_split = f_name.split(".")
         assert f_name_split[-1] == "gz"
@@ -238,10 +257,12 @@ def test_output_filename_format(corpus_step_inited):
 
 
 def test_corpus_step_inited_categories_file_exists(corpus_step_inited):
+    """Test the presents of categories.json."""
     assert corpus_step_inited.categories_path.exists
 
 
 def test_corpus_step_inited_categories(corpus_step_inited):
+    """Test the correctness of categories in categories.json."""
     ref_sorted = sorted(corpus_step_inited.CATEGORIES)
     hyp_sorted = sorted(corpus_step_inited.categories)
     assert hyp_sorted == ref_sorted
@@ -250,6 +271,7 @@ def test_corpus_step_inited_categories(corpus_step_inited):
 def test_corpus_step_inited_mapping(
     corpus_step_inited, train_data_parallel_tiny_dataset
 ):
+    """Test the correctness of the dataset mapping in categories.json."""
     category = corpus_step_inited.CATEGORIES[0]
     ref_sorted = sorted([train_data_parallel_tiny_dataset])
     hyp_sorted = sorted(corpus_step_inited.category_mapping[category])
@@ -259,23 +281,29 @@ def test_corpus_step_inited_mapping(
 def test_corpus_step_inited_dataset_list(
     corpus_step_inited, train_data_parallel_tiny_dataset
 ):
+    """Test whether the list of registered datasets is correct."""
     ref_sorted = sorted([train_data_parallel_tiny_dataset])
     hyp_sorted = sorted(corpus_step_inited.dataset_list)
     assert hyp_sorted == ref_sorted
 
 
 def test_foo_corpus_step_inited_line_index_fail(foo_corpus_step_inited):
+    """Test whether the seek line indexing fails with not DONE step."""
     with pytest.raises(AssertionError):
         foo_corpus_step_inited.line_index_dict
 
 
 def test_foo_corpus_step_inited_shard_list_fail(foo_corpus_step_inited):
+    """Test whether the sharding without .prev_corpus_step fails as
+    expected.
+    """
     with pytest.raises(AssertionError):
         for f_name in foo_corpus_step_inited.dataset_filename_list:
             foo_corpus_step_inited.get_input_dataset_shard_path_list(f_name)
 
 
 def test_languages(corpus_step_inited):
+    """Test whether the corpus languages were set correctly."""
     languages = corpus_step_inited.languages
     if len(languages) == 1:
         assert corpus_step_inited.tgt_lang is None
@@ -286,15 +314,18 @@ def test_languages(corpus_step_inited):
 
 
 def test_corpus_step_done(corpus_step_done):
+    """Test whether the runner execution was successful."""
     assert corpus_step_done.state == StepState.DONE
 
 
 def test_corpus_step_done_output_exist(corpus_step_done):
+    """Test whether the step output exists."""
     for f_name in corpus_step_done.dataset_filename_list:
         assert Path(corpus_step_done.output_dir, f_name).exists()
 
 
 def test_corpus_step_done_output_compressed(corpus_step_done):
+    """Test whether the output files are compressed."""
     for f_name in corpus_step_done.dataset_filename_list:
         file_path = Path(corpus_step_done.output_dir, f_name)
         with open(file_path, "rb") as fh:
@@ -302,6 +333,7 @@ def test_corpus_step_done_output_compressed(corpus_step_done):
 
 
 def test_dataset_filename_list_len(corpus_step_done):
+    """Test whether the filename list has correct length."""
     n_dsets = len(corpus_step_done.dataset_list)
     n_langs = len(corpus_step_done.languages)
     list_length = len(corpus_step_done.dataset_filename_list)
