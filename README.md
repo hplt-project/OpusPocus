@@ -1,9 +1,9 @@
-# OpusPocus on LUMI
+# OpusPocus
 
 Modular NLP pipeline manager.
 
-OpusPocus is aimed at simplifying the description and execution of popular and custom NLP pipelines, including dataset preprocessing, model training and evaluation.
-The pipeline manager supports execution using simple CLI (Bash) or common HPC schedulers (Slurm, HyperQueue).
+OpusPocus is aimed at simplifying the description and execution of popular and custom NLP pipelines, including dataset preprocessing, model training, fine-tuning and evaluation.
+The pipeline manager supports execution using simple CLI (Bash) or common HPC schedulers (Slurm).
 
 It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for data preparation and [OpusTrainer](https://github.com/hplt-project/OpusTrainer) for training scheduling (development in progress).
 
@@ -12,6 +12,7 @@ It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for
 
 - `go.py` - pipeline manager entry script
 - `opuspocus/` - OpusPocus modules
+- `opuspocus_cli/` - OpusPocus CLI subcommands
 - `config/` - default configuration files (pipeline config, marian training config, ...)
 - `examples/` - pipeline manager usage examples
 - `scripts/` - helper scripts, at this moment not directly implemented in OpusPocus
@@ -22,31 +23,50 @@ It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for
 
 1. Install [MarianNMT](https://marian-nmt.github.io/docs/).
 
-2. Prepare the [OpusCleaner](https://github.com/hplt-project/OpusCleaner/blob/main/README.md#installation-for-cleaning) and [OpusTrainer](https://github.com/hplt-project/OpusTrainer/blob/main/README.md#installation) Python virtual environments.
+2. Prepare the [OpusCleaner](https://github.com/hplt-project/OpusCleaner/blob/main/README.md#installation-for-cleaning) (at the moment, OpusCleaner has conflicting dependencies with OpusTrainer, therefore, has to be in an isolated Python environment).
 
 3. Install the OpusPocus requirements.
 ```
+pip install --upgrade pip setuptools
 pip install -r requirements.txt
 ```
 
-
 ## Usage (Simple Pipeline)
 
-See the ``examples/`` directory for example execution
+Either run the main script `go.py` or the subcommand scripts from `opuspocus_cli/` directory.
+Run the scripts directly from the root directory for this repository.
 
-1. Initialize the pipeline.
+# Data preparation
+
+TODO: setup `data/` dir (modify the config/pipeline... to work with this directory
+
+# Pipeline execution
+
+There are two main subcommands (init, run) which need to be executed separately.
+`./go.py init` prepares the pipeline directory structure and infers basic information about the datasets used in the pipeline.
+`./go.py run` executes the pipeline graph, running the code from each of the pipeline step in the order defined by the pipeline graph.
+
+(See the ``examples/`` directory for example execution)
+
+# Data preprocessing example
+
+1. Initialize the (data preprocessing) pipeline.
 ```
 $ ./go.py init \
-    --pipeline-config path/to/pipeline/config/file \
-    --pipeline-dir pipeline/destination/directory \
+    --pipeline-config config/pipeline.preprocess.yml \
+    --pipeline-dir preprocess_pipeline/destination/directory \
 ```
+- `--pipeline-config` (required) provides the details about the pipeline steps and their dependencies
+- `--pipeline-dir` (optional) overrides the `pipeline.pipeline_dir` value from the pipeline-config
 
-2. Execute the pipeline.
+2. Execute the (data preprocessing) pipeline.
 ```
 $ ./go.py run \
-    --pipeline-dir pipeline/destination/directory \
+    --pipeline-dir preprocess_pipeline/destination/directory \
     --runner bash \
 ```
+- `--pipeline-dir` (required) path to the initialized pipeline directory.
+- `--runner` (required) runner to be used for pipeline execution.
 
 3. Check the pipeline status.
 ```
@@ -56,3 +76,33 @@ OR
 ```
 $ ./go.py status --pipeline-dir pipeline/destination/directory
 ```
+
+# Model training example
+
+(The data preprocessing pipeline must be finished, i.e. all steps must be in the DONE step)
+
+0. Edit the location (TODO) of the preprocessing pipeline and directories
+
+1. Initialize the (data preprocessing) pipeline.
+```
+$ ./go.py init \
+    --pipeline-config config/pipeline.train.simple.yml \
+    --pipeline-dir training_pipeline/destination/directory \
+```
+
+2. Execute the (data preprocessing) pipeline.
+```
+$ ./go.py run \
+    --pipeline-dir training_pipeline/destination/directory \
+    --runner bash \
+```
+
+# (Advanced) Config modification examples
+
+1. Preprocessing your own data
+
+TODO
+
+2. Using own (preprocessed) data
+
+TODO
