@@ -155,7 +155,7 @@ def subprocess_wait(proc: subprocess.Popen) -> None:
 
 def get_action_type_map(parser) -> Dict[str, Callable]:  # noqa: ANN001
     type_map = {}
-    for action in parser._actions:
+    for action in parser._actions:  # noqa: SLF001
         type_map[action.dest] = action.type
     return type_map
 
@@ -168,7 +168,7 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  #
         raise ValueError(f"File {config_path} not found.")  # noqa: EM102
     config = yaml.safe_load(open(config_path))
 
-    for v in parser._actions:
+    for v in parser._actions:  # noqa: SLF001
         if v.dest in config:
             v.required = False
     parser.set_defaults(**config)
