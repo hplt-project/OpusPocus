@@ -67,7 +67,7 @@ class CorpusStep(OpusPocusStep):
         )
         if self._inherits_sharded and self.prev_corpus_step.is_sharded:
             if output_shard_size is not None:
-                logger.warn(
+                logger.warning(
                     "Step %s always inherits sharding from its "
                     "previous_corpus_step (%s). Ignoring the "
                     "output_shard_size parameter...",

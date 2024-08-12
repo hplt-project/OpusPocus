@@ -249,7 +249,7 @@ class RunnerResources:
         params = {}
         for k, v in json_dict.items():
             if k not in cls_params:
-                logger.warn("Resource %s not supported. Ignoring", k)
+                logger.warning("Resource %s not supported. Ignoring", k)
             params[k] = v
         return RunnerResources(**params)
 

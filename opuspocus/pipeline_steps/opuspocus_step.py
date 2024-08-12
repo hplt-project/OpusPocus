@@ -327,7 +327,7 @@ class OpusPocusStep:
         """Change the state of a step and save it into step.state file."""
         assert state in StepState
         if state == self.state:
-            logger.warn("The new step state is identical to the old one.")
+            logger.warning("The new step state is identical to the old one.")
 
         logger.debug("Old state: %s -> New state: %s", self.state, state)
         self.state = state

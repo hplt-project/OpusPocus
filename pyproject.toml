@@ -45,7 +45,9 @@ lint.select = [
   "C4",  # https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
   "EM",  # https://docs.astral.sh/ruff/rules/#flake8-eradicate-em
   "ISC", # https://docs.astral.sh/ruff/rules/#flake8-implicit-str-concat-isc
-  "ICN",
+  "ICN", # https://docs.astral.sh/ruff/rules/#flake8-import-conventions-icn
+  "LOG", # https://docs.astral.sh/ruff/rules/#flake8-logging-log
+  "G",   # https://docs.astral.sh/ruff/rules/#flake8-logging-format-g
 ]
 
 lint.ignore = [

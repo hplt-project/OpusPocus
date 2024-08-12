@@ -117,7 +117,7 @@ class OpusPocusPipeline:
 
             # Create the arguments for the step instance initialization
             step_args = {}
-            logger.info(f"Creating parameters to build {step_label} object.")
+            logger.info(f"Creating parameters to build {step_label} object.")  # noqa: G004
             for k, v in pipeline_steps_configs[step_label].items():
                 # Simply assing the value if None or not a dependency parameter
                 if "_step" not in k or v is None:
@@ -150,12 +150,12 @@ class OpusPocusPipeline:
 
     def init(self) -> None:
         """Initialize the pipeline."""
-        logger.info(f"Initializing pipeline ({self.pipeline_dir})")
+        logger.info(f"Initializing pipeline ({self.pipeline_dir})")  # noqa: G004
         for _, v in self.pipeline_graph.items():
             v.init_step()
 
         self.save_pipeline()
-        logger.info(f"Pipeline ({self.pipeline_dir}) initialized successfully.")
+        logger.info(f"Pipeline ({self.pipeline_dir}) initialized successfully.")  # noqa: G004
 
     def status(self, steps: List[OpusPocusStep]) -> None:
         for s in steps:
@@ -234,7 +234,7 @@ class PipelineConfig(OmegaConf):
     @staticmethod
     def _overwrite(config, args):  # noqa: ANN001, ANN205
         # TODO: implement overwrite mechanisms
-        logger.warn("(NOT IMPLEMENTED) Overwriting the config file values with command line arguments.")
+        logger.warning("(NOT IMPLEMENTED) Overwriting the config file values with command line arguments.")
         return config
 
     @classmethod
@@ -245,14 +245,14 @@ class PipelineConfig(OmegaConf):
         # Top has known keys
         for key in config.keys():
             if key not in cls.top_keys:
-                logger.warn(f"Config file contains unsupported top key ({key}). Ignoring...")
+                logger.warning(f"Config file contains unsupported top key ({key}). Ignoring...")  # noqa: G004
         # Contains "pipeline" top key
         if "pipeline" not in config:
             raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')  # noqa: EM101, ISC001
         # Pipeline has known keys
         for key in config.pipeline.keys():
             if key not in cls.pipeline_keys:
-                logger.warn(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")  # noqa: ISC001
+                logger.warning(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")  # noqa: G004, ISC001
         # Contains "pipeline.steps" key
         if "steps" not in config.pipeline:
             raise ValueError('Config file must contain the list of steps ("pipeline.steps")')  # noqa: EM101
