@@ -20,7 +20,7 @@ def main(argv):  # noqa: ANN001, ANN201 fixit
     for pid in proc_ids:
         try:
             procs.append(psutil.Process(pid))
-        except psutil.NoSuchProcess:
+        except psutil.NoSuchProcess:  # noqa: PERF203
             print("Process {} does not exist. Ignoring...", file=sys.stderr)  # noqa: T201
 
     gone, alive = psutil.wait_procs(procs)

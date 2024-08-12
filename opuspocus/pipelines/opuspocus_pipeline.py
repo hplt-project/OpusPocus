@@ -151,7 +151,7 @@ class OpusPocusPipeline:
     def init(self) -> None:
         """Initialize the pipeline."""
         logger.info(f"Initializing pipeline ({self.pipeline_dir})")  # noqa: G004
-        for _, v in self.pipeline_graph.items():
+        for _, v in self.pipeline_graph.items():  # noqa: PERF102
             v.init_step()
 
         self.save_pipeline()
