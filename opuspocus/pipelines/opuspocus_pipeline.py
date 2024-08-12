@@ -167,7 +167,7 @@ class OpusPocusPipeline:
         for i, v in enumerate(targets):
             print(f"Target {i}: {v.step_label}")  # noqa: T201
             v.traceback_step(level=0, full=full)
-            print("")  # noqa: T201
+            print()  # noqa: T201
 
     def get_targets(self, targets: List[str] = None):  # noqa: ANN201
         if targets is not None:
