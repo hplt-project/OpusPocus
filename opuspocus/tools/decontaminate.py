@@ -12,17 +12,17 @@ class Counter:
     removed = 0
 
 
-def hash_mono(line):
+def hash_mono(line):  # noqa: ANN001, ANN201
     return line.strip().lower()
 
 
-def make_hashes(line):
+def make_hashes(line):  # noqa: ANN001, ANN201
     src, tgt = line.split("\t", 2)
     # maybe we want to translate(str.maketrans("", "", string.punctuation))
     return hash_mono(src), hash_mono(tgt)
 
 
-def main(args):
+def main(args):  # noqa: ANN001, ANN201
     src_test_samples = dict()
     tgt_test_samples = dict()
     removed = 0
@@ -118,7 +118,7 @@ def main(args):
         print(f"{side} was: {was_kept/len(samples):%}", file=sys.stderr)
 
 
-def parse_args():
+def parse_args():  # noqa: ANN201
     parser = argparse.ArgumentParser("Dataset Decontamination")
     parser.add_argument("--input-file", type=str, default=None, help="Dataset to be decontaminated.")
     parser.add_argument("--output-file", type=str, default=None, help="Output file.")

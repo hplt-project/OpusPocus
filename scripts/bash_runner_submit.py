@@ -5,11 +5,11 @@ import sys
 import psutil
 
 
-def raise_nonzero_error(arguments, pid):
+def raise_nonzero_error(arguments, pid):  # noqa: ANN001, ANN201 fixit
     raise subprocess.SubprocessError(f"Process {pid} exited with a non-zero value. Wrapper arguments: {arguments}\n")
 
 
-def main(argv):
+def main(argv):  # noqa: ANN001, ANN201 fixit
     """Wrapper for executing Bash commands that have process dependencies."""
     cmd_path = argv[1]
     proc_ids = []

@@ -30,7 +30,7 @@ class RawCorpusStep(CorpusStep):
         tgt_lang: Optional[str] = None,
         output_shard_size: Optional[int] = None,
         compressed: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,

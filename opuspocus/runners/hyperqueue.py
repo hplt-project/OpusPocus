@@ -13,7 +13,7 @@ class HyperqueueRunner(OpusPocusRunner):
     """TODO"""
 
     @staticmethod
-    def add_args(parser):
+    def add_args(parser):  # noqa: ANN001, ANN205
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
             "--hq-server-dir",
@@ -41,7 +41,7 @@ class HyperqueueRunner(OpusPocusRunner):
         hq_alloc_range_cpus: str = "0,1",
         hq_alloc_range_gpus: Optional[str] = None,
         hq_max_worker_count: int = 1,
-    ):
+    ) -> None:
         hq_alloc_range_cpus = [int(n) for n in hq_alloc_range_cpus.split(",")]
         if hq_alloc_range_gpus is not None:
             hq_alloc_range_gpus = [int(n) for n in hq_alloc_range_gpus.split(",")]

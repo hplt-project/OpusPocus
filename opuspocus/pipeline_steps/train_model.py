@@ -36,7 +36,7 @@ class TrainModelStep(OpusPocusStep):
         seed: int = 42,
         train_category: str = "clean",
         valid_dataset: str = "flores200.dev",
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -192,7 +192,7 @@ class TrainModelStep(OpusPocusStep):
         proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True)
 
         # Propagate the termination signal to the child process
-        def terminate_signal(signalnum, handler):
+        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202
             logger.debug("Received SIGTERM, terminating child process...")
             proc.terminate()
 

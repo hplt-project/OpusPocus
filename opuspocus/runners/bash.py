@@ -21,7 +21,7 @@ class BashRunner(OpusPocusRunner):
     submit_wrapper = "scripts/bash_runner_submit.py"
 
     @staticmethod
-    def add_args(parser):
+    def add_args(parser):  # noqa: ANN001, ANN205
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
             "--run-subtasks-in-parallel",
@@ -35,7 +35,7 @@ class BashRunner(OpusPocusRunner):
         runner: str,
         pipeline_dir: Path,
         run_subtasks_in_parallel: bool = False,
-    ):
+    ) -> None:
         super().__init__(
             runner=runner,
             pipeline_dir=pipeline_dir,

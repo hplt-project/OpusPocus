@@ -33,7 +33,7 @@ class GenerateVocabStep(OpusPocusStep):
         corpus_step: CorpusStep,
         seed: int = 42,
         vocab_size: int = 64000,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,

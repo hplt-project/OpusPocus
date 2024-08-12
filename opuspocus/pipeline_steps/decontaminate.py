@@ -26,7 +26,7 @@ class DecontaminateCorpusStep(CorpusStep):
         test_data_step: Optional[CorpusStep] = None,
         output_shard_size: Optional[int] = None,
         min_length: int = 25,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,

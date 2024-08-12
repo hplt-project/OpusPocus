@@ -5,7 +5,7 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 
 
-def extend_dataset_name(dset_name, label):
+def extend_dataset_name(dset_name, label):  # noqa: ANN001, ANN201
     return f"{label}.{dset_name}"
 
 
@@ -31,7 +31,7 @@ class MergeCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: str = None,
         output_shard_size: Optional[int] = None,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,

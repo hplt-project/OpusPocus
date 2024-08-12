@@ -19,7 +19,7 @@ class SlurmRunner(OpusPocusRunner):
     """TODO"""
 
     @staticmethod
-    def add_args(parser):
+    def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
         parser.add_argument("--slurm_other_options", type=str, default=None, help="TODO")
@@ -29,7 +29,7 @@ class SlurmRunner(OpusPocusRunner):
         runner: str,
         pipeline_dir: Path,
         slurm_other_options: str,
-    ):
+    ) -> None:
         super().__init__(
             runner=runner,
             pipeline_dir=pipeline_dir,

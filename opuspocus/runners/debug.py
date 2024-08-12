@@ -27,7 +27,7 @@ class DebugRunner(OpusPocusRunner):
         self,
         runner: str,
         pipeline_dir: Path,
-    ):
+    ) -> None:
         super().__init__(
             runner=runner,
             pipeline_dir=pipeline_dir,

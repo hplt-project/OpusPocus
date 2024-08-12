@@ -37,4 +37,12 @@ lint.select = [
   "N",   # https://docs.astral.sh/ruff/rules/#pep8-naming-n
   "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up
   "YTT", # https://docs.astral.sh/ruff/rules/#flake8-2020-ytt
+  "ANN", # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
 ]
+
+lint.ignore = [
+  "ANN101", # missing type annotation for self in method (legacy ruff remove it)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN201", "ANN001"]

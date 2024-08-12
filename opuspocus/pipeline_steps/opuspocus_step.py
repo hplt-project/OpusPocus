@@ -31,7 +31,7 @@ class OpusPocusStep:
     state_file = "step.state"
     parameter_file = "step.parameters"
 
-    def __init__(self, step: str, step_label: str, pipeline_dir: Path, **kwargs):
+    def __init__(self, step: str, step_label: str, pipeline_dir: Path, **kwargs) -> None:  # noqa: ANN003
         """Set the step parameters based on the parameters passed during
         step object initialization.
 
@@ -61,7 +61,7 @@ class OpusPocusStep:
         self.state = self.load_state()
 
     @classmethod
-    def build_step(cls, step: str, step_label: str, pipeline_dir: Path, **kwargs) -> "OpusPocusStep":
+    def build_step(cls, step: str, step_label: str, pipeline_dir: Path, **kwargs) -> "OpusPocusStep":  # noqa: ANN003, ANN102
         """Build a specified step instance.
 
         Args:
@@ -86,7 +86,7 @@ class OpusPocusStep:
         return cls_inst
 
     @classmethod
-    def list_parameters(cls, exclude_dependencies: bool = True) -> List[str]:
+    def list_parameters(cls, exclude_dependencies: bool = True) -> List[str]:  # noqa: ANN102
         """Return a list of arguments/required for initialization
 
         Args:
@@ -108,7 +108,7 @@ class OpusPocusStep:
 
     @classmethod
     def load_parameters(
-        cls,
+        cls,  # noqa: ANN102
         step_label: str,
         pipeline_dir: Path,
     ) -> Dict[str, Any]:
@@ -145,7 +145,7 @@ class OpusPocusStep:
             open(Path(self.step_dir, self.parameter_file), "w"),
         )
 
-    def register_parameters(self, **kwargs) -> None:
+    def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
         """Class agnostic registration of the step instance parameters.
 
         Each step inheriting from the abstract class has a set of attributes
@@ -174,7 +174,7 @@ class OpusPocusStep:
                 setattr(self, param, val)
 
     @classmethod
-    def load_dependencies(cls, step_label: str, pipeline_dir: Path) -> Dict[str, str]:
+    def load_dependencies(cls, step_label: str, pipeline_dir: Path) -> Dict[str, str]:  # noqa: ANN102
         """Load step dependecies based on their unique step_label values."""
         deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
         logger.debug("Loading dependencies from %s", deps_path)
@@ -287,7 +287,7 @@ class OpusPocusStep:
         print(self.compose_command(), file=open(cmd_path, "w"))
         os.chmod(cmd_path, 0o755)
 
-    def retry_step(self, args: Namespace):
+    def retry_step(self, args: Namespace):  # noqa: ANN201
         """Try to recover from a failed state.
 
         Default behavior is to change state and just rerun.
@@ -442,7 +442,7 @@ if __name__ == "__main__":
         """Definition of defeault runner resources for a specific step."""
         return RunnerResources()
 
-    def __eq__(self, other):
+    def __eq__(self, other):  # noqa: ANN001, ANN204
         """Object comparison logic."""
         for param in self.list_parameters(exclude_dependencies=False):
             if getattr(self, param, None) != getattr(other, param, None):

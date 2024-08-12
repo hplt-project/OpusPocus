@@ -31,7 +31,7 @@ class TranslateCorpusStep(CorpusStep):
         beam_size: int = 4,
         output_shard_size: Optional[int] = None,
         model_suffix: str = "best-chrf",
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -135,7 +135,7 @@ class TranslateCorpusStep(CorpusStep):
         # Execute the command
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=sys.stderr, env=env, text=True)
 
-        def terminate_signal(signalnum, handler):
+        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202
             logger.debug("Received SIGTERM, terminating child process...")
             proc.terminate()
 

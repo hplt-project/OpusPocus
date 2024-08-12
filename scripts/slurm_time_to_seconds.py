@@ -2,7 +2,7 @@
 import sys
 
 
-def hhmmss_to_seconds(t):
+def hhmmss_to_seconds(t):  # noqa: ANN001, ANN201
     t_s = 0
     for i in range(len(t) - 1):
         t_s = 60 * (t_s + t[i])

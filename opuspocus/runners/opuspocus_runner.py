@@ -32,17 +32,17 @@ class OpusPocusRunner:
     submitted_tasks = []
 
     @staticmethod
-    def add_args(parser):
+    def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
 
-    def __init__(self, runner: str, pipeline_dir: Path, **kwargs):
+    def __init__(self, runner: str, pipeline_dir: Path, **kwargs) -> None:  # noqa: ANN003
         self.runner = runner
         self.pipeline_dir = pipeline_dir
 
         self.register_parameters(**kwargs)
 
     @classmethod
-    def build_runner(cls, runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":
+    def build_runner(cls, runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":  # noqa: ANN003, ANN102
         """Build a specified runner instance.
 
         Args:
@@ -55,7 +55,7 @@ class OpusPocusRunner:
         return cls(runner, pipeline_dir, **kwargs)
 
     @classmethod
-    def list_parameters(cls) -> List[str]:
+    def list_parameters(cls) -> List[str]:  # noqa: ANN102
         """TODO"""
         param_list = []
         for param in inspect.signature(cls.__init__).parameters:
@@ -65,7 +65,7 @@ class OpusPocusRunner:
         return param_list
 
     @classmethod
-    def load_parameters(cls, pipeline_dir: Path) -> Dict[str, Any]:
+    def load_parameters(cls, pipeline_dir: Path) -> Dict[str, Any]:  # noqa: ANN102
         """TODO"""
         params_path = Path(pipeline_dir, cls.parameter_file)
         logger.debug("Loading step variables from %s", params_path)
@@ -92,7 +92,7 @@ class OpusPocusRunner:
             open(Path(self.pipeline_dir, self.parameter_file), "w"),
         )
 
-    def register_parameters(self, **kwargs) -> None:
+    def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
         """TODO"""
         type_hints = get_type_hints(self.__init__)
         logger.debug("Class type hints: $s", type_hints)
@@ -285,7 +285,7 @@ class OpusPocusRunner:
         # TODO: expand the logic here
         return step.default_resources
 
-    def __eq__(self, other):
+    def __eq__(self, other):  # noqa: ANN001, ANN204
         """Object comparison logic."""
         for param in self.list_parameters():
             if getattr(self, param, None) != getattr(other, param, None):

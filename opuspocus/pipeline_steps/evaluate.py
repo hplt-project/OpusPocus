@@ -28,7 +28,7 @@ class EvaluateStep(OpusPocusStep):
         datasets: Optional[List[str]] = None,
         seed: int = 42,
         metrics: List[str] = ["BLEU", "CHRF"],
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,

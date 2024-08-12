@@ -13,7 +13,7 @@ STEP_INSTANCE_REGISTRY = {}
 STEP_CLASS_NAMES = set()
 
 
-def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):
+def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):  # noqa: ANN003, ANN202
     """Pipeline step builder function. Use this to create pipeline step
     objects.
     """
@@ -30,7 +30,7 @@ def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):
     return step_instance
 
 
-def load_step(step_label: str, pipeline_dir: Path):
+def load_step(step_label: str, pipeline_dir: Path):  # noqa: ANN202
     """Load an existing (initialized) pipeline step."""
     step_params = OpusPocusStep.load_parameters(step_label, pipeline_dir)
 
@@ -46,7 +46,7 @@ def load_step(step_label: str, pipeline_dir: Path):
     return build_step(step, step_label, pipeline_dir, **step_params)
 
 
-def register_step(name: str):
+def register_step(name: str):  # noqa: ANN202
     """
     New steps can be added to OpusPocus with the
     :func:`~opuspocus.opuspocus_steps.register_step` function decorator.
@@ -70,7 +70,7 @@ def register_step(name: str):
         name (str): the name of the pipeline step
     """
 
-    def register_step_cls(cls):
+    def register_step_cls(cls):  # noqa: ANN001, ANN202
         if name in STEP_REGISTRY:
             raise ValueError(f"Cannot register duplicate step ({name})")
         if not issubclass(cls, OpusPocusStep):
@@ -84,7 +84,7 @@ def register_step(name: str):
     return register_step_cls
 
 
-def get_step(name):
+def get_step(name):  # noqa: ANN001, ANN202
     return STEP_REGISTRY[name]
 
 

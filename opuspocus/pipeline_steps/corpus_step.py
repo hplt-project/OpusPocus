@@ -48,8 +48,8 @@ class CorpusStep(OpusPocusStep):
         tgt_lang: Optional[str] = None,
         previous_corpus_step: Optional["CorpusStep"] = None,
         output_shard_size: Optional[int] = None,
-        **kwargs,
-    ):
+        **kwargs,  # noqa: ANN003
+    ) -> None:
         """Object initialization.
 
         Definition of common corpus step attributes such as corpora language,

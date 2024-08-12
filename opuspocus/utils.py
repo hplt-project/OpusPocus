@@ -13,13 +13,13 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
-def get_open_fn(compressed: bool):
+def get_open_fn(compressed: bool):  # noqa: ANN201
     if compressed:
         return gzip.open
     return open
 
 
-def open_file(file: Path, mode: str):
+def open_file(file: Path, mode: str):  # noqa: ANN201
     assert mode == "r" or mode == "w"
     open_fn = get_open_fn(compressed=(file.suffix == ".gz"))
     return open_fn(file, f"{mode}t")
@@ -71,7 +71,7 @@ def cut_file(
 
 
 def cut_filestream(
-    input_stream,
+    input_stream,  # noqa: ANN001
     output_files: List[Path],
     compressed: bool = True,
     delimiter: str = "\t",
@@ -87,7 +87,7 @@ def cut_filestream(
 
 
 def save_filestream(
-    input_stream,
+    input_stream,  # noqa: ANN001
     output_file: Path,
     compressed: bool = True,
 ) -> None:
@@ -153,14 +153,14 @@ def subprocess_wait(proc: subprocess.Popen) -> None:
         raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")
 
 
-def get_action_type_map(parser) -> Dict[str, Callable]:
+def get_action_type_map(parser) -> Dict[str, Callable]:  # noqa: ANN001
     type_map = {}
     for action in parser._actions:
         type_map[action.dest] = action.type
     return type_map
 
 
-def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
+def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  # noqa: ANN001
     """Loads default values from a config file."""
     if config_path is None:
         return parser
@@ -187,13 +187,13 @@ def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
     return Namespace(**orig_vars, **updt_vars)
 
 
-def print_indented(text, level=0):
+def print_indented(text, level=0):  # noqa: ANN001, ANN201
     """A function wrapper for indented printing (of traceback)."""
     indent = " " * (2 * level)
     print(indent + text)
 
 
-def file_path(path_str):
+def file_path(path_str):  # noqa: ANN001, ANN201
     """A file_path type definition for argparse."""
     path = Path(path_str)
     if path.exists():
@@ -213,13 +213,13 @@ class RunnerResources:
         cpus: int = 1,
         gpus: int = 0,
         mem: str = "1g",
-    ):
+    ) -> None:
         self.cpus = cpus
         self.gpus = gpus
         self.mem = mem
 
     @classmethod
-    def list_parameters(cls) -> List[str]:
+    def list_parameters(cls) -> List[str]:  # noqa: ANN102
         """TODO"""
         return [param for param in inspect.signature(cls.__init__).parameters if param != "self"]
 
@@ -241,7 +241,7 @@ class RunnerResources:
         json.dump(json_dict, open(json_path, "w"), indent=2)
 
     @classmethod
-    def from_json(cls, json_path: Path) -> "RunnerResources":
+    def from_json(cls, json_path: Path) -> "RunnerResources":  # noqa: ANN102
         """TODO"""
         json_dict = json.load(open(json_path))
 
@@ -254,7 +254,7 @@ class RunnerResources:
         return RunnerResources(**params)
 
     @classmethod
-    def get_env_name(cls, name) -> str:
+    def get_env_name(cls, name) -> str:  # noqa: ANN001, ANN102
         """TODO"""
         assert name in cls.list_parameters()
         return f"OPUSPOCUS_{name}"

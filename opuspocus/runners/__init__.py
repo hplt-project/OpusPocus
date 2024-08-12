@@ -17,7 +17,7 @@ RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()
 
 
-def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
+def build_runner(runner: str, pipeline_dir: Path, args: Namespace):  # noqa: ANN202
     """Runner builder function. Use this to create runner objects."""
     logger.info("Building runner (%s)...", runner)
 
@@ -30,7 +30,7 @@ def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **kwargs)
 
 
-def load_runner(pipeline_dir: Path):
+def load_runner(pipeline_dir: Path):  # noqa: ANN202
     """Recreate a previously used runner. Required for pipeline execution
     updates, i.e. execution termination.
 
@@ -45,7 +45,7 @@ def load_runner(pipeline_dir: Path):
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **runner_params)
 
 
-def register_runner(name):
+def register_runner(name):  # noqa: ANN001, ANN202
     """
     New runner can be added to OpusPocus with the
     :func:`~opuspocus.runners.register_runner` function decorator.
@@ -65,7 +65,7 @@ def register_runner(name):
         name (str): the name of the runner
     """
 
-    def register_runner_cls(cls):
+    def register_runner_cls(cls):  # noqa: ANN001, ANN202
         if name in RUNNER_REGISTRY:
             raise ValueError(f"Cannot register duplicate runner ({name})")
         if not issubclass(cls, OpusPocusRunner):

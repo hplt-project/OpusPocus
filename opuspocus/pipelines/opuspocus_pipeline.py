@@ -31,7 +31,7 @@ class OpusPocusPipeline:
         self,
         pipeline_config_path: Path,
         pipeline_dir: Optional[Path] = None,
-    ):
+    ) -> None:
         """TODO: describe the overwrite order"""
         # Load pipeline config
         pipeline_config = PipelineConfig.load(pipeline_config_path)
@@ -61,7 +61,7 @@ class OpusPocusPipeline:
 
     @classmethod
     def build_pipeline(
-        cls,
+        cls,  # noqa: ANN102
         pipeline_config_path: Path,
         pipeline_dir: Path,
     ) -> "OpusPocusPipeline":
@@ -78,7 +78,7 @@ class OpusPocusPipeline:
 
     @classmethod
     def load_pipeline(
-        cls,
+        cls,  # noqa: ANN102
         pipeline_dir: Path,
     ) -> "OpusPocusPipeline":
         """TODO"""
@@ -169,7 +169,7 @@ class OpusPocusPipeline:
             v.traceback_step(level=0, full=full)
             print("")
 
-    def get_targets(self, targets: List[str] = None):
+    def get_targets(self, targets: List[str] = None):  # noqa: ANN201
         if targets is not None:
             return targets
         if self.default_targets is not None:
@@ -181,7 +181,7 @@ class OpusPocusPipeline:
             "option."
         )
 
-    def __eq__(self, other):
+    def __eq__(self, other):  # noqa: ANN001, ANN204
         """Object comparison logic."""
         if self.pipeline_graph != other.pipeline_graph:
             return False
@@ -226,19 +226,19 @@ class PipelineConfig(OmegaConf):
         OmegaConf.save(config, f=config_path)
 
     @classmethod
-    def load(cls, config_file: Path, overwrite_args: Optional[argparse.Namespace] = None) -> OmegaConf:
+    def load(cls, config_file: Path, overwrite_args: Optional[argparse.Namespace] = None) -> OmegaConf:  # noqa: ANN102
         config = OmegaConf.load(config_file)
         cls._valid_yaml_structure(config)
         return cls._overwrite(config, overwrite_args)
 
     @staticmethod
-    def _overwrite(config, args):
+    def _overwrite(config, args):  # noqa: ANN001, ANN205
         # TODO: implement overwrite mechanisms
         logger.warn("(NOT IMPLEMENTED) Overwriting the config file values with " "command line arguments.")
         return config
 
     @classmethod
-    def _valid_yaml_structure(cls, config: OmegaConf) -> bool:
+    def _valid_yaml_structure(cls, config: OmegaConf) -> bool:  # noqa: ANN102
         """TODO."""
         # TODO: other checks?
 
