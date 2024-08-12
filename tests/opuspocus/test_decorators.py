@@ -34,14 +34,14 @@ def test_register_step_correct_subclass(clear_registries):
     class FooStep:
         pass
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         pipeline_steps.register_step("foo")(FooStep)
 
 
 def test_register_step_duplicate_class(clear_registries, foo_step_cls):
     """Fail when trying to register duplicate step class."""
     pipeline_steps.register_step("foo")(foo_step_cls)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         pipeline_steps.register_step("bar")(foo_step_cls)
 
 
@@ -52,7 +52,7 @@ def test_register_step_duplicate_name(clear_registries, foo_step_cls):
         pass
 
     pipeline_steps.register_step("foo")(foo_step_cls)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         pipeline_steps.register_step("foo")(BarStep)
 
 
@@ -84,14 +84,14 @@ def test_register_runner_correct_subclass(clear_registries):
     class FooRunner:
         pass
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         runners.register_runner("foo")(FooRunner)
 
 
 def test_register_runner_duplicate_class(clear_registries, foo_runner_cls):
     """Fail when trying to register duplicate runner class."""
     runners.register_runner("foo")(foo_runner_cls)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         runners.register_runner("bar")(foo_runner_cls)
 
 
@@ -102,5 +102,5 @@ def test_register_runner_duplicate_name(clear_registries, foo_runner_cls):
         pass
 
     runners.register_runner("foo")(foo_runner_cls)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         runners.register_runner("foo")(BarRunner)

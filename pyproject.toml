@@ -50,6 +50,8 @@ lint.select = [
   "G",   # https://docs.astral.sh/ruff/rules/#flake8-logging-format-g
   "T20", # https://docs.astral.sh/ruff/rules/#flake8-print-t20
   "PYI",
+  "PT",  # https://docs.astral.sh/ruff/rules/#flake8-pytest-style-pt
+
 ]
 
 lint.ignore = [

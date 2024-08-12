@@ -7,7 +7,7 @@ from opuspocus.runners.debug import DebugRunner
 from opuspocus.utils import count_lines
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  # noqa: PT003
 def decontaminate_step_inited(train_data_parallel_tiny_raw_step_inited):
     """Create and initialize the decontaminate step."""
     step = build_step(
@@ -31,7 +31,7 @@ def test_decontaminate_step_inited(decontaminate_step_inited):
     assert decontaminate_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  # noqa: PT003
 def decontaminate_step_done(decontaminate_step_inited):
     """Execute the decontaminate step."""
     runner = DebugRunner("debug", decontaminate_step_inited.pipeline_dir)

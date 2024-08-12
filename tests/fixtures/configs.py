@@ -43,7 +43,7 @@ def marian_tiny_config_file(config_dir):
 
 
 @pytest.fixture(scope="session")
-def opustrainer_tiny_config_file(config_dir):
+def opustrainer_tiny_config_file(config_dir):  # noqa: PT004
     """Prepares small-data config for opustrainer training."""
     # TODO(varisd): implement this when OpusTrainer support is added.
     pass

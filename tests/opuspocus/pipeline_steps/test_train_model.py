@@ -9,7 +9,7 @@ from opuspocus.runners.debug import DebugRunner
 # TODO(varisd): test model tuning (loading a model and continuing traning)
 
 
-@pytest.fixture(scope="function", params=["marian_cpu_dir", "marian_gpu_dir"])
+@pytest.fixture(scope="function", params=["marian_cpu_dir", "marian_gpu_dir"])  # noqa: PT003
 def train_model_step_inited(
     request,
     train_data_parallel_tiny_raw_step_inited,
@@ -46,7 +46,7 @@ def test_train_model_step_inited(train_model_step_inited):
     assert train_model_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  # noqa: PT003
 def train_model_step_done(train_model_step_inited):
     """Execute the train_model step."""
     runner = DebugRunner("debug", train_model_step_inited.pipeline_dir)
@@ -62,4 +62,4 @@ def test_train_model_step_done(train_model_step_done):
 @pytest.mark.xfail(reason="not implemented")
 def test_train_model_step_done_model(train_model_step_done):
     """Check whether the train_step model was saved correctly."""
-    assert False  # noqa: B011
+    assert False  # noqa: B011, PT015

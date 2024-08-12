@@ -93,7 +93,7 @@ def test_defaults_stop(pipeline):
 
 
 @pytest.mark.parametrize(
-    "cmd_name, non_default_opts",
+    "cmd_name, non_default_opts",  # noqa: PT006
     [("run", "--runner bash"), ("status", ""), ("traceback", "")],
 )
 def test_defaults_other(cmd_name, non_default_opts, pipeline_preprocess_tiny_inited):
