@@ -29,7 +29,7 @@ class MergeCorpusStep(CorpusStep):
         other_corpus_step: CorpusStep,
         other_corpus_label: str,
         src_lang: str,
-        tgt_lang: str = None,
+        tgt_lang: str = None,  # noqa: RUF013
         output_shard_size: Optional[int] = None,
     ) -> None:
         super().__init__(

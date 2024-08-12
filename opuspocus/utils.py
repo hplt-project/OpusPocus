@@ -128,7 +128,7 @@ def shards_to_file(
                     print(line, end="", file=out_fh)
 
 
-def clean_dir(directory: Path, exclude: str = None) -> None:
+def clean_dir(directory: Path, exclude: str = None) -> None:  # noqa: RUF013
     for file_path in directory.iterdir():
         filename = file_path.stem + file_path.suffix
         if exclude is not None and exclude == filename:
@@ -160,7 +160,7 @@ def get_action_type_map(parser) -> Dict[str, Callable]:  # noqa: ANN001
     return type_map
 
 
-def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  # noqa: ANN001
+def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  # noqa: ANN001, RUF013
     """Loads default values from a config file."""
     if config_path is None:
         return parser

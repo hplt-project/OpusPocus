@@ -29,7 +29,7 @@ class OpusPocusRunner:
 
     parameter_file = "runner.parameters"
     info_file = "runner.task_info"
-    submitted_tasks = []
+    submitted_tasks = []  # noqa: RUF012
 
     @staticmethod
     def add_args(parser):  # noqa: ANN001, ANN205

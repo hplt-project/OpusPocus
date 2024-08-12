@@ -123,4 +123,4 @@ class SlurmRunner(OpusPocusRunner):
 
     def _add_environment_variables(self, resources: RunnerResources) -> List[str]:
         # TODO finish this
-        return ["--export={}".format(",".join([f"{k}='{str(v)}'" for k, v in resources.get_env_dict().items()]))]
+        return ["--export={}".format(",".join([f"{k}='{v!s}'" for k, v in resources.get_env_dict().items()]))]

@@ -159,9 +159,9 @@ class OpusPocusPipeline:
 
     def status(self, steps: List[OpusPocusStep]) -> None:
         for s in steps:
-            print(f"{s.step_label}: {str(s.state)}")  # noqa: T201
+            print(f"{s.step_label}: {s.state!s}")  # noqa: T201
 
-    def traceback(self, targets: List[str] = None, full: bool = False) -> None:  # noqa: FBT001, FBT002
+    def traceback(self, targets: List[str] = None, full: bool = False) -> None:  # noqa: FBT001, FBT002, RUF013
         """Print the pipeline structure and status of the individual steps."""
         targets = self.get_targets(targets)
         for i, v in enumerate(targets):
@@ -169,7 +169,7 @@ class OpusPocusPipeline:
             v.traceback_step(level=0, full=full)
             print()  # noqa: T201
 
-    def get_targets(self, targets: List[str] = None):  # noqa: ANN201
+    def get_targets(self, targets: List[str] = None):  # noqa: ANN201, RUF013
         if targets is not None:
             return targets
         if self.default_targets is not None:
@@ -202,8 +202,8 @@ class PipelineConfig(OmegaConf):
 
     """
 
-    top_keys = ["global", "pipeline"]
-    pipeline_keys = ["pipeline_dir", "steps", "default_targets"]
+    top_keys = ["global", "pipeline"]  # noqa: RUF012
+    pipeline_keys = ["pipeline_dir", "steps", "default_targets"]  # noqa: RUF012
 
     @staticmethod
     def create(

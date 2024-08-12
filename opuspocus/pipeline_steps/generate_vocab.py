@@ -98,7 +98,7 @@ class GenerateVocabStep(OpusPocusStep):
             "--unk_id=1",
             f"--model_prefix={model_prefix}",
             f"--vocab_size={self.vocab_size}",
-            f"--input={str(train_concat)}",
+            f"--input={train_concat!s}",
             "--input_sentence_size=10000000",
             "--shuffle_input_sentence=true",
             "--train_extremely_large_corpus",
