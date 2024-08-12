@@ -59,10 +59,10 @@ class BashRunner(OpusPocusRunner):
 
         stdout = sys.stdout
         if stdout_file is not None:
-            stdout = open(stdout_file, "w")  # noqa: SIM115
+            stdout = open(stdout_file, "w")  # noqa: PTH123, SIM115
         stderr = sys.stderr
         if stderr_file is not None:
-            stderr = open(stderr_file, "w")  # noqa: SIM115
+            stderr = open(stderr_file, "w")  # noqa: PTH123, SIM115
 
         # Subtasks do not have dependencies, no need for the wrapper
         if target_file is not None:

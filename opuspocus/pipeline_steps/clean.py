@@ -81,7 +81,7 @@ class CleanCorpusStep(CorpusStep):
         )
 
         # Get the correct order of languages
-        languages = [file.split(".")[-2] for file in json.load(open(input_file))["files"]]  # noqa: SIM115
+        languages = [file.split(".")[-2] for file in json.load(open(input_file))["files"]]  # noqa: PTH123, SIM115
         # TODO(varisd): replace these asserts with something more clever
         for lang in self.languages:
             assert lang in languages

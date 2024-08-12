@@ -59,6 +59,7 @@ lint.select = [
   "TID",
   "TCH",
   "ARG",
+  "PTH",
 ]
 
 lint.ignore = [

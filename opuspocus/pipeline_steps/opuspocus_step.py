@@ -116,7 +116,7 @@ class OpusPocusStep:
         params_path = Path(pipeline_dir, step_label, cls.parameter_file)
         logger.debug("Loading step variables from %s", params_path)
 
-        params_dict = yaml.safe_load(open(params_path))  # noqa: SIM115
+        params_dict = yaml.safe_load(open(params_path))  # noqa: PTH123, SIM115
         # TODO: check for missing/unknown parameters
         return params_dict  # noqa: RET504
 
@@ -142,7 +142,7 @@ class OpusPocusStep:
         """Save the step instance parameters."""
         yaml.dump(
             self.get_parameters_dict(),
-            open(Path(self.step_dir, self.parameter_file), "w"),  # noqa: SIM115
+            open(Path(self.step_dir, self.parameter_file), "w"),  # noqa: PTH123, SIM115
         )
 
     def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
@@ -178,12 +178,12 @@ class OpusPocusStep:
         """Load step dependecies based on their unique step_label values."""
         deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
         logger.debug("Loading dependencies from %s", deps_path)
-        return yaml.safe_load(open(deps_path))  # noqa: SIM115
+        return yaml.safe_load(open(deps_path))  # noqa: PTH123, SIM115
 
     def save_dependencies(self) -> None:
         """Save the step dependencies using their unique step_label values."""
         deps_dict = {k: v.step_label for k, v in self.dependencies.items() if v is not None}
-        yaml.dump(deps_dict, open(Path(self.step_dir, self.dependency_file), "w"))  # noqa: SIM115
+        yaml.dump(deps_dict, open(Path(self.step_dir, self.dependency_file), "w"))  # noqa: PTH123, SIM115
 
     @property
     def step_dir(self) -> Path:
@@ -284,8 +284,8 @@ class OpusPocusStep:
             raise FileExistsError(f"File {cmd_path} already exists.")  # noqa: EM102
 
         logger.debug("Creating step command.")
-        print(self.compose_command(), file=open(cmd_path, "w"))  # noqa: SIM115
-        os.chmod(cmd_path, 0o755)
+        print(self.compose_command(), file=open(cmd_path, "w"))  # noqa: PTH123, SIM115
+        os.chmod(cmd_path, 0o755)  # noqa: PTH101
 
     def retry_step(self, args: Namespace):  # noqa: ANN201
         """Try to recover from a failed state.
@@ -318,7 +318,7 @@ class OpusPocusStep:
         """Load the current state of a step."""
         state_file = Path(self.step_dir, self.state_file)
         if state_file.exists():
-            state = StepState(json.load(open(Path(self.step_dir, self.state_file))))  # noqa: SIM115
+            state = StepState(json.load(open(Path(self.step_dir, self.state_file))))  # noqa: PTH123, SIM115
             assert state in StepState
             return state
         return None
@@ -331,7 +331,7 @@ class OpusPocusStep:
 
         logger.debug("Old state: %s -> New state: %s", self.state, state)
         self.state = state
-        json.dump(state, fp=open(Path(self.step_dir, self.state_file), "w"))  # noqa: SIM115
+        json.dump(state, fp=open(Path(self.step_dir, self.state_file), "w"))  # noqa: PTH123, SIM115
 
     def has_state(self, state: StepState) -> bool:
         """Check whether the step is in a specific state."""
