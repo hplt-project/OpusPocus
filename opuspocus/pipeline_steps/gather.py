@@ -62,9 +62,9 @@ class GatherCorpusStep(CorpusStep):
     def get_command_targets(self) -> List[Path]:
         langpair = ""
         if self.tgt_lang is not None:
-            langpair = ".{}-{}".format(self.src_lang, self.tgt_lang)
+            langpair = f".{self.src_lang}-{self.tgt_lang}"
         return [
-            Path(self.output_dir, "{}{}.{}.gz".format(category, langpair, lang))
+            Path(self.output_dir, f"{category}{langpair}.{lang}.gz")
             for category in self.categories
             for lang in self.languages
         ]
@@ -77,9 +77,6 @@ class GatherCorpusStep(CorpusStep):
         lang = target_stem_split[-1]
 
         concat_files(
-            [
-                Path(self.input_dir, "{}.{}.gz".format(dset, lang))
-                for dset in self.prev_corpus_step.category_mapping[category]
-            ],
+            [Path(self.input_dir, f"{dset}.{lang}.gz") for dset in self.prev_corpus_step.category_mapping[category]],
             target_file,
         )

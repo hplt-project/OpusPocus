@@ -14,7 +14,7 @@ def train_data_parallel_tiny_raw_step_inited(tmp_path_factory, train_data_parall
     tgt_lang = train_data_parallel_tiny_decompressed[1].suffix.lstrip(".")
     step = build_step(
         step="raw",
-        step_label="raw.{}-{}.mock".format(src_lang, tgt_lang),
+        step_label=f"raw.{src_lang}-{tgt_lang}.mock",
         pipeline_dir=pipeline_dir,
         **{
             "raw_data_dir": train_data_parallel_tiny_decompressed[0].parent,
@@ -34,7 +34,7 @@ def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_raw_step
     tgt_lang = train_data_parallel_tiny_raw_step_inited.tgt_lang
     step = build_step(
         step="generate_vocab",
-        step_label="generate_vocab.{}-{}".format(src_lang, tgt_lang),
+        step_label=f"generate_vocab.{src_lang}-{tgt_lang}",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
             "src_lang": src_lang,

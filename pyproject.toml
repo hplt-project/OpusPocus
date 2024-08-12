@@ -27,13 +27,13 @@ log_level = "CRITICAL"
 pythonpath = ["."]
 
 [tool.ruff]
+line-length = 120
 include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
 lint.select = [
-  "F", # https://docs.astral.sh/ruff/rules/#pyflakes-f
-  "E", # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
-  "W", # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
-  "I", # https://docs.astral.sh/ruff/rules/#isort-i
-  "N",
+  "F",  # https://docs.astral.sh/ruff/rules/#pyflakes-f
+  "E",  # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+  "W",  # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+  "I",  # https://docs.astral.sh/ruff/rules/#isort-i
+  "N",  # https://docs.astral.sh/ruff/rules/#pep8-naming-n
+  "UP", # https://docs.astral.sh/ruff/rules/#pyupgrade-up
 ]
-
-line-length = 120

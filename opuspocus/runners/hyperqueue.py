@@ -152,22 +152,22 @@ class HyperqueueRunner(OpusPocusRunner):
             "alloc",
             "add",
             self.hq_scheduler,
-            "--server-dir={}".format(self.hq_server_dir),
-            "--time-limit={}".format(self.hq_alloc_time_limit),
-            "--backlog={}".format(self.hq_alloc_backlog),
-            "--max-worker-count={}".format(self.hq_max_worker_count),
+            f"--server-dir={self.hq_server_dir}",
+            f"--time-limit={self.hq_alloc_time_limit}",
+            f"--backlog={self.hq_alloc_backlog}",
+            f"--max-worker-count={self.hq_max_worker_count}",
         ]
-        hq_cmd += ["--resource", "cpus=range(0,{})".format(self.hq_alloc_range_cpus)]
+        hq_cmd += ["--resource", f"cpus=range(0,{self.hq_alloc_range_cpus})"]
 
         if self.hq_alloc_range_gpus is not None:
-            hq_cmd += ["--resource", "gpus=range({})".format(self.hq_alloc_range_gpus)]
+            hq_cmd += ["--resource", f"gpus=range({self.hq_alloc_range_gpus})"]
 
         hq_cmd += ["--"]
         if self.partition is not None:
-            hq_cmd += ["--partition={}".format(self.partition)]
+            hq_cmd += [f"--partition={self.partition}"]
 
         if self.account is not None:
-            hq_cmd += ["--account={}".format(self.account)]
+            hq_cmd += [f"--account={self.account}"]
 
         subprocess.run(hq_cmd)
 
@@ -193,4 +193,4 @@ class HyperqueueRunner(OpusPocusRunner):
             return int(mem[:-1] * 1024**2)
         if unit == "k" or unit == "K":
             return int(mem[:-1] * 1024)
-        raise ValueError("Unknown unit of memory ({}).".format(unit))
+        raise ValueError(f"Unknown unit of memory ({unit}).")

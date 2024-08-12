@@ -11,7 +11,7 @@ from opuspocus.utils import file_path
 logger = logging.getLogger(__name__)
 
 
-class OpusPocusPipeline(object):
+class OpusPocusPipeline:
     """Base class for OpusPocus pipelines."""
 
     config_file = "pipeline.config"
@@ -83,9 +83,9 @@ class OpusPocusPipeline(object):
     ) -> "OpusPocusPipeline":
         """TODO"""
         if not pipeline_dir.exists():
-            raise FileNotFoundError("Pipeline directory ({}) does not exist.".format(pipeline_dir))
+            raise FileNotFoundError(f"Pipeline directory ({pipeline_dir}) does not exist.")
         if not pipeline_dir.is_dir():
-            raise NotADirectoryError("{} is not a directory.".format(pipeline_dir))
+            raise NotADirectoryError(f"{pipeline_dir} is not a directory.")
 
         pipeline_config_path = Path(pipeline_dir, cls.config_file)
         return cls(pipeline_config_path, pipeline_dir)
@@ -117,14 +117,14 @@ class OpusPocusPipeline(object):
 
             # Create the arguments for the step instance initialization
             step_args = {}
-            logger.info("Creating parameters to build {} object.".format(step_label))
+            logger.info(f"Creating parameters to build {step_label} object.")
             for k, v in pipeline_steps_configs[step_label].items():
                 # Simply assing the value if None or not a dependency parameter
                 if "_step" not in k or v is None:
                     step_args[k] = v
                 else:
                     if v not in pipeline_steps_configs:
-                        raise ValueError('Step "{}" has an undefined dependency "{}={}".'.format(step_label, k, v))
+                        raise ValueError(f'Step "{step_label}" has an undefined dependency "{k}={v}".')
                     step_args[k] = _build_step_inner(v)
 
             # Set default (global) pipeline_dir
@@ -134,7 +134,7 @@ class OpusPocusPipeline(object):
             try:
                 pipeline_steps[step_label] = build_step(**step_args)
             except Exception as e:
-                print("Step parameters:\n{}".format(step_args))
+                print(f"Step parameters:\n{step_args}")
                 raise e
 
             return pipeline_steps[step_label]
@@ -150,22 +150,22 @@ class OpusPocusPipeline(object):
 
     def init(self) -> None:
         """Initialize the pipeline."""
-        logger.info("Initializing pipeline ({})".format(self.pipeline_dir))
+        logger.info(f"Initializing pipeline ({self.pipeline_dir})")
         for _, v in self.pipeline_graph.items():
             v.init_step()
 
         self.save_pipeline()
-        logger.info("Pipeline ({}) initialized successfully.".format(self.pipeline_dir))
+        logger.info(f"Pipeline ({self.pipeline_dir}) initialized successfully.")
 
     def status(self, steps: List[OpusPocusStep]) -> None:
         for s in steps:
-            print("{}: {}".format(s.step_label, str(s.state)))
+            print(f"{s.step_label}: {str(s.state)}")
 
     def traceback(self, targets: List[str] = None, full: bool = False) -> None:
         """Print the pipeline structure and status of the individual steps."""
         targets = self.get_targets(targets)
         for i, v in enumerate(targets):
-            print("Target {}: {}".format(i, v.step_label))
+            print(f"Target {i}: {v.step_label}")
             v.traceback_step(level=0, full=full)
             print("")
 
@@ -245,14 +245,14 @@ class PipelineConfig(OmegaConf):
         # Top has known keys
         for key in config.keys():
             if key not in cls.top_keys:
-                logger.warn("Config file contains unsupported top key ({}). Ignoring...".format(key))
+                logger.warn(f"Config file contains unsupported top key ({key}). Ignoring...")
         # Contains "pipeline" top key
         if "pipeline" not in config:
             raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')
         # Pipeline has known keys
         for key in config.pipeline.keys():
             if key not in cls.pipeline_keys:
-                logger.warn("Pipeline definition contains unsupported key ({}). " "Ignoring...".format(key))
+                logger.warn(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")
         # Contains "pipeline.steps" key
         if "steps" not in config.pipeline:
             raise ValueError('Config file must contain the list of steps ("pipeline.steps")')
@@ -265,7 +265,7 @@ class PipelineConfig(OmegaConf):
                     "Duplicate step_label found in pipeline definition. Please "
                     "make sure that each pipeline step has a unique step_label "
                     "value.\n"
-                    "Step-1: {},\nStep-{}".format(step[step.step_label], step)
+                    f"Step-1: {step[step.step_label]},\nStep-{step}"
                 )
             steps[step.step_label] = step
         return True

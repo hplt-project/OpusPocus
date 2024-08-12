@@ -65,7 +65,7 @@ def _add_runner_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def parse_init_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description="{}: Pipeline Initialization".format(GEN_DESCRIPTION))
+    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Initialization")
 
     _add_general_arguments(parser, pipeline_dir_required=False)
     parser.add_argument(
@@ -79,7 +79,7 @@ def parse_init_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description="{}: Pipeline Execution".format(GEN_DESCRIPTION))
+    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Execution")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
     _add_runner_arguments(parser)
@@ -91,7 +91,7 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def parse_stop_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description="{}: Pipeline Termination".format(GEN_DESCRIPTION))
+    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Termination")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
     _add_runner_arguments(parser)
@@ -100,7 +100,7 @@ def parse_stop_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def parse_status_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description="{}: Pipeline Step Status".format(GEN_DESCRIPTION))
+    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Step Status")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
 
@@ -108,7 +108,7 @@ def parse_status_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def parse_traceback_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description="{}: Pipeline Graph Traceback".format(GEN_DESCRIPTION))
+    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Graph Traceback")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
 

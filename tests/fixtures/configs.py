@@ -18,7 +18,7 @@ def marian_tiny_config_file(config_dir):
     # TODO(varisd): parametrize the fixture to test other (tiny)
     #   configurations?
 
-    config = yaml.safe_load(open(Path("config", "marian.train.teacher.base.yml"), "r"))
+    config = yaml.safe_load(open(Path("config", "marian.train.teacher.base.yml")))
 
     config["workspace"] = 500
 
@@ -57,7 +57,7 @@ def pipeline_preprocess_tiny_config_file(
     languages,
 ):
     """Prepares small-data preprocessing pipeline config for unit testing."""
-    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml"), "r"))
+    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml")))
 
     config["global"]["src_lang"] = languages[0]
     config["global"]["tgt_lang"] = languages[1]
@@ -85,7 +85,7 @@ def pipeline_train_tiny_config_file(
     languages,
 ):
     """Prepares small-data training pipeline config for unit testing."""
-    config = yaml.safe_load(open(request.param, "r"))
+    config = yaml.safe_load(open(request.param))
 
     config["global"]["original_config_file"] = str(request.param)
     config["global"]["src_lang"] = languages[0]

@@ -22,7 +22,7 @@ def train_model_step_inited(
 
     step = build_step(
         step="train_model",
-        step_label="train_model.{}.test".format(request.param),
+        step_label=f"train_model.{request.param}.test",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
             "marian_dir": marian_dir,

@@ -61,10 +61,10 @@ class RawCorpusStep(CorpusStep):
                 "categories": [{"name": self.default_category}],
                 "mapping": {self.default_category: []},
             }
-            suffix = ".{}".format(self.src_lang)
+            suffix = f".{self.src_lang}"
             if self.compressed:
                 suffix += ".gz"
-            for corpus_path in self.raw_data_dir.glob("*{}".format(suffix)):
+            for corpus_path in self.raw_data_dir.glob(f"*{suffix}"):
                 corpus_prefix = ".".join(corpus_path.name.split(".")[:-1])
                 if self.compressed:
                     corpus_prefix = ".".join(corpus_path.name.split(".")[:-2])
@@ -72,11 +72,7 @@ class RawCorpusStep(CorpusStep):
             self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(self.output_dir, "{}.{}.gz".format(dset, lang))
-            for dset in self.dataset_list
-            for lang in self.languages
-        ]
+        return [Path(self.output_dir, f"{dset}.{lang}.gz") for dset in self.dataset_list for lang in self.languages]
 
     def command(self, target_file: Path) -> None:
         # Hardlink compressed files
@@ -100,7 +96,7 @@ class RawCorpusStep(CorpusStep):
             corpus_path = Path(self.raw_data_dir, target_file.stem)
             if not corpus_path.exists():
                 raise FileNotFoundError(corpus_path)
-            with open(corpus_path, "r") as f_in:
+            with open(corpus_path) as f_in:
                 with gzip.open(target_file, "wt") as f_out:
                     for line in f_in:
                         print(line, end="", file=f_out)

@@ -54,16 +54,12 @@ class SlurmRunner(OpusPocusRunner):
 
         if dep_jids:
             cmd.append("--dependency")
-            cmd.append(",".join(["afterok:{}".format(dep) for dep in dep_jids]))
+            cmd.append(",".join([f"afterok:{dep}" for dep in dep_jids]))
 
         cmd += self._convert_resources(step_resources)
         cmd += self._add_environment_variables(step_resources)
 
-        jobname = "{}.{}.{}".format(
-            self.runner,
-            self.pipeline_dir.stem + self.pipeline_dir.suffix,
-            target_file.stem,
-        )
+        jobname = f"{self.runner}.{self.pipeline_dir.stem + self.pipeline_dir.suffix}.{target_file.stem}"
         cmd += ["--jobname", jobname]
         cmd += ["--signal", "TERM@10:00"]  # send SIGTERM 10m before time-limit
 
@@ -127,6 +123,4 @@ class SlurmRunner(OpusPocusRunner):
 
     def _add_environment_variables(self, resources: RunnerResources) -> List[str]:
         # TODO finish this
-        return [
-            "--export={}".format(",".join(["{}='{}'".format(k, str(v)) for k, v in resources.get_env_dict().items()]))
-        ]
+        return ["--export={}".format(",".join([f"{k}='{str(v)}'" for k, v in resources.get_env_dict().items()]))]

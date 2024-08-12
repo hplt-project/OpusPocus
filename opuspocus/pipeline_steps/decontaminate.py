@@ -64,7 +64,7 @@ class DecontaminateCorpusStep(CorpusStep):
                     "valid.{}.{}.gz".format(dset, "-".join(self.languages)),
                 )
                 paste_files(
-                    [Path(self.valid_step.output_dir, "{}.{}.gz".format(dset, lang)) for lang in self.languages],
+                    [Path(self.valid_step.output_dir, f"{dset}.{lang}.gz") for lang in self.languages],
                     infile,
                 )
                 valid_corpora.append(infile)
@@ -73,7 +73,7 @@ class DecontaminateCorpusStep(CorpusStep):
             for dset in self.test_step.dataset_list:
                 infile = Path(self.tmp_dir, "test.{}.{}.gz".format(dset, "-".join(self.languages)))
                 paste_files(
-                    [Path(self.test_step.output_dir, "{}.{}.gz".format(dset, lang)) for lang in self.languages],
+                    [Path(self.test_step.output_dir, f"{dset}.{lang}.gz") for lang in self.languages],
                     infile,
                 )
                 test_corpora.append(infile)
@@ -83,7 +83,7 @@ class DecontaminateCorpusStep(CorpusStep):
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
 
     def get_command_targets(self) -> List[Path]:
-        return [Path(self.output_dir, "{}.{}.gz".format(dset, self.src_lang)) for dset in self.dataset_list]
+        return [Path(self.output_dir, f"{dset}.{self.src_lang}.gz") for dset in self.dataset_list]
 
     def command(self, target_file: Path) -> None:
         dset_name = ".".join(target_file.stem.split(".")[:-1])
@@ -93,7 +93,7 @@ class DecontaminateCorpusStep(CorpusStep):
         outfile = Path(self.tmp_dir, "output.{}.gz".format("-".join(self.languages)))
 
         paste_files(
-            [Path(self.input_dir, "{}.{}.gz".format(dset_name, lang)) for lang in self.languages],
+            [Path(self.input_dir, f"{dset_name}.{lang}.gz") for lang in self.languages],
             infile,
         )
 
@@ -111,5 +111,5 @@ class DecontaminateCorpusStep(CorpusStep):
 
         cut_file(
             outfile,
-            [Path(self.output_dir, "{}.{}.gz".format(dset_name, lang)) for lang in self.languages],
+            [Path(self.output_dir, f"{dset_name}.{lang}.gz") for lang in self.languages],
         )

@@ -60,9 +60,7 @@ class TrainModelStep(OpusPocusStep):
         super().init_step()
         if self.valid_dataset not in self.valid_corpus_step.dataset_list:
             raise ValueError(
-                "Dataset {} is not registered in the {} categories.json.".format(
-                    self.valid_dataset, self.valid_corpus_step.step_label
-                )
+                f"Dataset {self.valid_dataset} is not registered in the {self.valid_corpus_step.step_label} categories.json."  # noqa: E501
             )
 
     @property
@@ -101,7 +99,7 @@ class TrainModelStep(OpusPocusStep):
 
         # TODO: this should be fetched from the dependency in case that
         # file naming changes in the future
-        vocab_path = Path(vocab_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang))
+        vocab_path = Path(vocab_dir, f"model.{self.src_lang}-{self.tgt_lang}.spm")
         return vocab_path
 
     @property
@@ -156,31 +154,29 @@ class TrainModelStep(OpusPocusStep):
             "--tempdir",
             str(self.tmp_dir),
             "--valid-translation-output",
-            "{}/valid.out".format(self.log_dir),
+            f"{self.log_dir}/valid.out",
             "--log-level",
             "info",
             "--log",
-            "{}/train.log".format(self.log_dir),
+            f"{self.log_dir}/train.log",
             "--valid-log",
-            "{}/valid.log".format(self.log_dir),
+            f"{self.log_dir}/valid.log",
         ]
 
         # Training data
         # TODO: Data concatenation should be removed when opustrainer support
         #       is added
-        train_paths = [Path(self.tmp_dir, "train.{}.gz".format(lang)) for lang in self.languages]
+        train_paths = [Path(self.tmp_dir, f"train.{lang}.gz") for lang in self.languages]
         if not all([p.exists() for p in train_paths]):
             for lang, output_file in zip(self.languages, train_paths):
                 concat_files(
-                    [Path(self.input_dir, "{}.{}.gz".format(dset, lang)) for dset in self.train_datasets],
+                    [Path(self.input_dir, f"{dset}.{lang}.gz") for dset in self.train_datasets],
                     output_file,
                 )
         cmd += ["--train-sets"] + [str(p) for p in train_paths]
 
         # Validation data
-        cmd += ["--valid-sets"] + [
-            "{}/{}.{}.gz".format(self.valid_data_dir, self.valid_dataset, lang) for lang in self.languages
-        ]
+        cmd += ["--valid-sets"] + [f"{self.valid_data_dir}/{self.valid_dataset}.{lang}.gz" for lang in self.languages]
 
         # GPU option
         if n_gpus:

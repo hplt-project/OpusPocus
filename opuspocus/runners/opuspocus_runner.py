@@ -12,11 +12,19 @@ from opuspocus.utils import RunnerResources
 
 logger = logging.getLogger(__name__)
 
-TaskId = TypedDict("TaskId", {"file_path": str, "id": Any})
-TaskInfo = TypedDict("TaskInfo", {"runner": str, "main_task": TaskId, "subtasks": List[TaskId]})
+
+class TaskId(TypedDict):
+    file_path: str
+    id: Any
 
 
-class OpusPocusRunner(object):
+class TaskInfo(TypedDict):
+    runner: str
+    main_task: TaskId
+    subtasks: List[TaskId]
+
+
+class OpusPocusRunner:
     """Base class for OpusPocus runners."""
 
     parameter_file = "runner.parameters"
@@ -62,7 +70,7 @@ class OpusPocusRunner(object):
         params_path = Path(pipeline_dir, cls.parameter_file)
         logger.debug("Loading step variables from %s", params_path)
 
-        params_dict = yaml.safe_load(open(params_path, "r"))
+        params_dict = yaml.safe_load(open(params_path))
         return params_dict
 
     def get_parameters_dict(self) -> Dict[str, Any]:
@@ -157,7 +165,7 @@ class OpusPocusRunner(object):
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):
-            raise ValueError("Cannot run step {}. Step is not in INITED state.".format(step.step_label))
+            raise ValueError(f"Cannot run step {step.step_label}. Step is not in INITED state.")
 
         # Recursively submit step dependencies first
         dep_task_info_list = []
@@ -183,8 +191,8 @@ class OpusPocusRunner(object):
                 target_file=None,
                 dependencies=[dep["main_task"] for dep in dep_task_info_list],
                 step_resources=self.get_resources(step),
-                stdout_file=Path(step.log_dir, "{}.out".format(self.runner)),
-                stderr_file=Path(step.log_dir, "{}.err".format(self.runner)),
+                stdout_file=Path(step.log_dir, f"{self.runner}.out"),
+                stderr_file=Path(step.log_dir, f"{self.runner}.err"),
             )
         except Exception as e:
             step.set_state(StepState.FAILED)
@@ -267,7 +275,7 @@ class OpusPocusRunner(object):
 
     def load_task_info(self, step: OpusPocusStep) -> Optional[TaskInfo]:
         """TODO"""
-        task_info = yaml.safe_load(open(Path(step.step_dir, self.info_file), "r"))
+        task_info = yaml.safe_load(open(Path(step.step_dir, self.info_file)))
         if task_info["runner"] != self.runner:
             return None
         return task_info

@@ -10,7 +10,7 @@ CMD_MODULES = {}
 
 def _print_usage() -> None:
     print(
-        "usage: {} ".format(sys.argv[0]) + "{" + ",".join(CMD_MODULES.keys()) + "} [options]",
+        f"usage: {sys.argv[0]} " + "{" + ",".join(CMD_MODULES.keys()) + "} [options]",
     )
 
 
@@ -53,5 +53,5 @@ for file in cli_dir.iterdir():
         cmd_name = file.stem if file.name.endswith(".py") else file
 
         # We import all the CLI modules and register them for later calls
-        importlib.import_module("opuspocus_cli.{}".format(cmd_name))
-        CMD_MODULES[cmd_name] = sys.modules["opuspocus_cli.{}".format(cmd_name)]
+        importlib.import_module(f"opuspocus_cli.{cmd_name}")
+        CMD_MODULES[cmd_name] = sys.modules[f"opuspocus_cli.{cmd_name}"]

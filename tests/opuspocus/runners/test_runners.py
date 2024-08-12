@@ -20,7 +20,7 @@ def parsed_runner_args(request, pipeline_preprocess_tiny_inited, opuspocus_hq_se
             "--hq-server-dir",
             str(opuspocus_hq_server_dir),
             "--hq-path",
-            "{}/bin/hq".format(str(hyperqueue_dir)),
+            f"{str(hyperqueue_dir)}/bin/hq",
         ]
 
     args = parse_run_args(

@@ -10,7 +10,7 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
     """Creates a tiny mock parallel corpora (compressed)."""
     src_file = Path(
         tmp_path_factory.mktemp("train_data_parallel_tiny"),
-        "train.{}.gz".format(languages[0]),
+        f"train.{languages[0]}.gz",
     )
     with open_file(src_file, "w") as fh:
         print(
@@ -26,7 +26,7 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
             file=fh,
         )
 
-    tgt_file = Path(src_file.parent, "train.{}.gz".format(languages[1]))
+    tgt_file = Path(src_file.parent, f"train.{languages[1]}.gz")
     with open_file(tgt_file, "w") as fh:
         print(
             "\n".join(

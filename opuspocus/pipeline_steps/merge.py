@@ -6,7 +6,7 @@ from opuspocus.pipeline_steps.corpus_step import CorpusStep
 
 
 def extend_dataset_name(dset_name, label):
-    return "{}.{}".format(label, dset_name)
+    return f"{label}.{dset_name}"
 
 
 @register_step("merge")
@@ -71,11 +71,7 @@ class MergeCorpusStep(CorpusStep):
         self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(self.output_dir, "{}.{}.gz".format(dset, lang))
-            for dset in self.dataset_list
-            for lang in self.languages
-        ]
+        return [Path(self.output_dir, f"{dset}.{lang}.gz") for dset in self.dataset_list for lang in self.languages]
 
     def command(self, target_file: Path) -> None:
         target_filename = target_file.stem + target_file.suffix
@@ -86,4 +82,4 @@ class MergeCorpusStep(CorpusStep):
         elif source_label == self.other_corpus_label:
             target_file.hardlink_to(Path(self.other_corpus_step.output_dir, source_filename))
         else:
-            raise ValueError("Unknown corpus label ({}).".format(source_label))
+            raise ValueError(f"Unknown corpus label ({source_label}).")

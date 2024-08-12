@@ -27,7 +27,7 @@ def open_file(file: Path, mode: str):
 
 def decompress_file(input_file: Path, output_file: Path) -> None:
     with gzip.open(input_file, "rt") as in_fh:
-        with open(output_file, "wt") as out_fh:
+        with open(output_file, "w") as out_fh:
             for line in in_fh:
                 print(line, end="", file=out_fh)
 
@@ -150,7 +150,7 @@ def count_lines(file_path: Path) -> int:
 def subprocess_wait(proc: subprocess.Popen) -> None:
     rc = proc.wait()
     if rc:
-        raise subprocess.SubprocessError("Process {} exited with non-zero value.".format(proc.pid))
+        raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")
 
 
 def get_action_type_map(parser) -> Dict[str, Callable]:
@@ -165,8 +165,8 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
     if config_path is None:
         return parser
     if not Path(config_path).exists():
-        raise ValueError("File {} not found.".format(config_path))
-    config = yaml.safe_load(open(config_path, "r"))
+        raise ValueError(f"File {config_path} not found.")
+    config = yaml.safe_load(open(config_path))
 
     for v in parser._actions:
         if v.dest in config:
@@ -202,7 +202,7 @@ def file_path(path_str):
         raise FileNotFoundError(path)
 
 
-class RunnerResources(object):
+class RunnerResources:
     """Runner-agnostic resources object.
 
     TODO
@@ -243,7 +243,7 @@ class RunnerResources(object):
     @classmethod
     def from_json(cls, json_path: Path) -> "RunnerResources":
         """TODO"""
-        json_dict = json.load(open(json_path, "r"))
+        json_dict = json.load(open(json_path))
 
         cls_params = cls.list_parameters()
         params = {}
@@ -257,7 +257,7 @@ class RunnerResources(object):
     def get_env_name(cls, name) -> str:
         """TODO"""
         assert name in cls.list_parameters()
-        return "OPUSPOCUS_{}".format(name)
+        return f"OPUSPOCUS_{name}"
 
     def get_env_dict(self) -> Dict[str, str]:
         env_dict = {}

@@ -32,7 +32,7 @@ def hyperqueue_dir():
     """Location of the HyperQueue program binary."""
     hq_dir = Path("hyperqueue")
     if not hq_dir.exists():
-        pytest.skip(reason=("Hyperqueue binary must be located at " "{}/bin/hq.".format(hq_dir)))
+        pytest.skip(reason=("Hyperqueue binary must be located at " f"{hq_dir}/bin/hq."))
     return hq_dir
 
 

@@ -51,13 +51,13 @@ def test_decontaminate_step_done_corpus_lines(decontaminate_step_done):
         src_lines = count_lines(
             Path(
                 decontaminate_step_done.output_dir,
-                "{}.{}.gz".format(dset, decontaminate_step_done.src_lang),
+                f"{dset}.{decontaminate_step_done.src_lang}.gz",
             )
         )
         tgt_lines = count_lines(
             Path(
                 decontaminate_step_done.output_dir,
-                "{}.{}.gz".format(dset, decontaminate_step_done.tgt_lang),
+                f"{dset}.{decontaminate_step_done.tgt_lang}.gz",
             )
         )
         assert src_lines == tgt_lines

@@ -56,7 +56,7 @@ class TranslateCorpusStep(CorpusStep):
 
     @property
     def model_config_path(self) -> Path:
-        return Path("{}.{}.npz.decoder.yml".format(self.model_step.model_path, self.model_suffix))
+        return Path(f"{self.model_step.model_path}.{self.model_suffix}.npz.decoder.yml")
 
     def register_categories(self) -> None:
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
@@ -83,10 +83,10 @@ class TranslateCorpusStep(CorpusStep):
         if self.is_sharded:
             targets = []
             for dset in self.dataset_list:
-                dset_filename = "{}.{}.gz".format(dset, self.tgt_lang)
+                dset_filename = f"{dset}.{self.tgt_lang}.gz"
                 targets.extend([shard_file for shard_file in self.get_shard_list(dset_filename)])
             return targets
-        return [Path(self.output_dir, "{}.{}.gz".format(dset, self.tgt_lang)) for dset in self.dataset_list]
+        return [Path(self.output_dir, f"{dset}.{self.tgt_lang}.gz") for dset in self.dataset_list]
 
     def command_preprocess(self) -> None:
         if self.is_sharded:
@@ -121,7 +121,7 @@ class TranslateCorpusStep(CorpusStep):
             "-i",
             str(input_file),
             "--log",
-            "{}/{}.log".format(self.log_dir, target_file.stem),
+            f"{self.log_dir}/{target_file.stem}.log",
             "-b",
             str(self.beam_size),
         ]
@@ -146,4 +146,4 @@ class TranslateCorpusStep(CorpusStep):
         # Check the return code
         rc = proc.poll()
         if rc:
-            raise Exception("Process {} exited with non-zero value.".format(proc.pid))
+            raise Exception(f"Process {proc.pid} exited with non-zero value.")

@@ -6,9 +6,7 @@ import psutil
 
 
 def raise_nonzero_error(arguments, pid):
-    raise subprocess.SubprocessError(
-        "Process {} exited with a non-zero value. Wrapper arguments: {}\n".format(pid, arguments)
-    )
+    raise subprocess.SubprocessError(f"Process {pid} exited with a non-zero value. Wrapper arguments: {arguments}\n")
 
 
 def main(argv):

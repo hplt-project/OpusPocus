@@ -10,7 +10,7 @@ def evaluate_step_inited(request, train_data_parallel_tiny_raw_step_inited):
     """Create and initialize the evaluate step."""
     step = build_step(
         step="evaluate",
-        step_label="evaluate.{}.test".format(request.param),
+        step_label=f"evaluate.{request.param}.test",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
             "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,

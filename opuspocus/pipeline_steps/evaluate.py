@@ -44,8 +44,7 @@ class EvaluateStep(OpusPocusStep):
         for metric in self.metrics:
             if metric not in self.AVAILABLE_METRICS:
                 raise ValueError(
-                    "Unknown metric: {}.\n".format(metric)
-                    + "Supported metrics: {}".format(",".join(self.AVAILABLE_METRICS))
+                    f"Unknown metric: {metric}.\n" + "Supported metrics: {}".format(",".join(self.AVAILABLE_METRICS))
                 )
 
     def init_step(self) -> None:
@@ -55,15 +54,11 @@ class EvaluateStep(OpusPocusStep):
         for dset in self.datasets:
             if dset not in self.translated_step.dataset_list:
                 raise ValueError(
-                    "Dataset {} is not registered in the {} categories.json".format(
-                        dset, self.translated_step.step_label
-                    )
+                    f"Dataset {dset} is not registered in the {self.translated_step.step_label} categories.json"
                 )
             if dset not in self.reference_step.dataset_list:
                 raise ValueError(
-                    "Dataset {} is not registered in the {} categories.json".format(
-                        dset, self.reference_step.step_label
-                    )
+                    f"Dataset {dset} is not registered in the {self.reference_step.step_label} categories.json"
                 )
 
     @property
@@ -79,9 +74,7 @@ class EvaluateStep(OpusPocusStep):
         return [self.src_lang, self.tgt_lang]
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(self.output_dir, "{}.{}.txt".format(metric, dset)) for dset in self.datasets for metric in self.metrics
-        ]
+        return [Path(self.output_dir, f"{metric}.{dset}.txt") for dset in self.datasets for metric in self.metrics]
 
     def command(self, target_file: Path) -> None:
         metric_label = target_file.stem.split(".")[0]
@@ -93,7 +86,7 @@ class EvaluateStep(OpusPocusStep):
             for line in open_file(
                 Path(
                     self.translated_step.output_dir,
-                    "{}.{}.gz".format(dset, self.tgt_lang),
+                    f"{dset}.{self.tgt_lang}.gz",
                 ),
                 "r",
             ).readlines()
@@ -104,7 +97,7 @@ class EvaluateStep(OpusPocusStep):
             for line in open_file(
                 Path(
                     self.reference_step.output_dir,
-                    "{}.{}.gz".format(dset, self.tgt_lang),
+                    f"{dset}.{self.tgt_lang}.gz",
                 ),
                 "r",
             ).readlines()

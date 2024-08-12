@@ -11,15 +11,15 @@ from opuspocus.utils import file_to_shards, shards_to_file
 
 logger = logging.getLogger(__name__)
 
+
 # TODO: can we future-proof this against type changes in OpusCleaner?
-CategoryEntry = TypedDict("CategoryEntry", {"name": str})
-CategoriesDict = TypedDict(
-    "CategoriesDict",
-    {
-        "categories": List[CategoryEntry],
-        "mapping": Dict[str, List[str]],
-    },
-)
+class CategoryEntry(TypedDict):
+    name: str
+
+
+class CategoriesDict(TypedDict):
+    categories: List[CategoryEntry]
+    mapping: Dict[str, List[str]]
 
 
 class CorpusStep(OpusPocusStep):
@@ -123,7 +123,7 @@ class CorpusStep(OpusPocusStep):
     def shard_index(self) -> Optional[Dict[str, List[Path]]]:
         if not self.is_sharded:
             return []
-        shard_dict = yaml.safe_load(open(Path(self.shard_dir, self.shard_index_file), "r"))
+        shard_dict = yaml.safe_load(open(Path(self.shard_dir, self.shard_index_file)))
         return {k: [Path(self.shard_dir, fname) for fname in v] for k, v in shard_dict.items()}
 
     def save_shard_dict(self, shard_dict: Dict[str, List[str]]) -> None:
@@ -141,7 +141,7 @@ class CorpusStep(OpusPocusStep):
             shard_dict = {}
             for dset in self.dataset_list:
                 for lang in self.languages:
-                    dset_path = Path(self.output_dir, "{}.{}.gz".format(dset, lang))
+                    dset_path = Path(self.output_dir, f"{dset}.{lang}.gz")
                     dset_filename = dset_path.stem + dset_path.suffix
                     shard_dict[dset_filename] = file_to_shards(
                         file_path=dset_path,
@@ -153,7 +153,7 @@ class CorpusStep(OpusPocusStep):
             # Merge Shards
             for dset in self.dataset_list:
                 for lang in self.languages:
-                    dset_file_path = Path(self.output_dir, "{}.{}.gz".format(dset, lang))
+                    dset_file_path = Path(self.output_dir, f"{dset}.{lang}.gz")
                     dset_filename = dset_file_path.stem + dset_file_path.suffix
                     shards_to_file(
                         self.get_shard_list(dset_filename),
@@ -207,7 +207,7 @@ class CorpusStep(OpusPocusStep):
     # (if we want to change the file format in the future)
     def load_categories_dict(self) -> CategoriesDict:
         """Load categories.json file."""
-        return json.load(open(self.categories_path, "r"))
+        return json.load(open(self.categories_path))
 
     def save_categories_dict(self, categories_dict: CategoriesDict) -> None:
         """Save the categories dict into categories.json.
@@ -229,7 +229,7 @@ class CorpusStep(OpusPocusStep):
                 logger.info("Step already initialized. Skipping...")
                 return
             else:
-                raise ValueError("Trying to initialize step in a {} state.".format(self.state))
+                raise ValueError(f"Trying to initialize step in a {self.state} state.")
         # Set state to incomplete until finished initializing.
         self.create_directories()
         self.set_state(StepState.INIT_INCOMPLETE)
@@ -249,9 +249,8 @@ class CorpusStep(OpusPocusStep):
         self.register_categories()
         if not self.categories_path.exists():
             raise FileNotFoundError(
-                "{} not found after initialization. Perhaps there is an issue "
+                f"{self.categories_file} not found after initialization. Perhaps there is an issue "
                 "with the register_categories derived method implementation? "
-                "".format(self.categories_file)
             )
 
     def register_categories(self) -> None:
