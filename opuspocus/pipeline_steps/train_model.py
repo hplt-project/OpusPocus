@@ -167,7 +167,7 @@ class TrainModelStep(OpusPocusStep):
         # TODO: Data concatenation should be removed when opustrainer support
         #       is added
         train_paths = [Path(self.tmp_dir, f"train.{lang}.gz") for lang in self.languages]
-        if not all([p.exists() for p in train_paths]):
+        if not all([p.exists() for p in train_paths]):  # noqa: C419
             for lang, output_file in zip(self.languages, train_paths):
                 concat_files(
                     [Path(self.input_dir, f"{dset}.{lang}.gz") for dset in self.train_datasets],

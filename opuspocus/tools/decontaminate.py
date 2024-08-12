@@ -23,8 +23,8 @@ def make_hashes(line):  # noqa: ANN001, ANN201
 
 
 def main(args):  # noqa: ANN001, ANN201
-    src_test_samples = dict()
-    tgt_test_samples = dict()
+    src_test_samples = dict()  # noqa: C408
+    tgt_test_samples = dict()  # noqa: C408
     removed = 0
     retained = 0
 

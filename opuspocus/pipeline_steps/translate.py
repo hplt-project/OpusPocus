@@ -84,7 +84,7 @@ class TranslateCorpusStep(CorpusStep):
             targets = []
             for dset in self.dataset_list:
                 dset_filename = f"{dset}.{self.tgt_lang}.gz"
-                targets.extend([shard_file for shard_file in self.get_shard_list(dset_filename)])
+                targets.extend([shard_file for shard_file in self.get_shard_list(dset_filename)])  # noqa: C416
             return targets
         return [Path(self.output_dir, f"{dset}.{self.tgt_lang}.gz") for dset in self.dataset_list]
 
