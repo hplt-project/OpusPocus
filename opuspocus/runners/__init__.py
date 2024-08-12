@@ -23,7 +23,7 @@ def build_runner(runner: str, pipeline_dir: Path, args: Namespace):  # noqa: ANN
 
     kwargs = {}
     for param in RUNNER_REGISTRY[runner].list_parameters():
-        if param == "runner" or param == "pipeline_dir":
+        if param == "runner" or param == "pipeline_dir":  # noqa: PLR1714
             continue
         kwargs[param] = getattr(args, param)
 

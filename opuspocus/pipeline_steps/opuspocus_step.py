@@ -168,9 +168,9 @@ class OpusPocusStep:
                 self.dependencies[param] = val
             else:
                 if type_hints[param] == Path and val is not None:
-                    val = Path(val)
+                    val = Path(val)  # noqa: PLW2901
                 if type_hints[param] == List[Path]:
-                    val = [Path(v) for v in val]
+                    val = [Path(v) for v in val]  # noqa: PLW2901
                 setattr(self, param, val)
 
     @classmethod

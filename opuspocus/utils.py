@@ -20,7 +20,7 @@ def get_open_fn(compressed: bool):  # noqa: ANN201, FBT001
 
 
 def open_file(file: Path, mode: str):  # noqa: ANN201
-    assert mode == "r" or mode == "w"
+    assert mode == "r" or mode == "w"  # noqa: PLR1714
     open_fn = get_open_fn(compressed=(file.suffix == ".gz"))
     return open_fn(file, f"{mode}t")
 
@@ -51,7 +51,7 @@ def paste_files(
     with open_fn(output_file, "wt") as out_fh:
         in_fhs = [open_fn(input_file, "rt") for input_file in input_files]
         for lines in zip(*in_fhs):
-            lines = [line.rstrip("\n") for line in lines]
+            lines = [line.rstrip("\n") for line in lines]  # noqa: PLW2901
             print(delimiter.join(lines), end="\n", file=out_fh)
 
 

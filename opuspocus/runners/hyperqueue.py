@@ -58,9 +58,9 @@ class HyperqueueRunner(OpusPocusRunner):
             hq_max_worker_count=hq_max_worker_count,
         )
         # TODO: Better typing and value checking
-        assert len(self.hq_alloc_range_cpus) == 2
+        assert len(self.hq_alloc_range_cpus) == 2  # noqa: PLR2004
         if self.hq_alloc_range_gpus is not None:
-            assert len(self.hq_alloc_range_gpus) == 2
+            assert len(self.hq_alloc_range_gpus) == 2  # noqa: PLR2004
 
         # Start the HQ server (if not running)
         # TODO: replace the launcher script with a better alternative
@@ -70,6 +70,7 @@ class HyperqueueRunner(OpusPocusRunner):
                 str(self.hq_server_dir),
             ],
             shell=False,
+            check=False,
         )
         subprocess_wait(proc)
 
@@ -169,7 +170,7 @@ class HyperqueueRunner(OpusPocusRunner):
         if self.account is not None:
             hq_cmd += [f"--account={self.account}"]
 
-        subprocess.run(hq_cmd)
+        subprocess.run(hq_cmd, check=False)
 
         # TODO: info about the alloc queue
         self.client.submit(self.job)
@@ -187,10 +188,10 @@ class HyperqueueRunner(OpusPocusRunner):
 
     def _convert_memory(self, mem: str) -> int:
         unit = mem[-1]
-        if unit == "g" or unit == "G":
+        if unit == "g" or unit == "G":  # noqa: PLR1714
             return int(mem[:-1] * 1024**3)
-        if unit == "m" or unit == "M":
+        if unit == "m" or unit == "M":  # noqa: PLR1714
             return int(mem[:-1] * 1024**2)
-        if unit == "k" or unit == "K":
+        if unit == "k" or unit == "K":  # noqa: PLR1714
             return int(mem[:-1] * 1024)
         raise ValueError(f"Unknown unit of memory ({unit}).")  # noqa: EM102

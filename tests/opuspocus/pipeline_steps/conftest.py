@@ -1,6 +1,6 @@
 import pytest
 
-import opuspocus.pipeline_steps as pipeline_steps
+from opuspocus import pipeline_steps
 from opuspocus.pipeline_steps import build_step
 
 

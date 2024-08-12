@@ -1,7 +1,6 @@
 import pytest
 
-import opuspocus.pipeline_steps as pipeline_steps
-import opuspocus.runners as runners
+from opuspocus import pipeline_steps, runners
 
 pytest_plugins = [
     "fixtures.configs",

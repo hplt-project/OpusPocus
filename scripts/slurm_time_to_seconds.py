@@ -13,7 +13,7 @@ time_str = str(sys.argv[1])
 time_s = 0
 
 time_str_daytime = sys.argv[1].split("-")
-if len(time_str_daytime) == 2:
+if len(time_str_daytime) == 2:  # noqa: PLR2004
     time_s = int(time_str_daytime[0]) * 24 * 60 * 60
 time = [int(x) for x in time_str_daytime[-1].split(":")]
 time_s += hhmmss_to_seconds(time)

@@ -22,7 +22,7 @@ def make_hashes(line):  # noqa: ANN001, ANN201
     return hash_mono(src), hash_mono(tgt)
 
 
-def main(args):  # noqa: ANN001, ANN201
+def main(args):  # noqa: ANN001, ANN201, PLR0912, PLR0915
     src_test_samples = dict()  # noqa: C408
     tgt_test_samples = dict()  # noqa: C408
     removed = 0

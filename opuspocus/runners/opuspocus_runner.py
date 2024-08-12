@@ -95,13 +95,13 @@ class OpusPocusRunner:
     def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
         """TODO"""
         type_hints = get_type_hints(self.__init__)
-        logger.debug("Class type hints: $s", type_hints)
+        logger.debug("Class type hints: $s", type_hints)  # noqa: PLE1205
 
         for param, val in kwargs.items():
             if type_hints[param] == Path and val is not None:
-                val = Path(val)
+                val = Path(val)  # noqa: PLW2901
             if type_hints[param] == List[Path]:
-                val = [Path(v) for v in val]
+                val = [Path(v) for v in val]  # noqa: PLW2901
             setattr(self, param, val)
 
     def stop_pipeline(self, pipeline: OpusPocusPipeline) -> None:

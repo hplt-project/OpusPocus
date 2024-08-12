@@ -257,7 +257,7 @@ class CorpusStep(OpusPocusStep):
         """Step-specific code for listing corpora available in the step output.
         Produces categories.json
         """
-        NotImplementedError()
+        NotImplementedError()  # noqa: PLW0133
 
     @property
     def languages(self) -> List[str]:

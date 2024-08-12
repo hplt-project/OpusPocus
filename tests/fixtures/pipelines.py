@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import opuspocus.pipeline_steps as pipeline_steps
+from opuspocus import pipeline_steps
 from opuspocus.pipelines import build_pipeline
 from opuspocus.runners.debug import DebugRunner
 

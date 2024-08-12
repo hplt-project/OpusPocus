@@ -60,10 +60,12 @@ lint.select = [
   "TCH",
   "ARG",
   "PTH",
+  "PL",
 ]
 
 lint.ignore = [
-  "ANN101", # missing type annotation for self in method (legacy ruff remove it)
+  "ANN101",  # missing type annotation for self in method (legacy ruff remove it)
+  "PLR0913", # too many arguments in function call
 ]
 
 [tool.ruff.lint.per-file-ignores]
