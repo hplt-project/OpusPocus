@@ -57,6 +57,7 @@ lint.select = [
   "SIM",
   "SLOT",
   "TID",
+  "TCH",
 ]
 
 lint.ignore = [
