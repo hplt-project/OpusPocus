@@ -82,4 +82,4 @@ class MergeCorpusStep(CorpusStep):
         elif source_label == self.other_corpus_label:
             target_file.hardlink_to(Path(self.other_corpus_step.output_dir, source_filename))
         else:
-            raise ValueError(f"Unknown corpus label ({source_label}).")
+            raise ValueError(f"Unknown corpus label ({source_label}).")  # noqa: EM102

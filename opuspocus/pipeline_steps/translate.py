@@ -146,4 +146,4 @@ class TranslateCorpusStep(CorpusStep):
         # Check the return code
         rc = proc.poll()
         if rc:
-            raise Exception(f"Process {proc.pid} exited with non-zero value.")
+            raise Exception(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102

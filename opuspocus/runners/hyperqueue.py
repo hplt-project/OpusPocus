@@ -193,4 +193,4 @@ class HyperqueueRunner(OpusPocusRunner):
             return int(mem[:-1] * 1024**2)
         if unit == "k" or unit == "K":
             return int(mem[:-1] * 1024)
-        raise ValueError(f"Unknown unit of memory ({unit}).")
+        raise ValueError(f"Unknown unit of memory ({unit}).")  # noqa: EM102

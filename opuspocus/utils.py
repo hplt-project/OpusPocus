@@ -150,7 +150,7 @@ def count_lines(file_path: Path) -> int:
 def subprocess_wait(proc: subprocess.Popen) -> None:
     rc = proc.wait()
     if rc:
-        raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")
+        raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102
 
 
 def get_action_type_map(parser) -> Dict[str, Callable]:  # noqa: ANN001
@@ -165,7 +165,7 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  #
     if config_path is None:
         return parser
     if not Path(config_path).exists():
-        raise ValueError(f"File {config_path} not found.")
+        raise ValueError(f"File {config_path} not found.")  # noqa: EM102
     config = yaml.safe_load(open(config_path))
 
     for v in parser._actions:

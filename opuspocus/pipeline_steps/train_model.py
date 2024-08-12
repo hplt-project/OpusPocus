@@ -60,7 +60,7 @@ class TrainModelStep(OpusPocusStep):
         super().init_step()
         if self.valid_dataset not in self.valid_corpus_step.dataset_list:
             raise ValueError(
-                f"Dataset {self.valid_dataset} is not registered in the {self.valid_corpus_step.step_label} categories.json."  # noqa: E501
+                f"Dataset {self.valid_dataset} is not registered in the {self.valid_corpus_step.step_label} categories.json."  # noqa: E501, EM102
             )
 
     @property

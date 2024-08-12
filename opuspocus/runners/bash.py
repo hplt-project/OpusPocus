@@ -111,7 +111,7 @@ class BashRunner(OpusPocusRunner):
         for p in gone:
             if p.returncode:
                 self.remove_task_file(task_id)
-                raise subprocess.SubprocessError("Process {} exited with non-zero " "value.".format(task_id["id"]))
+                raise subprocess.SubprocessError("Process {} exited with non-zero " "value.".format(task_id["id"]))  # noqa: EM103
 
     def is_task_running(self, task_id: TaskId) -> bool:
         """TODO"""

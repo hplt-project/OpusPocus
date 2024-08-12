@@ -112,7 +112,7 @@ class OpusPocusRunner:
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be cancelled using {} runner because it "
+                    "Step {} cannot be cancelled using {} runner because it "  # noqa: EM103
                     "was submitted by a different runner type ({}).".format(
                         step.step_label, self.runner, task_info["runner"]
                     )
@@ -150,7 +150,7 @@ class OpusPocusRunner:
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be submitted because it is currently " "{} using a different runner ({}).".format(
+                    "Step {} cannot be submitted because it is currently " "{} using a different runner ({}).".format(  # noqa: EM103
                         step.step_label, step.state, task_info["runner"]
                     )
                 )
@@ -165,7 +165,7 @@ class OpusPocusRunner:
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):
-            raise ValueError(f"Cannot run step {step.step_label}. Step is not in INITED state.")
+            raise ValueError(f"Cannot run step {step.step_label}. Step is not in INITED state.")  # noqa: EM102
 
         # Recursively submit step dependencies first
         dep_task_info_list = []
@@ -211,7 +211,7 @@ class OpusPocusRunner:
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be cancelled using {} runner because it "
+                    "Step {} cannot be cancelled using {} runner because it "  # noqa: EM103
                     "was submitted by a different runner type ({}).".format(
                         step.step_label, self.runner, task_info["runner"]
                     )

@@ -52,7 +52,7 @@ class OpusPocusStep:
 
         if pipeline_dir is None:
             raise ValueError(
-                f"{step_label}.pipeline_dir was not specified. Use --pipeline-dir "
+                f"{step_label}.pipeline_dir was not specified. Use --pipeline-dir "  # noqa: EM102
                 "option to set global pipeline_dir or set the pipeline_dir "
                 "for the step using the config file."
             )
@@ -226,7 +226,7 @@ class OpusPocusStep:
                 logger.info("Step already initialized. Skipping...")
                 return None
             else:
-                raise ValueError(f"Trying to initialize step in a {self.state} state.")
+                raise ValueError(f"Trying to initialize step in a {self.state} state.")  # noqa: EM102
         # Set state to incomplete until finished initializing.
         self.create_directories()
         self.set_state(StepState.INIT_INCOMPLETE)
@@ -263,7 +263,7 @@ class OpusPocusStep:
         # create step dir
         logger.debug("Creating step dir.")
         if self.step_dir.is_dir():
-            raise FileExistsError(f"Cannot create {self.step_dir}. Directory already exists.")
+            raise FileExistsError(f"Cannot create {self.step_dir}. Directory already exists.")  # noqa: EM102
         for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
 
@@ -281,7 +281,7 @@ class OpusPocusStep:
         """
         cmd_path = Path(self.step_dir, self.command_file)
         if cmd_path.exists():
-            raise FileExistsError(f"File {cmd_path} already exists.")
+            raise FileExistsError(f"File {cmd_path} already exists.")  # noqa: EM102
 
         logger.debug("Creating step command.")
         print(self.compose_command(), file=open(cmd_path, "w"))
