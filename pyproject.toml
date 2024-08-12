@@ -52,6 +52,7 @@ lint.select = [
   "PYI",
   "PT",  # https://docs.astral.sh/ruff/rules/#flake8-pytest-style-pt
   "Q",
+  "RET",
 ]
 
 lint.ignore = [

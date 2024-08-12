@@ -228,7 +228,7 @@ class CorpusStep(OpusPocusStep):
             if self.has_state(StepState.INITED):
                 logger.info("Step already initialized. Skipping...")
                 return
-            else:
+            else:  # noqa: RET505
                 raise ValueError(f"Trying to initialize step in a {self.state} state.")  # noqa: EM102
         # Set state to incomplete until finished initializing.
         self.create_directories()

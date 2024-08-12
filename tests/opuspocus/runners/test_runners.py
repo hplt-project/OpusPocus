@@ -32,7 +32,7 @@ def parsed_runner_args(request, pipeline_preprocess_tiny_inited, opuspocus_hq_se
         ]
         + extra
     )
-    return args
+    return args  # noqa: RET504
 
 
 def test_build_runner_method(parsed_runner_args):

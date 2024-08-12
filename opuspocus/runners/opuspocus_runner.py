@@ -71,7 +71,7 @@ class OpusPocusRunner:
         logger.debug("Loading step variables from %s", params_path)
 
         params_dict = yaml.safe_load(open(params_path))
-        return params_dict
+        return params_dict  # noqa: RET504
 
     def get_parameters_dict(self) -> Dict[str, Any]:
         """TODO"""
@@ -155,7 +155,7 @@ class OpusPocusRunner:
                     )
                 )
             return task_info
-        elif step.has_state(StepState.DONE):
+        elif step.has_state(StepState.DONE):  # noqa: RET505
             logger.info("Step %s has already finished. Skipping...", step.step_label)
             return None
         elif step.has_state(StepState.FAILED):

@@ -79,7 +79,7 @@ def main(args):  # noqa: ANN001, ANN201
                     tgt_test_samples[tgt].removed += 1
                 removed += 1
                 continue
-            else:
+            else:  # noqa: RET507
                 if src in src_test_samples:
                     src_test_samples[src].kept += 1
                 if not args.mono and tgt in tgt_test_samples:

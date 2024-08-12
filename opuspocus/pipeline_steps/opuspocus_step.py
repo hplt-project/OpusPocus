@@ -118,7 +118,7 @@ class OpusPocusStep:
 
         params_dict = yaml.safe_load(open(params_path))
         # TODO: check for missing/unknown parameters
-        return params_dict
+        return params_dict  # noqa: RET504
 
     def get_parameters_dict(self, exclude_dependencies: bool = True) -> Dict[str, Any]:  # noqa: FBT001, FBT002
         """Serialize the step parameters"""
@@ -224,8 +224,8 @@ class OpusPocusStep:
         if self.state is not None:
             if self.has_state(StepState.INITED):
                 logger.info("Step already initialized. Skipping...")
-                return None
-            else:
+                return
+            else:  # noqa: RET505
                 raise ValueError(f"Trying to initialize step in a {self.state} state.")  # noqa: EM102
         # Set state to incomplete until finished initializing.
         self.create_directories()

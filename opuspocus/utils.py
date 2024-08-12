@@ -198,7 +198,7 @@ def file_path(path_str):  # noqa: ANN001, ANN201
     path = Path(path_str)
     if path.exists():
         return path.absolute()
-    else:
+    else:  # noqa: RET505
         raise FileNotFoundError(path)
 
 

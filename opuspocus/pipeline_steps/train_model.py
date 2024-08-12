@@ -100,7 +100,7 @@ class TrainModelStep(OpusPocusStep):
         # TODO: this should be fetched from the dependency in case that
         # file naming changes in the future
         vocab_path = Path(vocab_dir, f"model.{self.src_lang}-{self.tgt_lang}.spm")
-        return vocab_path
+        return vocab_path  # noqa: RET504
 
     @property
     def vocab_size(self) -> int:
