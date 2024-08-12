@@ -90,7 +90,7 @@ def main(args):  # noqa: ANN001, ANN201
         # We never stripped the original newline
         print(line, end="", file=output_fh)
 
-    print(
+    print(  # noqa: T201
         f"Removed {removed:,} lines out of {i:,}. Retained {retained:,} below length threshold",
         file=sys.stderr,
     )
@@ -99,23 +99,23 @@ def main(args):  # noqa: ANN001, ANN201
         total_seen = sum(v.seen for v in samples.values())
         was_seen = sum(1 if v.seen > 0 else 0 for v in samples.values())
 
-        print("Seen", file=sys.stderr)
-        print(f"{side} total: {total_seen}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_seen/len(samples):%}", file=sys.stderr)
+        print("Seen", file=sys.stderr)  # noqa: T201
+        print(f"{side} total: {total_seen}/{i}", file=sys.stderr)  # noqa: T201
+        print(f"{side} was: {was_seen/len(samples):%}", file=sys.stderr)  # noqa: T201
 
         total_removed = sum(v.removed for v in samples.values())
         was_removed = sum(1 if v.removed > 0 else 0 for v in samples.values())
 
-        print("Removed", file=sys.stderr)
-        print(f"{side} total: {total_removed}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_removed/len(samples):%}", file=sys.stderr)
+        print("Removed", file=sys.stderr)  # noqa: T201
+        print(f"{side} total: {total_removed}/{i}", file=sys.stderr)  # noqa: T201
+        print(f"{side} was: {was_removed/len(samples):%}", file=sys.stderr)  # noqa: T201
 
         total_kept = sum(v.kept for v in samples.values())
         was_kept = sum(1 if v.kept > 0 else 0 for v in samples.values())
 
-        print("Kept", file=sys.stderr)
-        print(f"{side} total: {total_kept}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_kept/len(samples):%}", file=sys.stderr)
+        print("Kept", file=sys.stderr)  # noqa: T201
+        print(f"{side} total: {total_kept}/{i}", file=sys.stderr)  # noqa: T201
+        print(f"{side} was: {was_kept/len(samples):%}", file=sys.stderr)  # noqa: T201
 
 
 def parse_args():  # noqa: ANN201

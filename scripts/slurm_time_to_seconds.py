@@ -18,4 +18,4 @@ if len(time_str_daytime) == 2:
 time = [int(x) for x in time_str_daytime[-1].split(":")]
 time_s += hhmmss_to_seconds(time)
 
-print(time_s)
+print(time_s)  # noqa: T201

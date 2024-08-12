@@ -21,10 +21,10 @@ def main(argv):  # noqa: ANN001, ANN201 fixit
         try:
             procs.append(psutil.Process(pid))
         except psutil.NoSuchProcess:
-            print("Process {} does not exist. Ignoring...", file=sys.stderr)
+            print("Process {} does not exist. Ignoring...", file=sys.stderr)  # noqa: T201
 
     gone, alive = psutil.wait_procs(procs)
-    print(
+    print(  # noqa: T201
         "bash_runner_submit.py: Running command: {}".format(" ".join(argv)),
         file=sys.stderr,
     )

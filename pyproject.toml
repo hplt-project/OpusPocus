@@ -48,6 +48,7 @@ lint.select = [
   "ICN", # https://docs.astral.sh/ruff/rules/#flake8-import-conventions-icn
   "LOG", # https://docs.astral.sh/ruff/rules/#flake8-logging-log
   "G",   # https://docs.astral.sh/ruff/rules/#flake8-logging-format-g
+  "T20",
 ]
 
 lint.ignore = [

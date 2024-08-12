@@ -134,7 +134,7 @@ class OpusPocusPipeline:
             try:
                 pipeline_steps[step_label] = build_step(**step_args)
             except Exception as e:
-                print(f"Step parameters:\n{step_args}")
+                print(f"Step parameters:\n{step_args}")  # noqa: T201
                 raise e
 
             return pipeline_steps[step_label]
@@ -159,15 +159,15 @@ class OpusPocusPipeline:
 
     def status(self, steps: List[OpusPocusStep]) -> None:
         for s in steps:
-            print(f"{s.step_label}: {str(s.state)}")
+            print(f"{s.step_label}: {str(s.state)}")  # noqa: T201
 
     def traceback(self, targets: List[str] = None, full: bool = False) -> None:  # noqa: FBT001, FBT002
         """Print the pipeline structure and status of the individual steps."""
         targets = self.get_targets(targets)
         for i, v in enumerate(targets):
-            print(f"Target {i}: {v.step_label}")
+            print(f"Target {i}: {v.step_label}")  # noqa: T201
             v.traceback_step(level=0, full=full)
-            print("")
+            print("")  # noqa: T201
 
     def get_targets(self, targets: List[str] = None):  # noqa: ANN201
         if targets is not None:

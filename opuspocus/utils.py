@@ -190,7 +190,7 @@ def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
 def print_indented(text, level=0):  # noqa: ANN001, ANN201
     """A function wrapper for indented printing (of traceback)."""
     indent = " " * (2 * level)
-    print(indent + text)
+    print(indent + text)  # noqa: T201
 
 
 def file_path(path_str):  # noqa: ANN001, ANN201

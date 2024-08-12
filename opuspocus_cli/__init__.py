@@ -9,7 +9,7 @@ CMD_MODULES = {}
 
 
 def _print_usage() -> None:
-    print(
+    print(  # noqa: T201
         f"usage: {sys.argv[0]} " + "{" + ",".join(CMD_MODULES.keys()) + "} [options]",
     )
 
