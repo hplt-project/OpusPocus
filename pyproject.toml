@@ -4,7 +4,7 @@ name = "opuspocus"
 description = "Modular NLP pipeline manager."
 readme = "README.md"
 requires-python = ">=3.7"
-license = {text = "MIT"}
+license = { text = "MIT" }
 keywords = ["OPUS", "HPLT", "pipeline manager"]
 authors = [{ name = "Dušan Variš", email = "varis@ufal.mff.cuni.cz" }]
 classifiers = [
@@ -22,6 +22,16 @@ Issues = "https://github.com/hplt-project/opuspocus/issues"
 Repository = "https://github.com/hplt-project/OpusPocus.git"
 
 [tool.pytest.ini_options]
-log_cli=true
-log_level="CRITICAL"
+log_cli = true
+log_level = "CRITICAL"
 pythonpath = ["."]
+
+[tool.ruff]
+include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
+lint.select = [
+  "F", # https://docs.astral.sh/ruff/rules/#pyflakes-f
+  "E", # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+  "W", # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+]
+
+line-length = 120

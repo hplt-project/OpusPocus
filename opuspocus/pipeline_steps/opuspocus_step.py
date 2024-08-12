@@ -61,9 +61,7 @@ class OpusPocusStep(object):
         self.state = self.load_state()
 
     @classmethod
-    def build_step(
-        cls, step: str, step_label: str, pipeline_dir: Path, **kwargs
-    ) -> "OpusPocusStep":
+    def build_step(cls, step: str, step_label: str, pipeline_dir: Path, **kwargs) -> "OpusPocusStep":
         """Build a specified step instance.
 
         Args:
@@ -184,9 +182,7 @@ class OpusPocusStep(object):
 
     def save_dependencies(self) -> None:
         """Save the step dependencies using their unique step_label values."""
-        deps_dict = {
-            k: v.step_label for k, v in self.dependencies.items() if v is not None
-        }
+        deps_dict = {k: v.step_label for k, v in self.dependencies.items() if v is not None}
         yaml.dump(deps_dict, open(Path(self.step_dir, self.dependency_file), "w"))
 
     @property
@@ -230,9 +226,7 @@ class OpusPocusStep(object):
                 logger.info("Step already initialized. Skipping...")
                 return None
             else:
-                raise ValueError(
-                    "Trying to initialize step in a {} state.".format(self.state)
-                )
+                raise ValueError("Trying to initialize step in a {} state.".format(self.state))
         # Set state to incomplete until finished initializing.
         self.create_directories()
         self.set_state(StepState.INIT_INCOMPLETE)
@@ -269,9 +263,7 @@ class OpusPocusStep(object):
         # create step dir
         logger.debug("Creating step dir.")
         if self.step_dir.is_dir():
-            raise FileExistsError(
-                "Cannot create {}. Directory already exists.".format(self.step_dir)
-            )
+            raise FileExistsError("Cannot create {}. Directory already exists.".format(self.step_dir))
         for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
 
@@ -326,9 +318,7 @@ class OpusPocusStep(object):
         """Load the current state of a step."""
         state_file = Path(self.step_dir, self.state_file)
         if state_file.exists():
-            state = StepState(
-                json.load(open(Path(self.step_dir, self.state_file), "r"))
-            )
+            state = StepState(json.load(open(Path(self.step_dir, self.state_file), "r")))
             assert state in StepState
             return state
         return None

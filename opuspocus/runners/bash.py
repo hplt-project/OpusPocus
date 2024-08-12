@@ -78,9 +78,7 @@ class BashRunner(OpusPocusRunner):
                 subprocess_wait(proc)
         else:
             if not self.run_subtasks_in_parallel:
-                dependencies_str = " ".join(
-                    str(task["main_task"]["id"]) for task in self.submitted_tasks
-                )
+                dependencies_str = " ".join(str(task["main_task"]["id"]) for task in self.submitted_tasks)
             proc = subprocess.Popen(
                 [
                     self.submit_wrapper,
@@ -113,9 +111,7 @@ class BashRunner(OpusPocusRunner):
         for p in gone:
             if p.returncode:
                 self.remove_task_file(task_id)
-                raise subprocess.SubprocessError(
-                    "Process {} exited with non-zero " "value.".format(task_id["id"])
-                )
+                raise subprocess.SubprocessError("Process {} exited with non-zero " "value.".format(task_id["id"]))
 
     def is_task_running(self, task_id: TaskId) -> bool:
         """TODO"""

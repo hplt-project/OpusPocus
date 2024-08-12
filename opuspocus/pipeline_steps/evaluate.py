@@ -80,9 +80,7 @@ class EvaluateStep(OpusPocusStep):
 
     def get_command_targets(self) -> List[Path]:
         return [
-            Path(self.output_dir, "{}.{}.txt".format(metric, dset))
-            for dset in self.datasets
-            for metric in self.metrics
+            Path(self.output_dir, "{}.{}.txt".format(metric, dset)) for dset in self.datasets for metric in self.metrics
         ]
 
     def command(self, target_file: Path) -> None:

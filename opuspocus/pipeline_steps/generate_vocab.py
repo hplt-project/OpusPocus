@@ -57,9 +57,7 @@ class GenerateVocabStep(OpusPocusStep):
                     self.corpus_step.categories_dict,
                 )
                 raise ValueError(
-                    "Dataset {} is not registered in the {} categories.json".format(
-                        dset, self.corpus_step.step_label
-                    )
+                    "Dataset {} is not registered in the {} categories.json".format(dset, self.corpus_step.step_label)
                 )
 
     @property
@@ -75,11 +73,7 @@ class GenerateVocabStep(OpusPocusStep):
         return [self.src_lang, self.tgt_lang]
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(
-                self.output_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang)
-            )
-        ]
+        return [Path(self.output_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang))]
 
     def command(self, target_file: Path) -> None:
         spm_train_path = Path(self.marian_dir, "bin", "spm_train")
@@ -89,11 +83,7 @@ class GenerateVocabStep(OpusPocusStep):
         train_concat_gz = Path(self.tmp_dir, "train_concat.gz")
         train_concat = Path(self.tmp_dir, train_concat_gz.stem)
         concat_files(
-            [
-                Path(self.input_dir, "{}.{}.gz".format(dset, lang))
-                for dset in self.datasets
-                for lang in self.languages
-            ],
+            [Path(self.input_dir, "{}.{}.gz".format(dset, lang)) for dset in self.datasets for lang in self.languages],
             train_concat_gz,
         )
         decompress_file(train_concat_gz, train_concat)
@@ -115,9 +105,7 @@ class GenerateVocabStep(OpusPocusStep):
             "--byte_fallback",
             "--num_threads={}".format(n_cpus),
         ]
-        proc = subprocess.Popen(
-            cmd, stdout=sys.stdout, stderr=sys.stderr, env=os.environ, text=True
-        )
+        proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=os.environ, text=True)
         subprocess_wait(proc)
 
         # Rename the output file

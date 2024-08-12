@@ -32,9 +32,7 @@ def decompress_file(input_file: Path, output_file: Path) -> None:
                 print(line, end="", file=out_fh)
 
 
-def concat_files(
-    input_files: List[Path], output_file: Path, compressed: bool = True
-) -> None:
+def concat_files(input_files: List[Path], output_file: Path, compressed: bool = True) -> None:
     open_fn = get_open_fn(compressed)
     with open_fn(output_file, "wt") as out_fh:
         for input_file in input_files:
@@ -152,9 +150,7 @@ def count_lines(file_path: Path) -> int:
 def subprocess_wait(proc: subprocess.Popen) -> None:
     rc = proc.wait()
     if rc:
-        raise subprocess.SubprocessError(
-            "Process {} exited with non-zero value.".format(proc.pid)
-        )
+        raise subprocess.SubprocessError("Process {} exited with non-zero value.".format(proc.pid))
 
 
 def get_action_type_map(parser) -> Dict[str, Callable]:
@@ -225,11 +221,7 @@ class RunnerResources(object):
     @classmethod
     def list_parameters(cls) -> List[str]:
         """TODO"""
-        return [
-            param
-            for param in inspect.signature(cls.__init__).parameters
-            if param != "self"
-        ]
+        return [param for param in inspect.signature(cls.__init__).parameters if param != "self"]
 
     def overwrite(self, resource_dict: Dict[str, Any]) -> "RunnerResources":
         params = {}

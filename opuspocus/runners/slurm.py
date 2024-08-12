@@ -23,9 +23,7 @@ class SlurmRunner(OpusPocusRunner):
     def add_args(parser):
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
-        parser.add_argument(
-            "--slurm_other_options", type=str, default=None, help="TODO"
-        )
+        parser.add_argument("--slurm_other_options", type=str, default=None, help="TODO")
 
     def __init__(
         self,
@@ -79,9 +77,7 @@ class SlurmRunner(OpusPocusRunner):
 
         if target_file is not None:
             cmd += [str(cmd_path), str(target_file)]
-            proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
-            )
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         else:
             cmd += [str(cmd_path)]
             proc = subprocess.Popen(
@@ -133,12 +129,5 @@ class SlurmRunner(OpusPocusRunner):
     def _add_environment_variables(resources: RunnerResources) -> List[str]:
         # TODO finish this
         return [
-            "--export={}".format(
-                ",".join(
-                    [
-                        "{}='{}'".format(k, str(v))
-                        for k, v in resources.get_env_dict().items()
-                    ]
-                )
-            )
+            "--export={}".format(",".join(["{}='{}'".format(k, str(v)) for k, v in resources.get_env_dict().items()]))
         ]

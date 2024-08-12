@@ -17,9 +17,7 @@ class OpusPocusPipeline(object):
     config_file = "pipeline.config"
 
     @staticmethod
-    def add_args(
-        parser: argparse.ArgumentParser, *, pipeline_dir_required: bool = True
-    ) -> None:
+    def add_args(parser: argparse.ArgumentParser, *, pipeline_dir_required: bool = True) -> None:
         """Add pipeline-specific arguments to the parser."""
         parser.add_argument(
             "--pipeline-dir",
@@ -85,9 +83,7 @@ class OpusPocusPipeline(object):
     ) -> "OpusPocusPipeline":
         """TODO"""
         if not pipeline_dir.exists():
-            raise FileNotFoundError(
-                "Pipeline directory ({}) does not exist.".format(pipeline_dir)
-            )
+            raise FileNotFoundError("Pipeline directory ({}) does not exist.".format(pipeline_dir))
         if not pipeline_dir.is_dir():
             raise NotADirectoryError("{} is not a directory.".format(pipeline_dir))
 
@@ -100,9 +96,7 @@ class OpusPocusPipeline(object):
         Saves the dependency structure of the pipeline steps, pipeline target
         steps and pipeline parameters in their respective YAML files.
         """
-        PipelineConfig.save(
-            self.pipeline_config, Path(self.pipeline_dir, self.config_file)
-        )
+        PipelineConfig.save(self.pipeline_config, Path(self.pipeline_dir, self.config_file))
 
     def build_pipeline_graph(
         self, pipeline_config: Optional[OmegaConf] = None
@@ -114,9 +108,7 @@ class OpusPocusPipeline(object):
         pipeline_dir = pipeline_config.pipeline.pipeline_dir
 
         pipeline_steps = {}  # type: Dict[str, OpusPocusStep]
-        pipeline_steps_configs = {
-            s.step_label: OmegaConf.to_object(s) for s in pipeline_config.pipeline.steps
-        }
+        pipeline_steps_configs = {s.step_label: OmegaConf.to_object(s) for s in pipeline_config.pipeline.steps}
 
         def _build_step_inner(step_label: str) -> OpusPocusStep:
             """Build step and its dependencies."""
@@ -132,11 +124,7 @@ class OpusPocusPipeline(object):
                     step_args[k] = v
                 else:
                     if v not in pipeline_steps_configs:
-                        raise ValueError(
-                            'Step "{}" has an undefined dependency "{}={}".'.format(
-                                step_label, k, v
-                            )
-                        )
+                        raise ValueError('Step "{}" has an undefined dependency "{}={}".'.format(step_label, k, v))
                     step_args[k] = _build_step_inner(v)
 
             # Set default (global) pipeline_dir
@@ -157,10 +145,7 @@ class OpusPocusPipeline(object):
 
         default_targets = []
         if "default_targets" in pipeline_config.pipeline:
-            default_targets = [
-                pipeline_steps[step_label]
-                for step_label in pipeline_config.pipeline.default_targets
-            ]
+            default_targets = [pipeline_steps[step_label] for step_label in pipeline_config.pipeline.default_targets]
         return pipeline_steps, default_targets
 
     def init(self) -> None:
@@ -230,10 +215,7 @@ class PipelineConfig(OmegaConf):
             {
                 "pipeline": {
                     "pipeline_dir": str(pipeline_dir),
-                    "steps": [
-                        s.get_parameters_dict(exclude_dependencies=False)
-                        for s in pipeline_steps.values()
-                    ],
+                    "steps": [s.get_parameters_dict(exclude_dependencies=False) for s in pipeline_steps.values()],
                     "default_targets": [s.step_label for s in default_targets],
                 }
             }
@@ -244,9 +226,7 @@ class PipelineConfig(OmegaConf):
         OmegaConf.save(config, f=config_path)
 
     @classmethod
-    def load(
-        cls, config_file: Path, overwrite_args: Optional[argparse.Namespace] = None
-    ) -> OmegaConf:
+    def load(cls, config_file: Path, overwrite_args: Optional[argparse.Namespace] = None) -> OmegaConf:
         config = OmegaConf.load(config_file)
         cls._valid_yaml_structure(config)
         return cls._overwrite(config, overwrite_args)
@@ -254,10 +234,7 @@ class PipelineConfig(OmegaConf):
     @staticmethod
     def _overwrite(config, args):
         # TODO: implement overwrite mechanisms
-        logger.warn(
-            "(NOT IMPLEMENTED) Overwriting the config file values with "
-            "command line arguments."
-        )
+        logger.warn("(NOT IMPLEMENTED) Overwriting the config file values with " "command line arguments.")
         return config
 
     @classmethod
@@ -268,28 +245,17 @@ class PipelineConfig(OmegaConf):
         # Top has known keys
         for key in config.keys():
             if key not in cls.top_keys:
-                logger.warn(
-                    "Config file contains unsupported top key ({}). Ignoring...".format(
-                        key
-                    )
-                )
+                logger.warn("Config file contains unsupported top key ({}). Ignoring...".format(key))
         # Contains "pipeline" top key
         if "pipeline" not in config:
-            raise ValueError(
-                "Config file must contain pipeline definition " '("pipeline" top key).'
-            )
+            raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')
         # Pipeline has known keys
         for key in config.pipeline.keys():
             if key not in cls.pipeline_keys:
-                logger.warn(
-                    "Pipeline definition contains unsupported key ({}). "
-                    "Ignoring...".format(key)
-                )
+                logger.warn("Pipeline definition contains unsupported key ({}). " "Ignoring...".format(key))
         # Contains "pipeline.steps" key
         if "steps" not in config.pipeline:
-            raise ValueError(
-                'Config file must contain the list of steps ("pipeline.steps")'
-            )
+            raise ValueError('Config file must contain the list of steps ("pipeline.steps")')
 
         # All steps have an unique step_label
         steps = {}

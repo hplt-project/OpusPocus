@@ -5,9 +5,7 @@ from opuspocus.pipeline_steps import build_step
 
 
 @pytest.fixture(scope="function")
-def train_data_parallel_tiny_raw_step_inited(
-    tmp_path_factory, train_data_parallel_tiny_decompressed
-):
+def train_data_parallel_tiny_raw_step_inited(tmp_path_factory, train_data_parallel_tiny_decompressed):
     """Load the mock tiny dataset."""
     setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
     pipeline_dir = tmp_path_factory.mktemp("test_pipeline_steps")
@@ -30,9 +28,7 @@ def train_data_parallel_tiny_raw_step_inited(
 
 
 @pytest.fixture(scope="function")
-def train_data_parallel_tiny_vocab_step_inited(
-    train_data_parallel_tiny_raw_step_inited, marian_cpu_dir
-):
+def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_raw_step_inited, marian_cpu_dir):
     """Create the mock vocabulary from the tiny dataset."""
     src_lang = train_data_parallel_tiny_raw_step_inited.src_lang
     tgt_lang = train_data_parallel_tiny_raw_step_inited.tgt_lang

@@ -51,9 +51,7 @@ class MergeCorpusStep(CorpusStep):
 
     def register_categories(self) -> None:
         categories_dict = {}
-        categories_dict["categories"] = [
-            {"name": cat} for cat in self.prev_corpus_step.categories
-        ]
+        categories_dict["categories"] = [{"name": cat} for cat in self.prev_corpus_step.categories]
 
         # Merge the category lists
         for cat in self.other_corpus_step.categories:
@@ -63,16 +61,13 @@ class MergeCorpusStep(CorpusStep):
         categories_dict["mapping"] = {}
         for cat, dset_list in self.prev_corpus_step.category_mapping.items():
             categories_dict["mapping"][cat] = [
-                extend_dataset_name(dset_name, self.previous_corpus_label)
-                for dset_name in dset_list
+                extend_dataset_name(dset_name, self.previous_corpus_label) for dset_name in dset_list
             ]
         for cat, dset_list in self.other_corpus_step.category_mapping.items():
             if cat not in categories_dict["mapping"]:
                 categories_dict["mapping"][cat] = []
             for dset_name in dset_list:
-                categories_dict["mapping"][cat].append(
-                    extend_dataset_name(dset_name, self.other_corpus_label)
-                )
+                categories_dict["mapping"][cat].append(extend_dataset_name(dset_name, self.other_corpus_label))
         self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
@@ -87,12 +82,8 @@ class MergeCorpusStep(CorpusStep):
         source_filename = ".".join(target_filename.split(".")[1:])
         source_label = target_filename.split(".")[0]
         if source_label == self.previous_corpus_label:
-            target_file.hardlink_to(
-                Path(self.prev_corpus_step.output_dir, source_filename)
-            )
+            target_file.hardlink_to(Path(self.prev_corpus_step.output_dir, source_filename))
         elif source_label == self.other_corpus_label:
-            target_file.hardlink_to(
-                Path(self.other_corpus_step.output_dir, source_filename)
-            )
+            target_file.hardlink_to(Path(self.other_corpus_step.output_dir, source_filename))
         else:
             raise ValueError("Unknown corpus label ({}).".format(source_label))

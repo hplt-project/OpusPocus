@@ -12,9 +12,7 @@ from opuspocus.runners import (
 
 
 @pytest.fixture(scope="module", params=RUNNER_REGISTRY.keys())
-def parsed_runner_args(
-    request, pipeline_preprocess_tiny_inited, opuspocus_hq_server_dir, hyperqueue_dir
-):
+def parsed_runner_args(request, pipeline_preprocess_tiny_inited, opuspocus_hq_server_dir, hyperqueue_dir):
     """Create default runner arguments."""
     extra = []
     if request.param == "hyperqueue":
@@ -39,9 +37,7 @@ def parsed_runner_args(
 
 def test_build_runner_method(parsed_runner_args):
     """Create runner with default args."""
-    runner = build_runner(
-        parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args
-    )
+    runner = build_runner(parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args)
     assert isinstance(runner, OpusPocusRunner)
 
 
@@ -53,9 +49,7 @@ def test_load_runner_before_save(pipeline_preprocess_tiny_inited):
 
 def test_load_runner_method(parsed_runner_args):
     """Reload runner for further pipeline execution manipulation."""
-    runner = build_runner(
-        parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args
-    )
+    runner = build_runner(parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args)
     runner.save_parameters()
 
     runner_loaded = load_runner(parsed_runner_args.pipeline_dir)

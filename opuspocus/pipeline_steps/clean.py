@@ -50,10 +50,7 @@ class CleanCorpusStep(CorpusStep):
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(self.output_dir, "{}.{}.gz".format(dset, self.src_lang))
-            for dset in self.dataset_list
-        ]
+        return [Path(self.output_dir, "{}.{}.gz".format(dset, self.src_lang)) for dset in self.dataset_list]
 
     def command(self, target_file: Path) -> None:
         # TODO: use OpusCleaner Python API instead when available
@@ -63,9 +60,7 @@ class CleanCorpusStep(CorpusStep):
 
         opuscleaner_bin_path = Path(self.python_venv_dir, "bin", self.opuscleaner_cmd)
         if not input_file.exists():
-            logger.info(
-                "%s file not found. Copying input corpora to output.", input_file
-            )
+            logger.info("%s file not found. Copying input corpora to output.", input_file)
             for lang in self.languages:
                 Path(self.output_dir, "{}.{}.gz".format(dataset, lang)).hardlink_to(
                     Path(self.input_dir, "{}.{}.gz".format(dataset, lang))
@@ -89,9 +84,7 @@ class CleanCorpusStep(CorpusStep):
         )
 
         # Get the correct order of languages
-        languages = [
-            file.split(".")[-2] for file in json.load(open(input_file, "r"))["files"]
-        ]
+        languages = [file.split(".")[-2] for file in json.load(open(input_file, "r"))["files"]]
         # TODO(varisd): replace these asserts with something more clever
         for lang in self.languages:
             assert lang in languages
@@ -99,10 +92,7 @@ class CleanCorpusStep(CorpusStep):
             assert lang in self.languages
 
         # Split OpusCleaner output into files
-        output_files = [
-            Path(self.output_dir, "{}.{}.gz".format(dataset, lang))
-            for lang in languages
-        ]
+        output_files = [Path(self.output_dir, "{}.{}.gz".format(dataset, lang)) for lang in languages]
         cut_filestream(input_stream=proc.stdout, output_files=output_files)
 
         # Check the return code

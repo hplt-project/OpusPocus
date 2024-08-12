@@ -13,9 +13,7 @@ from opuspocus.utils import RunnerResources
 logger = logging.getLogger(__name__)
 
 TaskId = TypedDict("TaskId", {"file_path": str, "id": Any})
-TaskInfo = TypedDict(
-    "TaskInfo", {"runner": str, "main_task": TaskId, "subtasks": List[TaskId]}
-)
+TaskInfo = TypedDict("TaskInfo", {"runner": str, "main_task": TaskId, "subtasks": List[TaskId]})
 
 
 class OpusPocusRunner(object):
@@ -36,9 +34,7 @@ class OpusPocusRunner(object):
         self.register_parameters(**kwargs)
 
     @classmethod
-    def build_runner(
-        cls, runner: str, pipeline_dir: Path, **kwargs
-    ) -> "OpusPocusRunner":
+    def build_runner(cls, runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":
         """Build a specified runner instance.
 
         Args:
@@ -146,8 +142,7 @@ class OpusPocusRunner(object):
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be submitted because it is currently "
-                    "{} using a different runner ({}).".format(
+                    "Step {} cannot be submitted because it is currently " "{} using a different runner ({}).".format(
                         step.step_label, step.state, task_info["runner"]
                     )
                 )
@@ -158,16 +153,11 @@ class OpusPocusRunner(object):
         elif step.has_state(StepState.FAILED):
             step.clean_directories()
             logger.info(
-                "Step %s has previously failed. "
-                "Removing previous outputs and resubmitting...",
+                "Step %s has previously failed. " "Removing previous outputs and resubmitting...",
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):
-            raise ValueError(
-                "Cannot run step {}. Step is not in INITED state.".format(
-                    step.step_label
-                )
-            )
+            raise ValueError("Cannot run step {}. Step is not in INITED state.".format(step.step_label))
 
         # Recursively submit step dependencies first
         dep_task_info_list = []

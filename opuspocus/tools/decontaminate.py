@@ -120,13 +120,9 @@ def main(args):
 
 def parse_args():
     parser = argparse.ArgumentParser("Dataset Decontamination")
-    parser.add_argument(
-        "--input-file", type=str, default=None, help="Dataset to be decontaminated."
-    )
+    parser.add_argument("--input-file", type=str, default=None, help="Dataset to be decontaminated.")
     parser.add_argument("--output-file", type=str, default=None, help="Output file.")
-    parser.add_argument(
-        "--test-files", type=str, required=True, help="Comma-separated list of files."
-    )
+    parser.add_argument("--test-files", type=str, required=True, help="Comma-separated list of files.")
     parser.add_argument("--min-length", type=int, default=0, help="TODO")
     parser.add_argument("--mono", action="store_true", help="TODO")
     return parser.parse_args()

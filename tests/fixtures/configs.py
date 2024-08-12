@@ -92,9 +92,7 @@ def pipeline_train_tiny_config_file(
     config["global"]["src_lang"] = languages[0]
     config["global"]["tgt_lang"] = languages[1]
 
-    config["global"]["preprocess_pipeline_dir"] = str(
-        pipeline_preprocess_tiny_done.pipeline_dir
-    )
+    config["global"]["preprocess_pipeline_dir"] = str(pipeline_preprocess_tiny_done.pipeline_dir)
     config["global"]["marian_config"] = str(marian_tiny_config_file)
 
     # NOTE(varisd): value chosen to satisfy generate_vocab training

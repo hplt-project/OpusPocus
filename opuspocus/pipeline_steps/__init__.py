@@ -20,9 +20,7 @@ def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):
     if step_label is not None and step_label in STEP_INSTANCE_REGISTRY:
         return STEP_INSTANCE_REGISTRY[step_label]
 
-    step_instance = STEP_REGISTRY[step].build_step(
-        step, step_label, pipeline_dir, **kwargs
-    )
+    step_instance = STEP_REGISTRY[step].build_step(step, step_label, pipeline_dir, **kwargs)
 
     # sanity check (TODO: make this test into a warning)
     if step_label is not None:
@@ -76,17 +74,9 @@ def register_step(name: str):
         if name in STEP_REGISTRY:
             raise ValueError("Cannot register duplicate step ({})".format(name))
         if not issubclass(cls, OpusPocusStep):
-            raise ValueError(
-                "Pipeline step ({}: {}) must extend OpusPocusStep".format(
-                    name, cls.__name__
-                )
-            )
+            raise ValueError("Pipeline step ({}: {}) must extend OpusPocusStep".format(name, cls.__name__))
         if cls.__name__ in STEP_CLASS_NAMES:
-            raise ValueError(
-                "Cannot register pipeline step with duplicate class name ({})".format(
-                    cls.__name__
-                )
-            )
+            raise ValueError("Cannot register pipeline step with duplicate class name ({})".format(cls.__name__))
         STEP_REGISTRY[name] = cls
         STEP_CLASS_NAMES.add(cls.__name__)
         return cls

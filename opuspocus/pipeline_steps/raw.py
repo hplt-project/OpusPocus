@@ -51,9 +51,7 @@ class RawCorpusStep(CorpusStep):
         """
         categories_path = Path(self.raw_data_dir, self.categories_file)
         if categories_path.exists():
-            logger.info(
-                "[%s] OpusCleaner's categories.json found. Copying.", self.step_label
-            )
+            logger.info("[%s] OpusCleaner's categories.json found. Copying.", self.step_label)
             shutil.copy(categories_path, self.categories_path)
         else:
             logger.info(
@@ -89,9 +87,7 @@ class RawCorpusStep(CorpusStep):
         # Copy .filters.json files, if available
         # Only do this once (for src lang) in bilingual corpora
         if lang == self.src_lang:
-            filters_filename = ".".join(
-                target_file.stem.split(".")[:-1] + ["filters.json"]
-            )
+            filters_filename = ".".join(target_file.stem.split(".")[:-1] + ["filters.json"])
             filters_path = Path(self.raw_data_dir, filters_filename)
             if filters_path.exists():
                 shutil.copy(filters_path, Path(self.output_dir, filters_filename))

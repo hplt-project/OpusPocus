@@ -102,9 +102,7 @@ class TrainModelStep(OpusPocusStep):
 
         # TODO: this should be fetched from the dependency in case that
         # file naming changes in the future
-        vocab_path = Path(
-            vocab_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang)
-        )
+        vocab_path = Path(vocab_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang))
         return vocab_path
 
     @property
@@ -171,24 +169,18 @@ class TrainModelStep(OpusPocusStep):
         # Training data
         # TODO: Data concatenation should be removed when opustrainer support
         #       is added
-        train_paths = [
-            Path(self.tmp_dir, "train.{}.gz".format(lang)) for lang in self.languages
-        ]
+        train_paths = [Path(self.tmp_dir, "train.{}.gz".format(lang)) for lang in self.languages]
         if not all([p.exists() for p in train_paths]):
             for lang, output_file in zip(self.languages, train_paths):
                 concat_files(
-                    [
-                        Path(self.input_dir, "{}.{}.gz".format(dset, lang))
-                        for dset in self.train_datasets
-                    ],
+                    [Path(self.input_dir, "{}.{}.gz".format(dset, lang)) for dset in self.train_datasets],
                     output_file,
                 )
         cmd += ["--train-sets"] + [str(p) for p in train_paths]
 
         # Validation data
         cmd += ["--valid-sets"] + [
-            "{}/{}.{}.gz".format(self.valid_data_dir, self.valid_dataset, lang)
-            for lang in self.languages
+            "{}/{}.{}.gz".format(self.valid_data_dir, self.valid_dataset, lang) for lang in self.languages
         ]
 
         # GPU option
@@ -202,9 +194,7 @@ class TrainModelStep(OpusPocusStep):
             cmd += ["--pretrained-model", str(self.model_init_path)]
 
         # Execute the command
-        proc = subprocess.Popen(
-            cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True
-        )
+        proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True)
 
         # Propagate the termination signal to the child process
         def terminate_signal(signalnum, handler):

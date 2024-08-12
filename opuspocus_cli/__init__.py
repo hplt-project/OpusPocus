@@ -11,10 +11,7 @@ CMD_MODULES = {}
 
 def _print_usage() -> None:
     print(
-        "usage: {} ".format(sys.argv[0])
-        + "{"
-        + ",".join(CMD_MODULES.keys())
-        + "} [options]",
+        "usage: {} ".format(sys.argv[0]) + "{" + ",".join(CMD_MODULES.keys()) + "} [options]",
     )
 
 

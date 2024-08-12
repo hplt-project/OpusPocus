@@ -124,13 +124,8 @@ class CorpusStep(OpusPocusStep):
     def shard_index(self) -> Optional[Dict[str, List[Path]]]:
         if not self.is_sharded:
             return []
-        shard_dict = yaml.safe_load(
-            open(Path(self.shard_dir, self.shard_index_file), "r")
-        )
-        return {
-            k: [Path(self.shard_dir, fname) for fname in v]
-            for k, v in shard_dict.items()
-        }
+        shard_dict = yaml.safe_load(open(Path(self.shard_dir, self.shard_index_file), "r"))
+        return {k: [Path(self.shard_dir, fname) for fname in v] for k, v in shard_dict.items()}
 
     def save_shard_dict(self, shard_dict: Dict[str, List[str]]) -> None:
         assert self.is_sharded
@@ -159,9 +154,7 @@ class CorpusStep(OpusPocusStep):
             # Merge Shards
             for dset in self.dataset_list:
                 for lang in self.languages:
-                    dset_file_path = Path(
-                        self.output_dir, "{}.{}.gz".format(dset, lang)
-                    )
+                    dset_file_path = Path(self.output_dir, "{}.{}.gz".format(dset, lang))
                     dset_filename = dset_file_path.stem + dset_file_path.suffix
                     shards_to_file(
                         self.get_shard_list(dset_filename),
@@ -209,9 +202,7 @@ class CorpusStep(OpusPocusStep):
     @property
     def dataset_list(self) -> List[str]:
         """Return the list of step datasets (indicated by categories.json)."""
-        return [
-            dset for dset_list in self.category_mapping.values() for dset in dset_list
-        ]
+        return [dset for dset_list in self.category_mapping.values() for dset in dset_list]
 
     # Loading and Saving abstractions
     # (if we want to change the file format in the future)
@@ -239,9 +230,7 @@ class CorpusStep(OpusPocusStep):
                 logger.info("Step already initialized. Skipping...")
                 return
             else:
-                raise ValueError(
-                    "Trying to initialize step in a {} state.".format(self.state)
-                )
+                raise ValueError("Trying to initialize step in a {} state.".format(self.state))
         # Set state to incomplete until finished initializing.
         self.create_directories()
         self.set_state(StepState.INIT_INCOMPLETE)

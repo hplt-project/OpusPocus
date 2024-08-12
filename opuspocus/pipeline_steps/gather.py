@@ -55,9 +55,7 @@ class GatherCorpusStep(CorpusStep):
         for c_dict in categories_dict["categories"]:
             dset_name = c_dict["name"]
             if self.tgt_lang is not None:
-                dset_name = "{}.{}-{}".format(
-                    c_dict["name"], self.src_lang, self.tgt_lang
-                )
+                dset_name = "{}.{}-{}".format(c_dict["name"], self.src_lang, self.tgt_lang)
             categories_dict["mapping"][c_dict["name"]] = [dset_name]
         self.save_categories_dict(categories_dict)
 
