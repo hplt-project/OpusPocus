@@ -234,7 +234,7 @@ class PipelineConfig(OmegaConf):
     @staticmethod
     def _overwrite(config, args):  # noqa: ANN001, ANN205
         # TODO: implement overwrite mechanisms
-        logger.warn("(NOT IMPLEMENTED) Overwriting the config file values with " "command line arguments.")
+        logger.warn("(NOT IMPLEMENTED) Overwriting the config file values with command line arguments.")
         return config
 
     @classmethod
@@ -248,11 +248,11 @@ class PipelineConfig(OmegaConf):
                 logger.warn(f"Config file contains unsupported top key ({key}). Ignoring...")
         # Contains "pipeline" top key
         if "pipeline" not in config:
-            raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')  # noqa: EM101
+            raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')  # noqa: EM101, ISC001
         # Pipeline has known keys
         for key in config.pipeline.keys():
             if key not in cls.pipeline_keys:
-                logger.warn(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")
+                logger.warn(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")  # noqa: ISC001
         # Contains "pipeline.steps" key
         if "steps" not in config.pipeline:
             raise ValueError('Config file must contain the list of steps ("pipeline.steps")')  # noqa: EM101

@@ -150,7 +150,7 @@ class OpusPocusRunner:
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be submitted because it is currently " "{} using a different runner ({}).".format(  # noqa: EM103
+                    "Step {} cannot be submitted because it is currently {} using a different runner ({}).".format(  # noqa: EM103
                         step.step_label, step.state, task_info["runner"]
                     )
                 )
@@ -161,7 +161,7 @@ class OpusPocusRunner:
         elif step.has_state(StepState.FAILED):
             step.clean_directories()
             logger.info(
-                "Step %s has previously failed. " "Removing previous outputs and resubmitting...",
+                "Step %s has previously failed. Removing previous outputs and resubmitting...",
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):

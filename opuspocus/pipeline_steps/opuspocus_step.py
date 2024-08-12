@@ -77,7 +77,7 @@ class OpusPocusStep:
         except TypeError as err:
             sig = inspect.signature(cls.__init__)
             logger.error(
-                "Error occured while building step %s (%s).\n" "Step Signature:\n%s\n",
+                "Error occured while building step %s (%s).\nStep Signature:\n%s\n",
                 step_label,
                 step,
                 "\n".join([f"\t{sig.parameters[x]}" for x in sig.parameters]),

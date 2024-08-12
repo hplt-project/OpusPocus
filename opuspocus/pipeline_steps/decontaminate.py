@@ -41,7 +41,7 @@ class DecontaminateCorpusStep(CorpusStep):
         )
         if self.valid_step is None and self.test_step is None:
             logger.warn(
-                "No valid_data_step or test_data_step was provided. " "Step %s will do notning when executed",
+                "No valid_data_step or test_data_step was provided. Step %s will do notning when executed",
                 self.step_label,
             )
 
