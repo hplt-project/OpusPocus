@@ -112,7 +112,7 @@ class SlurmRunner(OpusPocusRunner):
             return False
         return True
 
-    def _convert_resources(resources: RunnerResources) -> List[str]:
+    def _convert_resources(self, resources: RunnerResources) -> List[str]:
         converted = []
         if resources.cpus is not None:
             converted += ["--cpus", str(resources.cpus)]
@@ -125,7 +125,7 @@ class SlurmRunner(OpusPocusRunner):
 
         return converted
 
-    def _add_environment_variables(resources: RunnerResources) -> List[str]:
+    def _add_environment_variables(self, resources: RunnerResources) -> List[str]:
         # TODO finish this
         return [
             "--export={}".format(",".join(["{}='{}'".format(k, str(v)) for k, v in resources.get_env_dict().items()]))

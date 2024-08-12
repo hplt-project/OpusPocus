@@ -237,7 +237,7 @@ class OpusPocusRunner(object):
     def update_dependants(self, task_id: TaskId) -> None:
         raise NotImplementedError()
 
-    def cancel_task(task_id: TaskId) -> None:
+    def cancel_task(self, task_id: TaskId) -> None:
         """TODO"""
         raise NotImplementedError()
 
