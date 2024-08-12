@@ -67,7 +67,7 @@ def main(args):  # noqa: ANN001, ANN201
         # Remove sentences which are present on either side of the devsets but
         # only if the average length is greater than min_length
         if src_seen or tgt_seen:
-            if args.mono:
+            if args.mono:  # noqa: SIM108
                 limit = len(src) * 2
             else:
                 limit = len(src) + len(tgt)

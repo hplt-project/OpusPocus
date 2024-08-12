@@ -104,7 +104,7 @@ class SlurmRunner(OpusPocusRunner):
         """TODO"""
         proc = subprocess.Popen(["squeue", "-j", task_id["id"]], shell=False)
         rc = proc.wait()
-        if rc:
+        if rc:  # noqa: SIM103
             return False
         return True
 

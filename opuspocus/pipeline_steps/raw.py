@@ -96,7 +96,7 @@ class RawCorpusStep(CorpusStep):
             corpus_path = Path(self.raw_data_dir, target_file.stem)
             if not corpus_path.exists():
                 raise FileNotFoundError(corpus_path)
-            with open(corpus_path) as f_in:
+            with open(corpus_path) as f_in:  # noqa: SIM117
                 with gzip.open(target_file, "wt") as f_out:
                     for line in f_in:
                         print(line, end="", file=f_out)

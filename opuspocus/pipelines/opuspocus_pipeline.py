@@ -140,7 +140,7 @@ class OpusPocusPipeline:
             return pipeline_steps[step_label]
 
         # Create pipeline step objects
-        for step_label in pipeline_steps_configs.keys():
+        for step_label in pipeline_steps_configs.keys():  # noqa: SIM118
             _build_step_inner(step_label)
 
         default_targets = []
@@ -187,7 +187,7 @@ class OpusPocusPipeline:
             return False
         if len(self.default_targets) != len(other.default_targets):
             return False
-        for target in self.default_targets:
+        for target in self.default_targets:  # noqa: SIM110
             if target not in other.default_targets:
                 return False
         # if self.pipeline_config != other.pipeline_config:
@@ -243,14 +243,14 @@ class PipelineConfig(OmegaConf):
         # TODO: other checks?
 
         # Top has known keys
-        for key in config.keys():
+        for key in config.keys():  # noqa: SIM118
             if key not in cls.top_keys:
                 logger.warning(f"Config file contains unsupported top key ({key}). Ignoring...")  # noqa: G004
         # Contains "pipeline" top key
         if "pipeline" not in config:
             raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')  # noqa: EM101, ISC001
         # Pipeline has known keys
-        for key in config.pipeline.keys():
+        for key in config.pipeline.keys():  # noqa: SIM118
             if key not in cls.pipeline_keys:
                 logger.warning(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")  # noqa: G004, ISC001
         # Contains "pipeline.steps" key

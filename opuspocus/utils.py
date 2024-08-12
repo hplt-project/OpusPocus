@@ -26,7 +26,7 @@ def open_file(file: Path, mode: str):  # noqa: ANN201
 
 
 def decompress_file(input_file: Path, output_file: Path) -> None:
-    with gzip.open(input_file, "rt") as in_fh:
+    with gzip.open(input_file, "rt") as in_fh:  # noqa: SIM117
         with open(output_file, "w") as out_fh:
             for line in in_fh:
                 print(line, end="", file=out_fh)
@@ -166,7 +166,7 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  #
         return parser
     if not Path(config_path).exists():
         raise ValueError(f"File {config_path} not found.")  # noqa: EM102
-    config = yaml.safe_load(open(config_path))
+    config = yaml.safe_load(open(config_path))  # noqa: SIM115
 
     for v in parser._actions:  # noqa: SLF001
         if v.dest in config:
@@ -181,7 +181,7 @@ def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
 
     orig_vars = vars(orig_args)
     updt_vars = vars(updt_args)
-    for k in orig_vars.keys():
+    for k in orig_vars.keys():  # noqa: SIM118
         if k in updt_vars:
             del updt_vars[k]
     return Namespace(**orig_vars, **updt_vars)
@@ -238,12 +238,12 @@ class RunnerResources:
         TODO
         """
         json_dict = {param: getattr(self, param) for param in self.list_parameters()}
-        json.dump(json_dict, open(json_path, "w"), indent=2)
+        json.dump(json_dict, open(json_path, "w"), indent=2)  # noqa: SIM115
 
     @classmethod
     def from_json(cls, json_path: Path) -> "RunnerResources":  # noqa: ANN102
         """TODO"""
-        json_dict = json.load(open(json_path))
+        json_dict = json.load(open(json_path))  # noqa: SIM115
 
         cls_params = cls.list_parameters()
         params = {}

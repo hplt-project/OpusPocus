@@ -123,12 +123,12 @@ class CorpusStep(OpusPocusStep):
     def shard_index(self) -> Optional[Dict[str, List[Path]]]:
         if not self.is_sharded:
             return []
-        shard_dict = yaml.safe_load(open(Path(self.shard_dir, self.shard_index_file)))
+        shard_dict = yaml.safe_load(open(Path(self.shard_dir, self.shard_index_file)))  # noqa: SIM115
         return {k: [Path(self.shard_dir, fname) for fname in v] for k, v in shard_dict.items()}
 
     def save_shard_dict(self, shard_dict: Dict[str, List[str]]) -> None:
         assert self.is_sharded
-        yaml.dump(shard_dict, open(Path(self.shard_dir, self.shard_index_file), "w"))
+        yaml.dump(shard_dict, open(Path(self.shard_dir, self.shard_index_file), "w"))  # noqa: SIM115
 
     def get_shard_list(self, dset_filename: str) -> List[Path]:
         assert self.shard_index
@@ -207,14 +207,14 @@ class CorpusStep(OpusPocusStep):
     # (if we want to change the file format in the future)
     def load_categories_dict(self) -> CategoriesDict:
         """Load categories.json file."""
-        return json.load(open(self.categories_path))
+        return json.load(open(self.categories_path))  # noqa: SIM115
 
     def save_categories_dict(self, categories_dict: CategoriesDict) -> None:
         """Save the categories dict into categories.json.
 
         TODO: add syntax checking for the categories_dict parameter
         """
-        json.dump(categories_dict, open(self.categories_path, "w"), indent=2)
+        json.dump(categories_dict, open(self.categories_path, "w"), indent=2)  # noqa: SIM115
 
     def init_step(self) -> None:
         """Step initialization method.

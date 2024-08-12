@@ -54,6 +54,7 @@ lint.select = [
   "Q",
   "RET",
   "SLF",
+  "SIM",
 ]
 
 lint.ignore = [

@@ -70,7 +70,7 @@ class OpusPocusRunner:
         params_path = Path(pipeline_dir, cls.parameter_file)
         logger.debug("Loading step variables from %s", params_path)
 
-        params_dict = yaml.safe_load(open(params_path))
+        params_dict = yaml.safe_load(open(params_path))  # noqa: SIM115
         return params_dict  # noqa: RET504
 
     def get_parameters_dict(self) -> Dict[str, Any]:
@@ -89,7 +89,7 @@ class OpusPocusRunner:
         """TODO"""
         yaml.dump(
             self.get_parameters_dict(),
-            open(Path(self.pipeline_dir, self.parameter_file), "w"),
+            open(Path(self.pipeline_dir, self.parameter_file), "w"),  # noqa: SIM115
         )
 
     def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
@@ -271,11 +271,11 @@ class OpusPocusRunner:
 
     def save_task_info(self, step: OpusPocusStep, task_info: TaskInfo) -> None:
         """TODO"""
-        yaml.dump(task_info, open(Path(step.step_dir, self.info_file), "w"))
+        yaml.dump(task_info, open(Path(step.step_dir, self.info_file), "w"))  # noqa: SIM115
 
     def load_task_info(self, step: OpusPocusStep) -> Optional[TaskInfo]:
         """TODO"""
-        task_info = yaml.safe_load(open(Path(step.step_dir, self.info_file)))
+        task_info = yaml.safe_load(open(Path(step.step_dir, self.info_file)))  # noqa: SIM115
         if task_info["runner"] != self.runner:
             return None
         return task_info
@@ -287,7 +287,7 @@ class OpusPocusRunner:
 
     def __eq__(self, other):  # noqa: ANN001, ANN204
         """Object comparison logic."""
-        for param in self.list_parameters():
+        for param in self.list_parameters():  # noqa: SIM110
             if getattr(self, param, None) != getattr(other, param, None):
                 return False
         return True

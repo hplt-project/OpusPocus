@@ -18,7 +18,7 @@ def marian_tiny_config_file(config_dir):
     # TODO(varisd): parametrize the fixture to test other (tiny)
     #   configurations?
 
-    config = yaml.safe_load(open(Path("config", "marian.train.teacher.base.yml")))
+    config = yaml.safe_load(open(Path("config", "marian.train.teacher.base.yml")))  # noqa: SIM115
 
     config["workspace"] = 500
 
@@ -38,7 +38,7 @@ def marian_tiny_config_file(config_dir):
     config["valid-max-length"] = 100
 
     config_file = Path(config_dir, "marian.train.teacher.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))
+    yaml.dump(config, open(config_file, "w"))  # noqa: SIM115
     return config_file
 
 
@@ -57,7 +57,7 @@ def pipeline_preprocess_tiny_config_file(
     languages,
 ):
     """Prepares small-data preprocessing pipeline config for unit testing."""
-    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml")))
+    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml")))  # noqa: SIM115
 
     config["global"]["src_lang"] = languages[0]
     config["global"]["tgt_lang"] = languages[1]
@@ -72,7 +72,7 @@ def pipeline_preprocess_tiny_config_file(
     config["global"]["test_data_dir"] = data_dir_decompressed
 
     config_file = Path(config_dir, "pipeline.preprocess.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))
+    yaml.dump(config, open(config_file, "w"))  # noqa: SIM115
     return config_file
 
 
@@ -85,7 +85,7 @@ def pipeline_train_tiny_config_file(
     languages,
 ):
     """Prepares small-data training pipeline config for unit testing."""
-    config = yaml.safe_load(open(request.param))
+    config = yaml.safe_load(open(request.param))  # noqa: SIM115
 
     config["global"]["original_config_file"] = str(request.param)
     config["global"]["src_lang"] = languages[0]
@@ -107,5 +107,5 @@ def pipeline_train_tiny_config_file(
         config["global"]["shard_size"] = 2
 
     config_file = Path(config_dir, "pipeline.train.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))
+    yaml.dump(config, open(config_file, "w"))  # noqa: SIM115
     return config_file
