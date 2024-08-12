@@ -40,6 +40,7 @@ lint.select = [
   "ANN", # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
   "BLE", # https://docs.astral.sh/ruff/rules/#flake8-bugbear-ble
   "FBT", # https://docs.astral.sh/ruff/rules/#flake8-bandit-fbt
+  "B",   # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
 ]
 
 lint.ignore = [

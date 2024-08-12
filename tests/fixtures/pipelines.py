@@ -17,7 +17,7 @@ def pipeline_preprocess_tiny_inited(
     tmp_path_factory,
 ):
     """Initialize mock dataset preprocessing pipeline."""
-    setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_prerocess_tiny"))
     args = Namespace(
         **{
@@ -44,7 +44,7 @@ def pipeline_train_tiny_inited(
     tmp_path_factory,
 ):
     """Initialize mock training pipeline."""
-    setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_train_tiny"))
     args = Namespace(
         **{

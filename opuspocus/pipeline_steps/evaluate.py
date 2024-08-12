@@ -27,7 +27,7 @@ class EvaluateStep(OpusPocusStep):
         reference_corpus_step: CorpusStep,
         datasets: Optional[List[str]] = None,
         seed: int = 42,
-        metrics: List[str] = ["BLEU", "CHRF"],
+        metrics: List[str] = ["BLEU", "CHRF"],  # noqa: B006
     ) -> None:
         super().__init__(
             step=step,

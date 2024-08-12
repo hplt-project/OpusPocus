@@ -50,7 +50,7 @@ class DebugRunner(OpusPocusRunner):
 
         # Process a specific target file
         if target_file is not None:
-            os.environ = step_resources.get_env_dict()
+            os.environ = step_resources.get_env_dict()  # noqa: B003
             step.command(target_file)
             return TaskId(file_path=target_file, id=-1)
 

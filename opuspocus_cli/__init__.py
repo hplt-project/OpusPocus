@@ -28,7 +28,7 @@ def parse_args(argv: Sequence[str]) -> Namespace:
     args = CMD_MODULES[cmd].parse_args(argv[1:])
     assert not hasattr(args, "command")
 
-    setattr(args, "command", cmd)
+    args.command = cmd
     return args
 
 

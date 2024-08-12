@@ -62,4 +62,4 @@ def test_train_model_step_done(train_model_step_done):
 @pytest.mark.xfail(reason="not implemented")
 def test_train_model_step_done_model(train_model_step_done):
     """Check whether the train_step model was saved correctly."""
-    assert False
+    assert False  # noqa: B011
