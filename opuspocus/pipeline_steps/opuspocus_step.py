@@ -86,7 +86,7 @@ class OpusPocusStep:
         return cls_inst
 
     @classmethod
-    def list_parameters(cls, exclude_dependencies: bool = True) -> List[str]:  # noqa: ANN102
+    def list_parameters(cls, exclude_dependencies: bool = True) -> List[str]:  # noqa: ANN102, FBT001, FBT002
         """Return a list of arguments/required for initialization
 
         Args:
@@ -120,7 +120,7 @@ class OpusPocusStep:
         # TODO: check for missing/unknown parameters
         return params_dict
 
-    def get_parameters_dict(self, exclude_dependencies: bool = True) -> Dict[str, Any]:
+    def get_parameters_dict(self, exclude_dependencies: bool = True) -> Dict[str, Any]:  # noqa: FBT001, FBT002
         """Serialize the step parameters"""
         param_dict = {}
         for param in self.list_parameters(exclude_dependencies):
@@ -296,7 +296,7 @@ class OpusPocusStep:
         self.set_state(StepState.INITED)
         self.run_step(args)
 
-    def traceback_step(self, level: int = 0, full: bool = False) -> None:
+    def traceback_step(self, level: int = 0, full: bool = False) -> None:  # noqa: FBT001, FBT002
         """Print the information about the step state and variables.
 
         If the step has any dependencies, call their respective traceback_step

@@ -29,7 +29,7 @@ class RawCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: Optional[str] = None,
         output_shard_size: Optional[int] = None,
-        compressed: bool = True,
+        compressed: bool = True,  # noqa: FBT001, FBT002
     ) -> None:
         super().__init__(
             step=step,

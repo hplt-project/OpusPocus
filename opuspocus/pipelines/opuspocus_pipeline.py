@@ -161,7 +161,7 @@ class OpusPocusPipeline:
         for s in steps:
             print(f"{s.step_label}: {str(s.state)}")
 
-    def traceback(self, targets: List[str] = None, full: bool = False) -> None:
+    def traceback(self, targets: List[str] = None, full: bool = False) -> None:  # noqa: FBT001, FBT002
         """Print the pipeline structure and status of the individual steps."""
         targets = self.get_targets(targets)
         for i, v in enumerate(targets):

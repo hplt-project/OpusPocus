@@ -34,7 +34,7 @@ class BashRunner(OpusPocusRunner):
         self,
         runner: str,
         pipeline_dir: Path,
-        run_subtasks_in_parallel: bool = False,
+        run_subtasks_in_parallel: bool = False,  # noqa: FBT001, FBT002
     ) -> None:
         super().__init__(
             runner=runner,
@@ -122,7 +122,7 @@ class BashRunner(OpusPocusRunner):
         """TODO"""
         try:
             proc = Process(task_id["id"])
-        except Exception:
+        except Exception:  # noqa: BLE001
             logger.debug("Process with pid=%i does not exist. Ignoring...", task_id)
             return None
         return proc

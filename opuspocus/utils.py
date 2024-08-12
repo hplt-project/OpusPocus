@@ -13,7 +13,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
-def get_open_fn(compressed: bool):  # noqa: ANN201
+def get_open_fn(compressed: bool):  # noqa: ANN201, FBT001
     if compressed:
         return gzip.open
     return open
@@ -32,7 +32,7 @@ def decompress_file(input_file: Path, output_file: Path) -> None:
                 print(line, end="", file=out_fh)
 
 
-def concat_files(input_files: List[Path], output_file: Path, compressed: bool = True) -> None:
+def concat_files(input_files: List[Path], output_file: Path, compressed: bool = True) -> None:  # noqa: FBT001, FBT002
     open_fn = get_open_fn(compressed)
     with open_fn(output_file, "wt") as out_fh:
         for input_file in input_files:
@@ -44,7 +44,7 @@ def concat_files(input_files: List[Path], output_file: Path, compressed: bool = 
 def paste_files(
     input_files: List[Path],
     output_file: Path,
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
@@ -58,7 +58,7 @@ def paste_files(
 def cut_file(
     input_file: Path,
     output_files: List[Path],
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
@@ -73,7 +73,7 @@ def cut_file(
 def cut_filestream(
     input_stream,  # noqa: ANN001
     output_files: List[Path],
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
@@ -89,7 +89,7 @@ def cut_filestream(
 def save_filestream(
     input_stream,  # noqa: ANN001
     output_file: Path,
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
 ) -> None:
     open_fn = get_open_fn(compressed)
     out_fh = open_fn(output_file, "wt")
@@ -138,7 +138,7 @@ def clean_dir(directory: Path, exclude: str = None) -> None:
                 file_path.unlink()
             elif file_path.is_dir():
                 file_path.rmdir()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error("Failed to delete %s. Reason: %s", file_path, e.message)
 
 
