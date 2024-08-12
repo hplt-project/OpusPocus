@@ -14,7 +14,7 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
     )
     with open_file(src_file, "w") as fh:
         print(
-            "\n".join(
+            "\n".join(  # noqa: FLY002
                 [
                     "the colorless ideas slept furiously",
                     "pooh slept all night",
@@ -29,7 +29,7 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
     tgt_file = Path(src_file.parent, f"train.{languages[1]}.gz")
     with open_file(tgt_file, "w") as fh:
         print(
-            "\n".join(
+            "\n".join(  # noqa: FLY002
                 [
                     "les idées incolores dormaient furieusement",
                     "le caniche dormait toute la nuit",
