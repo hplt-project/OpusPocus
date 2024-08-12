@@ -1,8 +1,7 @@
-import pytest
-
-import yaml
 from pathlib import Path
 
+import pytest
+import yaml
 
 PIPELINE_TRAIN_CONFIGS = [
     Path("config", "pipeline.train.simple.yml"),

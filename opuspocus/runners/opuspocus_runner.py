@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Optional, get_type_hints
-from typing_extensions import TypedDict
-
-from pathlib import Path
 import inspect
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, get_type_hints
+
 import yaml
+from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline

@@ -5,7 +5,6 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Sequence
 
-
 CMD_MODULES = {}
 
 

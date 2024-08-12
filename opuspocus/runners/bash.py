@@ -1,9 +1,9 @@
-from typing import List, Optional
-
 import logging
 import subprocess
 import sys
 from pathlib import Path
+from typing import List, Optional
+
 from psutil import Process, wait_procs
 
 from opuspocus.runners import OpusPocusRunner, TaskId, register_runner

@@ -1,6 +1,6 @@
-import pytest
-
 from pathlib import Path
+
+import pytest
 
 from opuspocus.utils import decompress_file, open_file
 

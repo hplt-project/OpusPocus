@@ -1,8 +1,8 @@
+import logging
+from pathlib import Path
 from typing import List, Optional
 
-import logging
 import sacrebleu
-from pathlib import Path
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep

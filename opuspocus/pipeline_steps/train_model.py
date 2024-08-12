@@ -1,17 +1,16 @@
-from typing import List, Optional
-
 import logging
 import os
 import signal
 import subprocess
 import sys
 from pathlib import Path
+from typing import List, Optional
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.generate_vocab import GenerateVocabStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
-from opuspocus.utils import concat_files, RunnerResources, subprocess_wait
-
+from opuspocus.utils import RunnerResources, concat_files, subprocess_wait
 
 logger = logging.getLogger(__name__)
 

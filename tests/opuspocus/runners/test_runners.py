@@ -2,10 +2,10 @@ import pytest
 
 from opuspocus.options import parse_run_args
 from opuspocus.runners import (
+    RUNNER_REGISTRY,
+    OpusPocusRunner,
     build_runner,
     load_runner,
-    OpusPocusRunner,
-    RUNNER_REGISTRY,
 )
 
 # TODO(varisd): add more tests (test_list_parameters, etc.)

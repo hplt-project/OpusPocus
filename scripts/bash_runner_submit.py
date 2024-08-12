@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-import psutil
 import subprocess
 import sys
+
+import psutil
 
 
 def raise_nonzero_error(arguments, pid):

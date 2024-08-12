@@ -1,10 +1,9 @@
-from typing import List, Optional
-
 import logging
 import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import List, Optional
 
 from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
 from opuspocus.utils import RunnerResources

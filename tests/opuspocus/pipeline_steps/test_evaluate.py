@@ -1,6 +1,6 @@
 import pytest
 
-from opuspocus.pipeline_steps import build_step, StepState
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.pipeline_steps.evaluate import EvaluateStep
 from opuspocus.runners.debug import DebugRunner
 

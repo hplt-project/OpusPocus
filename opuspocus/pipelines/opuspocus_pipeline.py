@@ -1,11 +1,11 @@
-from typing import Dict, List, Optional, Tuple
-
 import argparse
 import logging
-from omegaconf import OmegaConf
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
-from opuspocus.pipeline_steps import build_step, OpusPocusStep
+from omegaconf import OmegaConf
+
+from opuspocus.pipeline_steps import OpusPocusStep, build_step
 from opuspocus.utils import file_path
 
 logger = logging.getLogger(__name__)

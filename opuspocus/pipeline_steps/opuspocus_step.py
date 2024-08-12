@@ -1,15 +1,15 @@
-from typing import Any, Dict, List, Optional, get_type_hints
-
-from argparse import Namespace
-from pathlib import Path
 import enum
 import inspect
 import json
 import logging
 import os
+from argparse import Namespace
+from pathlib import Path
+from typing import Any, Dict, List, Optional, get_type_hints
+
 import yaml
 
-from opuspocus.utils import clean_dir, print_indented, RunnerResources
+from opuspocus.utils import RunnerResources, clean_dir, print_indented
 
 logger = logging.getLogger(__name__)
 

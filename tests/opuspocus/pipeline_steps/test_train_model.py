@@ -1,6 +1,6 @@
 import pytest
 
-from opuspocus.pipeline_steps import build_step, StepState
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.runners.debug import DebugRunner
 
 # TODO(varisd): test cpu vs gpu run (single vs multi)

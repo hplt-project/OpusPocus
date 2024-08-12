@@ -1,13 +1,13 @@
-from typing import Any, Callable, Dict, List
-from argparse import Namespace
-from pathlib import Path
-
 import gzip
 import inspect
 import json
 import logging
 import os
 import subprocess
+from argparse import Namespace
+from pathlib import Path
+from typing import Any, Callable, Dict, List
+
 import yaml
 
 logger = logging.getLogger(__name__)

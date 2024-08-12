@@ -1,9 +1,9 @@
-import pytest
-
 from argparse import Namespace
 from pathlib import Path
 
-from opuspocus.pipelines import build_pipeline, load_pipeline, PipelineConfig
+import pytest
+
+from opuspocus.pipelines import PipelineConfig, build_pipeline, load_pipeline
 
 # TODO(varisd): add more tests:
 #   - test pipeline graph (building, structure comparison, cycle check, etc.)

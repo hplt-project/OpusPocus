@@ -1,6 +1,7 @@
-import pytest
 import importlib
 import sys
+
+import pytest
 
 from opuspocus_cli import CMD_MODULES, main
 

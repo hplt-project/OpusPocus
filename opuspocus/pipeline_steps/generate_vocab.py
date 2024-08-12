@@ -1,18 +1,18 @@
-from typing import List
-
 import logging
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import List
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.utils import (
+    RunnerResources,
     concat_files,
     decompress_file,
-    RunnerResources,
     subprocess_wait,
 )
 

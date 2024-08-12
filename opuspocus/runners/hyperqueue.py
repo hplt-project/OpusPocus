@@ -1,8 +1,8 @@
+import subprocess
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import hyperqueue
-import subprocess
-from pathlib import Path
 
 from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
 from opuspocus.utils import RunnerResources, file_path, subprocess_wait

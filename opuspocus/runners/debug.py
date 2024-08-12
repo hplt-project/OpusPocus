@@ -1,12 +1,11 @@
-from typing import List, Optional
-
 import logging
 import os
 from pathlib import Path
+from typing import List, Optional
 
-from opuspocus.pipeline_steps import load_step, StepState
+from opuspocus.pipeline_steps import StepState, load_step
 from opuspocus.runners import OpusPocusRunner, TaskId
-from opuspocus.utils import clean_dir, RunnerResources
+from opuspocus.utils import RunnerResources, clean_dir
 
 logger = logging.getLogger(__name__)
 

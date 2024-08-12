@@ -1,12 +1,11 @@
-from typing import List, Optional
-
 import gzip
 import logging
 import shutil
 from pathlib import Path
+from typing import List, Optional
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-
 
 logger = logging.getLogger(__name__)
 

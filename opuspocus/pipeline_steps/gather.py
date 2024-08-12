@@ -1,6 +1,6 @@
+from pathlib import Path
 from typing import List, Optional
 
-from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.utils import concat_files

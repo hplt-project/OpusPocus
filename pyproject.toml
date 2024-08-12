@@ -32,6 +32,8 @@ lint.select = [
   "F", # https://docs.astral.sh/ruff/rules/#pyflakes-f
   "E", # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
   "W", # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+  "I", # https://docs.astral.sh/ruff/rules/#isort-i
+
 ]
 
 line-length = 120

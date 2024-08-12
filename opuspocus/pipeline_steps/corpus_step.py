@@ -1,14 +1,13 @@
-from typing import Dict, List, Optional
-from typing_extensions import TypedDict
-
 import json
 import logging
-import yaml
 from pathlib import Path
+from typing import Dict, List, Optional
+
+import yaml
+from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
 from opuspocus.utils import file_to_shards, shards_to_file
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,13 @@
-from typing import List, Optional
-
-
 import logging
 import shutil
 from argparse import Namespace
 from pathlib import Path
+from typing import List, Optional
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.tools.decontaminate import main as decontaminate_main
 from opuspocus.utils import cut_file, paste_files
-
 
 logger = logging.getLogger(__name__)
 

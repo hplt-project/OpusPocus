@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 import json
 import logging
 import os
@@ -7,10 +5,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import List, Optional
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-from opuspocus.utils import cut_filestream, RunnerResources
+from opuspocus.utils import RunnerResources, cut_filestream
 
 logger = logging.getLogger(__name__)
 

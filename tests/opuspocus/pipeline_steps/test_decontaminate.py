@@ -1,8 +1,8 @@
-import pytest
-
 from pathlib import Path
 
-from opuspocus.pipeline_steps import build_step, StepState
+import pytest
+
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.runners.debug import DebugRunner
 from opuspocus.utils import count_lines
 
