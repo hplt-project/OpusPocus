@@ -5,25 +5,19 @@ import os
 import subprocess
 from argparse import Namespace
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, TextIO
 
 import yaml
 
 logger = logging.getLogger(__name__)
 
 
-def get_open_fn(compressed: bool):  # noqa: ANN201, FBT001
-    """Get a correct open function based on the file suffix."""
-    if compressed:
-        return gzip.open
-    return open
-
-
 def open_file(file: Path, mode: str):  # noqa: ANN201
     """Return a correct file handle based on the file suffix."""
     assert mode == "r" or mode == "w"
-    open_fn = get_open_fn(compressed=(file.suffix == ".gz"))
-    return open_fn(file, f"{mode}t")
+    if file.suffix == ".gz":
+        return gzip.open(file, f"{mode}t")
+    return open(file, f"{mode}t")
 
 
 def file_line_index(file: Path) -> List[int]:
@@ -64,10 +58,9 @@ def decompress_file(input_file: Path, output_file: Path) -> None:
 
 def concat_files(input_files: List[Path], output_file: Path, compressed: bool = True) -> None:  # noqa: FBT001, FBT002
     """Concatenate files from a given list."""
-    open_fn = get_open_fn(compressed)
-    with open_fn(output_file, "wt") as out_fh:
+    with open_file(output_file, "w") as out_fh:
         for input_file in input_files:
-            with open_fn(input_file, "rt") as in_fh:
+            with open_file(input_file, "r") as in_fh:
                 for line in in_fh:
                     print(line, end="", file=out_fh)
 
@@ -79,9 +72,8 @@ def paste_files(
     delimiter: str = "\t",
 ) -> None:
     """A simplified Unix paste command."""
-    open_fn = get_open_fn(compressed)
-    with open_fn(output_file, "wt") as out_fh:
-        in_fhs = [open_fn(input_file, "rt") for input_file in input_files]
+    with open_file(output_file, "w") as out_fh:
+        in_fhs = [open_file(input_file, "r") for input_file in input_files]
         for lines in zip(*in_fhs):
             lines = [line.rstrip("\n") for line in lines]  # noqa: PLW2901
             print(delimiter.join(lines), end="\n", file=out_fh)
@@ -94,9 +86,8 @@ def cut_file(
     delimiter: str = "\t",
 ) -> None:
     """A simplified Unix cut command."""
-    open_fn = get_open_fn(compressed)
     cut_filestream(
-        input_stream=open_fn(input_file, "rt"),
+        input_stream=open_file(input_file, "r"),
         output_files=output_files,
         compressed=compressed,
         delimiter=delimiter,
@@ -110,8 +101,7 @@ def cut_filestream(
     delimiter: str = "\t",
 ) -> None:
     """A simplified Unix cut for processing filestreams."""
-    open_fn = get_open_fn(compressed)
-    out_fhs = [open_fn(output_file, "wt") for output_file in output_files]
+    out_fhs = [open_file(output_file, "w") for output_file in output_files]
     for line in input_stream:
         for i, (col, fh) in enumerate(zip(line.split(delimiter), out_fhs)):
             if i == len(out_fhs) - 1:
@@ -126,8 +116,7 @@ def save_filestream(
     compressed: bool = True,  # noqa: FBT001, FBT002
 ) -> None:
     """Save a filestream to a file."""
-    open_fn = get_open_fn(compressed)
-    out_fh = open_fn(output_file, "wt")
+    out_fh = open_file(output_file, "w")
     for line in input_stream:
         print(line, end="", file=out_fh)
 
