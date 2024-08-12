@@ -44,7 +44,7 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
 
 
 @pytest.fixture(scope="session")
-def train_data_parallel_tiny_decompressed(train_data_parallel_tiny, tmp_path_factory, languages):
+def train_data_parallel_tiny_decompressed(train_data_parallel_tiny, tmp_path_factory, languages):  # noqa: ARG001
     """Creates a decompressed version of the tiny mock corpora."""
     src_file = Path(
         tmp_path_factory.mktemp("train_data_parallel_tiny_decompressed"),

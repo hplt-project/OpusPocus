@@ -101,7 +101,7 @@ def file_to_shards(
     file_path: Path,
     shard_dir: Path,
     shard_size: int,
-    shard_index_pad_length: int = 4,
+    shard_index_pad_length: int = 4,  # noqa: ARG001
 ) -> List[str]:
     shard_list = []
     out_fh = None

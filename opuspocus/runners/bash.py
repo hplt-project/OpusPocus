@@ -94,7 +94,7 @@ class BashRunner(OpusPocusRunner):
 
         return TaskId(file_path=str(target_file), id=proc.pid)
 
-    def update_dependants(self, task_id: TaskId) -> None:
+    def update_dependants(self, task_id: TaskId) -> None:  # noqa: ARG002
         return NotImplementedError()
 
     def cancel_task(self, task_id: TaskId) -> None:

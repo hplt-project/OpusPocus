@@ -135,7 +135,7 @@ class TranslateCorpusStep(CorpusStep):
         # Execute the command
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=sys.stderr, env=env, text=True)
 
-        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202
+        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202, ARG001
             logger.debug("Received SIGTERM, terminating child process...")
             proc.terminate()
 

@@ -37,10 +37,10 @@ class DebugRunner(OpusPocusRunner):
         self,
         cmd_path: Path,
         target_file: Optional[Path] = None,
-        dependencies: Optional[List[TaskId]] = None,
+        dependencies: Optional[List[TaskId]] = None,  # noqa: ARG002
         step_resources: Optional[RunnerResources] = None,
-        stdout_file: Optional[Path] = None,
-        stderr_file: Optional[Path] = None,
+        stdout_file: Optional[Path] = None,  # noqa: ARG002
+        stderr_file: Optional[Path] = None,  # noqa: ARG002
     ) -> TaskId:
         """TODO"""
         step_label = cmd_path.parts[-2]

@@ -232,7 +232,7 @@ class PipelineConfig(OmegaConf):
         return cls._overwrite(config, overwrite_args)
 
     @staticmethod
-    def _overwrite(config, args):  # noqa: ANN001, ANN205
+    def _overwrite(config, args):  # noqa: ANN001, ANN205, ARG004
         # TODO: implement overwrite mechanisms
         logger.warning("(NOT IMPLEMENTED) Overwriting the config file values with command line arguments.")
         return config
