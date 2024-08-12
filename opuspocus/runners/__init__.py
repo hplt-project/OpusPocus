@@ -67,11 +67,11 @@ def register_runner(name):  # noqa: ANN001, ANN202
 
     def register_runner_cls(cls):  # noqa: ANN001, ANN202
         if name in RUNNER_REGISTRY:
-            raise ValueError(f"Cannot register duplicate runner ({name})")  # noqa: EM102
+            raise ValueError(f"Cannot register duplicate runner ({name})")  # noqa: EM102, TRY003
         if not issubclass(cls, OpusPocusRunner):
-            raise ValueError(f"Runner ({name}: {cls.__name__}) must extend OpusPocusRunner")  # noqa: EM102
+            raise ValueError(f"Runner ({name}: {cls.__name__}) must extend OpusPocusRunner")  # noqa: EM102, TRY003, TRY004
         if cls.__name__ in RUNNER_CLASS_NAMES:
-            raise ValueError(f"Cannot register runner with duplicate class name ({cls.__name__})")  # noqa: EM102
+            raise ValueError(f"Cannot register runner with duplicate class name ({cls.__name__})")  # noqa: EM102, TRY003
         RUNNER_REGISTRY[name] = cls
         RUNNER_CLASS_NAMES.add(cls.__name__)
         return cls

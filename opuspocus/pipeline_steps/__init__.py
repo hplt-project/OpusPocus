@@ -72,11 +72,11 @@ def register_step(name: str):  # noqa: ANN202
 
     def register_step_cls(cls):  # noqa: ANN001, ANN202
         if name in STEP_REGISTRY:
-            raise ValueError(f"Cannot register duplicate step ({name})")  # noqa: EM102
+            raise ValueError(f"Cannot register duplicate step ({name})")  # noqa: EM102, TRY003
         if not issubclass(cls, OpusPocusStep):
-            raise ValueError(f"Pipeline step ({name}: {cls.__name__}) must extend OpusPocusStep")  # noqa: EM102
+            raise ValueError(f"Pipeline step ({name}: {cls.__name__}) must extend OpusPocusStep")  # noqa: EM102, TRY003, TRY004
         if cls.__name__ in STEP_CLASS_NAMES:
-            raise ValueError(f"Cannot register pipeline step with duplicate class name ({cls.__name__})")  # noqa: EM102
+            raise ValueError(f"Cannot register pipeline step with duplicate class name ({cls.__name__})")  # noqa: EM102, TRY003
         STEP_REGISTRY[name] = cls
         STEP_CLASS_NAMES.add(cls.__name__)
         return cls

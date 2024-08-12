@@ -6,7 +6,7 @@ import psutil
 
 
 def raise_nonzero_error(arguments, pid):  # noqa: ANN001, ANN201 fixit
-    raise subprocess.SubprocessError(f"Process {pid} exited with a non-zero value. Wrapper arguments: {arguments}\n")  # noqa: EM102
+    raise subprocess.SubprocessError(f"Process {pid} exited with a non-zero value. Wrapper arguments: {arguments}\n")  # noqa: EM102, TRY003
 
 
 def main(argv):  # noqa: ANN001, ANN201 fixit

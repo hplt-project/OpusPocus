@@ -165,7 +165,7 @@ class OpusPocusRunner:
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):
-            raise ValueError(f"Cannot run step {step.step_label}. Step is not in INITED state.")  # noqa: EM102
+            raise ValueError(f"Cannot run step {step.step_label}. Step is not in INITED state.")  # noqa: EM102, TRY003
 
         # Recursively submit step dependencies first
         dep_task_info_list = []
@@ -196,7 +196,7 @@ class OpusPocusRunner:
             )
         except Exception as e:
             step.set_state(StepState.FAILED)
-            raise e
+            raise e  # noqa: TRY201
 
         task_info = TaskInfo(runner=self.runner, main_task=task_id, subtasks=[])
         self.save_task_info(step, task_info)

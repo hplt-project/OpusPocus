@@ -59,7 +59,7 @@ class TrainModelStep(OpusPocusStep):
     def init_step(self) -> None:
         super().init_step()
         if self.valid_dataset not in self.valid_corpus_step.dataset_list:
-            raise ValueError(
+            raise ValueError(  # noqa: TRY003
                 f"Dataset {self.valid_dataset} is not registered in the {self.valid_corpus_step.step_label} categories.json."  # noqa: E501, EM102
             )
 

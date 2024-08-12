@@ -139,7 +139,7 @@ def clean_dir(directory: Path, exclude: str = None) -> None:
             elif file_path.is_dir():
                 file_path.rmdir()
         except Exception as e:  # noqa: BLE001
-            logger.error("Failed to delete %s. Reason: %s", file_path, e.message)
+            logger.error("Failed to delete %s. Reason: %s", file_path, e.message)  # noqa: TRY400
 
 
 def count_lines(file_path: Path) -> int:
@@ -150,7 +150,7 @@ def count_lines(file_path: Path) -> int:
 def subprocess_wait(proc: subprocess.Popen) -> None:
     rc = proc.wait()
     if rc:
-        raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102
+        raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102, TRY003
 
 
 def get_action_type_map(parser) -> Dict[str, Callable]:  # noqa: ANN001
@@ -165,7 +165,7 @@ def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  #
     if config_path is None:
         return parser
     if not Path(config_path).exists():
-        raise ValueError(f"File {config_path} not found.")  # noqa: EM102
+        raise ValueError(f"File {config_path} not found.")  # noqa: EM102, TRY003
     config = yaml.safe_load(open(config_path))  # noqa: PTH123, SIM115
 
     for v in parser._actions:  # noqa: SLF001

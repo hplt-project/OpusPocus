@@ -229,7 +229,7 @@ class CorpusStep(OpusPocusStep):
                 logger.info("Step already initialized. Skipping...")
                 return
             else:  # noqa: RET505
-                raise ValueError(f"Trying to initialize step in a {self.state} state.")  # noqa: EM102
+                raise ValueError(f"Trying to initialize step in a {self.state} state.")  # noqa: EM102, TRY003
         # Set state to incomplete until finished initializing.
         self.create_directories()
         self.set_state(StepState.INIT_INCOMPLETE)
@@ -248,7 +248,7 @@ class CorpusStep(OpusPocusStep):
         """Initialize the categories.json file."""
         self.register_categories()
         if not self.categories_path.exists():
-            raise FileNotFoundError(
+            raise FileNotFoundError(  # noqa: TRY003
                 f"{self.categories_file} not found after initialization. Perhaps there is an issue "  # noqa: EM102
                 "with the register_categories derived method implementation? "
             )

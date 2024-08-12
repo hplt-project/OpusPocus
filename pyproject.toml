@@ -61,6 +61,7 @@ lint.select = [
   "ARG",
   "PTH",
   "PL",
+  "TRY",
 ]
 
 lint.ignore = [

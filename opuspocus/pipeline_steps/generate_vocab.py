@@ -56,7 +56,7 @@ class GenerateVocabStep(OpusPocusStep):
                     self.corpus_step.step_label,
                     self.corpus_step.categories_dict,
                 )
-                raise ValueError(
+                raise ValueError(  # noqa: TRY003
                     f"Dataset {dset} is not registered in the {self.corpus_step.step_label} categories.json"  # noqa: EM102
                 )
 

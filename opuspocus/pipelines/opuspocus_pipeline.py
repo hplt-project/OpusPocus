@@ -83,9 +83,9 @@ class OpusPocusPipeline:
     ) -> "OpusPocusPipeline":
         """TODO"""
         if not pipeline_dir.exists():
-            raise FileNotFoundError(f"Pipeline directory ({pipeline_dir}) does not exist.")  # noqa: EM102
+            raise FileNotFoundError(f"Pipeline directory ({pipeline_dir}) does not exist.")  # noqa: EM102, TRY003
         if not pipeline_dir.is_dir():
-            raise NotADirectoryError(f"{pipeline_dir} is not a directory.")  # noqa: EM102
+            raise NotADirectoryError(f"{pipeline_dir} is not a directory.")  # noqa: EM102, TRY003
 
         pipeline_config_path = Path(pipeline_dir, cls.config_file)
         return cls(pipeline_config_path, pipeline_dir)
@@ -124,7 +124,7 @@ class OpusPocusPipeline:
                     step_args[k] = v
                 else:
                     if v not in pipeline_steps_configs:
-                        raise ValueError(f'Step "{step_label}" has an undefined dependency "{k}={v}".')  # noqa: EM102
+                        raise ValueError(f'Step "{step_label}" has an undefined dependency "{k}={v}".')  # noqa: EM102, TRY003
                     step_args[k] = _build_step_inner(v)
 
             # Set default (global) pipeline_dir
@@ -135,7 +135,7 @@ class OpusPocusPipeline:
                 pipeline_steps[step_label] = build_step(**step_args)
             except Exception as e:
                 print(f"Step parameters:\n{step_args}")  # noqa: T201
-                raise e
+                raise e  # noqa: TRY201
 
             return pipeline_steps[step_label]
 
@@ -175,7 +175,7 @@ class OpusPocusPipeline:
         if self.default_targets is not None:
             logger.info("No target steps were specified. Using default targets.")
             return self.default_targets
-        raise ValueError(
+        raise ValueError(  # noqa: TRY003
             "The pipeline does not contain any default target steps. "  # noqa: EM101
             'Please specify the targets using the "--pipeline-targets" '
             "option."
@@ -248,20 +248,20 @@ class PipelineConfig(OmegaConf):
                 logger.warning(f"Config file contains unsupported top key ({key}). Ignoring...")  # noqa: G004
         # Contains "pipeline" top key
         if "pipeline" not in config:
-            raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')  # noqa: EM101, ISC001
+            raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')  # noqa: EM101, ISC001, TRY003
         # Pipeline has known keys
         for key in config.pipeline.keys():  # noqa: SIM118
             if key not in cls.pipeline_keys:
                 logger.warning(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")  # noqa: G004, ISC001
         # Contains "pipeline.steps" key
         if "steps" not in config.pipeline:
-            raise ValueError('Config file must contain the list of steps ("pipeline.steps")')  # noqa: EM101
+            raise ValueError('Config file must contain the list of steps ("pipeline.steps")')  # noqa: EM101, TRY003
 
         # All steps have an unique step_label
         steps = {}
         for step in config.pipeline.steps:
             if step.step_label in steps:
-                raise ValueError(
+                raise ValueError(  # noqa: TRY003
                     "Duplicate step_label found in pipeline definition. Please "  # noqa: EM102
                     "make sure that each pipeline step has a unique step_label "
                     "value.\n"
