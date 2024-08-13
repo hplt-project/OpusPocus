@@ -23,7 +23,7 @@ class GatherCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: Optional[str] = None,
         shard_size: Optional[int] = None,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,

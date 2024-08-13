@@ -3,21 +3,18 @@ import inspect
 import logging
 import os
 import subprocess
-from argparse import Namespace
 from pathlib import Path
-from typing import Any, Callable, Dict, List, TextIO
-
-import yaml
+from typing import Any, Dict, List, TextIO
 
 logger = logging.getLogger(__name__)
 
 
-def open_file(file: Path, mode: str):  # noqa: ANN201
+def open_file(file: Path, mode: str) -> TextIO:
     """Return a correct file handle based on the file suffix."""
-    assert mode == "r" or mode == "w"
+    assert mode in ("r", "w")
     if file.suffix == ".gz":
         return gzip.open(file, f"{mode}t")
-    return open(file, f"{mode}t")
+    return file.open(f"{mode}t")
 
 
 def file_line_index(file: Path) -> List[int]:
@@ -31,9 +28,7 @@ def file_line_index(file: Path) -> List[int]:
     return offsets
 
 
-def read_shard(
-    file: Path, file_line_index: List[int], start: int, shard_size: int
-) -> List[str]:
+def read_shard(file: Path, file_line_index: List[int], start: int, shard_size: int) -> List[str]:
     """Read a subset of lines in a file using the line_index."""
     assert shard_size > 0
     assert start >= 0
@@ -50,13 +45,12 @@ def read_shard(
 
 def decompress_file(input_file: Path, output_file: Path) -> None:
     """Decompress a file."""
-    with gzip.open(input_file, "rt") as in_fh:
-        with open(output_file, "wt") as out_fh:
-            for line in in_fh:
-                print(line, end="", file=out_fh)
+    with gzip.open(input_file, "rt") as in_fh, output_file.open("w") as out_fh:
+        for line in in_fh:
+            print(line, end="", file=out_fh)
 
 
-def concat_files(input_files: List[Path], output_file: Path, compressed: bool = True) -> None:  # noqa: FBT001, FBT002
+def concat_files(input_files: List[Path], output_file: Path) -> None:
     """Concatenate files from a given list."""
     with open_file(output_file, "w") as out_fh:
         for input_file in input_files:
@@ -68,7 +62,6 @@ def concat_files(input_files: List[Path], output_file: Path, compressed: bool = 
 def paste_files(
     input_files: List[Path],
     output_file: Path,
-    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     """A simplified Unix paste command."""
@@ -82,14 +75,12 @@ def paste_files(
 def cut_file(
     input_file: Path,
     output_files: List[Path],
-    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     """A simplified Unix cut command."""
     cut_filestream(
         input_stream=open_file(input_file, "r"),
         output_files=output_files,
-        compressed=compressed,
         delimiter=delimiter,
     )
 
@@ -97,7 +88,6 @@ def cut_file(
 def cut_filestream(
     input_stream,  # noqa: ANN001
     output_files: List[Path],
-    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     """A simplified Unix cut for processing filestreams."""
@@ -113,7 +103,6 @@ def cut_filestream(
 def save_filestream(
     input_stream,  # noqa: ANN001
     output_file: Path,
-    compressed: bool = True,  # noqa: FBT001, FBT002
 ) -> None:
     """Save a filestream to a file."""
     out_fh = open_file(output_file, "w")
@@ -187,13 +176,9 @@ class RunnerResources:
         self.mem = mem
 
     @classmethod
-    def list_parameters(cls) -> List[str]:
+    def list_parameters(cls: "RunnerResources") -> List[str]:
         """List all represented parameters."""
-        return [
-            param
-            for param in inspect.signature(cls.__init__).parameters
-            if param != "self"
-        ]
+        return [param for param in inspect.signature(cls.__init__).parameters if param != "self"]
 
     def overwrite(self, resource_dict: Dict[str, Any]) -> "RunnerResources":
         """Overwrite the resources using a different RunnerResources object."""
@@ -206,7 +191,7 @@ class RunnerResources:
         return RunnerResources(**params)
 
     @classmethod
-    def get_env_name(cls, name) -> str:
+    def get_env_name(cls: "RunnerResources", name: str) -> str:
         """Get the environment name of a specific resource parameter."""
         assert name in cls.list_parameters()
         return f"OPUSPOCUS_{name}"

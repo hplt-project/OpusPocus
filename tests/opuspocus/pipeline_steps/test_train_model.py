@@ -9,7 +9,7 @@ from opuspocus.runners.debug import DebugRunner
 # TODO(varisd): test model tuning (loading a model and continuing traning)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def train_model_step_inited(
     train_data_parallel_tiny_raw_step_inited,
     train_data_parallel_tiny_vocab_step_inited,
@@ -20,7 +20,7 @@ def train_model_step_inited(
     """Create and initialize the train_model step."""
     step = build_step(
         step="train_model",
-        step_label="train_model.{}.test".format(marian_dir),
+        step_label=f"train_model.{marian_dir}.test",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
             "marian_dir": marian_dir,
@@ -44,7 +44,7 @@ def test_train_model_step_inited(train_model_step_inited):
     assert train_model_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")  # noqa: PT003
+@pytest.fixture()
 def train_model_step_done(train_model_step_inited):
     """Execute the train_model step."""
     runner = DebugRunner("debug", train_model_step_inited.pipeline_dir)

@@ -12,7 +12,7 @@ def config_dir(tmp_path_factory):
 @pytest.fixture(scope="session", params=["cpu", "gpu"])
 def marian_dir(request):
     """Location of the compiled Marian NMT."""
-    marian_dir = Path("marian_{}".format(request.param))
+    marian_dir = Path(f"marian_{request.param}")
     if not marian_dir.exists():
         pytest.skip(reason=("A compiled CPU version of Marian NMT in 'marian_cpu_dir' must be available."))
     return marian_dir

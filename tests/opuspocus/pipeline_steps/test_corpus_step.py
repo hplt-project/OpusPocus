@@ -1,14 +1,13 @@
+from pathlib import Path
+from typing import List, Optional
+
 import pytest
 
-from typing import List, Optional
-from pathlib import Path
-
-import opuspocus.pipeline_steps as pipeline_steps
-from opuspocus.pipeline_steps import build_step, register_step, StepState
+from opuspocus import pipeline_steps
+from opuspocus.pipeline_steps import StepState, build_step, register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.runners.debug import DebugRunner
 from opuspocus.utils import count_lines, open_file, read_shard
-
 
 # TODO(varisd): test that the shards are created in a place where
 #   command_postprocess expect them to be (?)
@@ -25,7 +24,7 @@ class FooCorpusStep(CorpusStep):
 
     """
 
-    CATEGORIES = ["foo", "bar"]
+    CATEGORIES = ["foo", "bar"]  # noqa: RUF012
 
     def __init__(
         self,
@@ -35,9 +34,9 @@ class FooCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: Optional[str] = None,
         previous_corpus_step: Optional[CorpusStep] = None,
-        dataset_files: List[Path] = None,
+        dataset_files: Optional[List[Path]] = None,
         shard_size: Optional[int] = None,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -103,17 +102,17 @@ class FooCorpusStep(CorpusStep):
             elif lang == src_files[1].stem.split(".")[-1]:
                 target_file.hardlink_to(src_files[1])
             else:
-                assert False
+                pytest.fail("Unknown target_file languages")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def train_data_parallel_tiny_dataset(train_data_parallel_tiny):
     """Get the name of the mock dataset for testing."""
     assert train_data_parallel_tiny[0].suffix == ".gz"
     return ".".join(train_data_parallel_tiny[0].stem.split(".")[:-1])
 
 
-@pytest.fixture(scope="function", params=["monolingual", "bilingual"])
+@pytest.fixture(params=["monolingual", "bilingual"])
 def foo_corpus_languages(request, languages):
     """List of languages based on the version of tested corpus."""
     if request.param == "monolingual":
@@ -122,25 +121,17 @@ def foo_corpus_languages(request, languages):
 
 
 @pytest.mark.parametrize(
-    "foo_languages,shard_size", [("en,fr", "-1"), ("en,fr", "0"), ("null,fr", "null")]
+    ("foo_languages", "shard_size"), [(("en", "fr"), "-1"), (("en", "fr"), "0"), (("null", "fr"), "null")]
 )
-def test_foo_corpus_invalid_values(
-    foo_languages, shard_size, train_data_parallel_tiny, tmp_path_factory
-):
+def test_foo_corpus_invalid_values(foo_languages, shard_size, train_data_parallel_tiny, tmp_path_factory):
     """Test invalid langauge combination or shard_size values."""
-    setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
-    if shard_size == "null":
-        shard_size = None
-    else:
-        shard_size = int(shard_size)
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
+    shard_size = None if shard_size == "null" else int(shard_size)
 
-    foo_languages = foo_languages.split(",")
-    pipeline_dir = tmp_path_factory.mktemp(
-        "foo.mock.{}".format("-".join(foo_languages))
-    )
+    pipeline_dir = tmp_path_factory.mktemp("foo.mock.{}".format("-".join(foo_languages)))
     src_lang = None if foo_languages[0] == "null" else foo_languages[0]
     tgt_lang = foo_languages[1]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         build_step(
             step="foo",
             step_label="foo.test",
@@ -155,19 +146,15 @@ def test_foo_corpus_invalid_values(
         )
 
 
-@pytest.fixture(scope="function")
-def foo_corpus_step_inited(
-    foo_corpus_languages, train_data_parallel_tiny, tmp_path_factory
-):
+@pytest.fixture()
+def foo_corpus_step_inited(foo_corpus_languages, train_data_parallel_tiny, tmp_path_factory):
     """Create and initialize the mock corpus."""
-    setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
-    pipeline_dir = tmp_path_factory.mktemp(
-        "foo.mock.{}".format("-".join(foo_corpus_languages))
-    )
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
+    pipeline_dir = tmp_path_factory.mktemp("foo.mock.{}".format("-".join(foo_corpus_languages)))
 
     src_lang = foo_corpus_languages[0]
     tgt_lang = None
-    if len(foo_corpus_languages) == 2:
+    if len(foo_corpus_languages) == 2:  # noqa: PLR2004
         tgt_lang = foo_corpus_languages[1]
     step = build_step(
         step="foo",
@@ -185,18 +172,18 @@ def foo_corpus_step_inited(
     return step
 
 
-@pytest.fixture(scope="function", params=["1", "3", "dataset", "dataset+1"])
+@pytest.fixture(params=["1", "3", "dataset", "dataset+1"])
 def foo_shard_size(request, foo_corpus_step_inited):
     """Provides sharding test examples."""
     dset_size = count_lines(foo_corpus_step_inited.dataset_files[0])
     if request.param == "dataset":
         return dset_size
-    elif request.param == "dataset+1":
+    if request.param == "dataset+1":
         return dset_size + 1
     return int(request.param)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def bar_corpus_step_inited(foo_shard_size, foo_corpus_step_inited):
     """Create and initialize the follow up mock corpus step."""
     step = build_step(
@@ -215,18 +202,19 @@ def bar_corpus_step_inited(foo_shard_size, foo_corpus_step_inited):
     return step
 
 
-@pytest.fixture(scope="function", params=["foo_corpus", "bar_corpus"])
+@pytest.fixture(params=["foo_corpus", "bar_corpus"])
 def corpus_step_inited(request, foo_corpus_step_inited, bar_corpus_step_inited):
     """Fixture wrapper. Returns a respective corpus step based on the param
     value.
     """
     if request.param == "foo_corpus":
         return foo_corpus_step_inited
-    elif request.param == "bar_corpus":
+    if request.param == "bar_corpus":
         return bar_corpus_step_inited
+    pytest.fail("Unknown corpus label")
 
 
-@pytest.fixture(scope="function", params=["foo_corpus", "bar_corpus"])
+@pytest.fixture(params=["foo_corpus", "bar_corpus"])
 def corpus_step_done(
     request,
     foo_corpus_step_inited,
@@ -237,10 +225,11 @@ def corpus_step_done(
         runner = DebugRunner("debug", foo_corpus_step_inited.pipeline_dir)
         runner.submit_step(foo_corpus_step_inited)
         return foo_corpus_step_inited
-    elif request.param == "bar_corpus":
+    if request.param == "bar_corpus":
         runner = DebugRunner("debug", bar_corpus_step_inited.pipeline_dir)
         runner.submit_step(bar_corpus_step_inited)
         return bar_corpus_step_inited
+    pytest.fail("Unknown corpus label")
 
 
 def test_corpus_step_inited(corpus_step_inited):
@@ -268,9 +257,7 @@ def test_corpus_step_inited_categories(corpus_step_inited):
     assert hyp_sorted == ref_sorted
 
 
-def test_corpus_step_inited_mapping(
-    corpus_step_inited, train_data_parallel_tiny_dataset
-):
+def test_corpus_step_inited_mapping(corpus_step_inited, train_data_parallel_tiny_dataset):
     """Test the correctness of the dataset mapping in categories.json."""
     category = corpus_step_inited.CATEGORIES[0]
     ref_sorted = sorted([train_data_parallel_tiny_dataset])
@@ -278,9 +265,7 @@ def test_corpus_step_inited_mapping(
     assert hyp_sorted == ref_sorted
 
 
-def test_corpus_step_inited_dataset_list(
-    corpus_step_inited, train_data_parallel_tiny_dataset
-):
+def test_corpus_step_inited_dataset_list(corpus_step_inited, train_data_parallel_tiny_dataset):
     """Test whether the list of registered datasets is correct."""
     ref_sorted = sorted([train_data_parallel_tiny_dataset])
     hyp_sorted = sorted(corpus_step_inited.dataset_list)
@@ -290,15 +275,16 @@ def test_corpus_step_inited_dataset_list(
 def test_foo_corpus_step_inited_line_index_fail(foo_corpus_step_inited):
     """Test whether the seek line indexing fails with not DONE step."""
     with pytest.raises(AssertionError):
-        foo_corpus_step_inited.line_index_dict
+        # if this does not fail, it should at least return None value
+        assert foo_corpus_step_inited.line_index_dict is None
 
 
 def test_foo_corpus_step_inited_shard_list_fail(foo_corpus_step_inited):
     """Test whether the sharding without .prev_corpus_step fails as
     expected.
     """
-    with pytest.raises(AssertionError):
-        for f_name in foo_corpus_step_inited.dataset_filename_list:
+    for f_name in foo_corpus_step_inited.dataset_filename_list:
+        with pytest.raises(AssertionError):
             foo_corpus_step_inited.get_input_dataset_shard_path_list(f_name)
 
 
@@ -307,10 +293,10 @@ def test_languages(corpus_step_inited):
     languages = corpus_step_inited.languages
     if len(languages) == 1:
         assert corpus_step_inited.tgt_lang is None
-    elif len(languages) == 2:
+    elif len(languages) == 2:  # noqa: PLR2004
         assert corpus_step_inited.tgt_lang == languages[1]
     else:
-        assert False
+        pytest.fail("Unexpected number of languages")
 
 
 def test_corpus_step_done(corpus_step_done):
@@ -328,7 +314,7 @@ def test_corpus_step_done_output_compressed(corpus_step_done):
     """Test whether the output files are compressed."""
     for f_name in corpus_step_done.dataset_filename_list:
         file_path = Path(corpus_step_done.output_dir, f_name)
-        with open(file_path, "rb") as fh:
+        with file_path.open("rb") as fh:
             assert fh.read(2) == b"\x1f\x8b"
 
 
