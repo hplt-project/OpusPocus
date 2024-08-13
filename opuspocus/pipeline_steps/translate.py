@@ -11,7 +11,7 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.pipeline_steps.train_model import TrainModelStep
-from opuspocus.utils import RunnerResources, save_filestream
+from opuspocus.utils import RunnerResources, open_file, read_shard, save_filestream
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +51,6 @@ class TranslateCorpusStep(CorpusStep):
         return self.dependencies["model_step"]
 
     @property
-    def _inherits_sharded(self) -> bool:
-        return True
-
-    @property
     def model_config_path(self) -> Path:
         return Path(f"{self.model_step.model_path}.{self.model_suffix}.npz.decoder.yml")
 
@@ -62,43 +58,51 @@ class TranslateCorpusStep(CorpusStep):
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
 
     def infer_input(self, tgt_file: Path) -> Path:
-        offset = 2
-        if self.is_sharded:
-            offset = 3
-        tgt_filename = tgt_file.stem + tgt_file.suffix
-        src_filename = ".".join(
-            tgt_filename.split(".")[:-offset] + [self.src_lang] + tgt_filename.split(".")[-(offset - 1) :]
-        )
-        if self.prev_corpus_step.is_sharded:
-            src_file = Path(self.shard_dir, src_filename)
-            if not src_file.exists():
-                src_file.hardlink_to(Path(self.input_shard_dir, src_filename))
+        tgt_filename_stem_split = tgt_file.stem.split(".")
+
+        lang_idx = -1  # non-sharded
+        if tgt_filename_stem_split[-2] == "gz":
+            lang_idx = -3  # sharded
+
+        # Constuct the source-side filename
+        src_filename_stem_split = tgt_filename_stem_split
+        src_filename_stem_split[lang_idx] = self.src_lang
+        src_filename = ".".join([*src_filename_stem_split, "gz"])
+        src_file = Path(tgt_file.parent, src_filename)
+
+        if tgt_filename_stem_split[-2] == "gz":
+            # Write the relevant shard lines into the source-side file
+
+            # TODO(varisd): right now, we create the source-side shards and the
+            #   "copy" of their respective input_file is created by a merge in
+            #   the command_postprocess. Ideally in the future, we would like
+            #   to hardling the input source-side file instead.
+
+            shard_idx = int(tgt_filename_stem_split[-1])
+            input_filename = ".".join(src_filename_stem_split[:-1])
+            shard_lines = read_shard(
+                Path(self.input_dir, input_filename),
+                self.prev_corpus_step.line_index_dict[input_filename],
+                shard_idx * self.shard_size,
+                self.shard_size,
+            )
+            with open_file(src_file, "w") as fh:
+                for line in shard_lines:
+                    print(line, end="", file=fh)
         else:
-            src_file = Path(self.output_dir, src_filename)
-            if not src_file.exists():
-                src_file.hardlink_to(Path(self.prev_corpus_step.output_dir, src_filename))
+            # Hardlink the source-side corpus
+            src_file.hardlink_to(Path(self.input_dir, src_filename))
+
         return src_file
 
     def get_command_targets(self) -> List[Path]:
-        if self.is_sharded:
-            targets = []
-            for dset in self.dataset_list:
-                dset_filename = f"{dset}.{self.tgt_lang}.gz"
-                targets.extend([shard_file for shard_file in self.get_shard_list(dset_filename)])  # noqa: C416
-            return targets
+        if self.shard_size is not None:
+            return [
+                shard_file_path
+                for dset in self.dataset_list
+                for shard_file_path in self.get_input_dataset_shard_path_list(f"{dset}.{self.tgt_lang}.gz")
+            ]
         return [Path(self.output_dir, f"{dset}.{self.tgt_lang}.gz") for dset in self.dataset_list]
-
-    def command_preprocess(self) -> None:
-        if self.is_sharded:
-            shard_dict = {}
-            for d_fname, s_list in self.prev_corpus_step.shard_index.items():
-                s_fname_list = [f.stem + f.suffix for f in s_list]
-                shard_dict[d_fname] = s_fname_list
-                d_fname_target = ".".join(d_fname.split(".")[:-2] + [self.tgt_lang, "gz"])
-                shard_dict[d_fname_target] = [
-                    ".".join(shard.split(".")[:-3] + [self.tgt_lang] + shard.split(".")[-2:]) for shard in s_fname_list
-                ]
-            self.save_shard_dict(shard_dict)
 
     def command(self, target_file: Path) -> None:
         env = os.environ
@@ -135,8 +139,8 @@ class TranslateCorpusStep(CorpusStep):
         # Execute the command
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=sys.stderr, env=env, text=True)
 
-        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202, ARG001
-            logger.debug("Received SIGTERM, terminating child process...")
+        def terminate_signal(signalnum, _) -> None:  # noqa: ANN001
+            logger.debug("Received signal %i, terminating child process...", signalnum)
             proc.terminate()
 
         signal.signal(signal.SIGTERM, terminate_signal)
@@ -146,4 +150,4 @@ class TranslateCorpusStep(CorpusStep):
         # Check the return code
         rc = proc.poll()
         if rc:
-            raise Exception(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102, TRY002, TRY003
+            raise Exception(f"Process {proc.pid} exited with non-zero value.")  # noqa: TRY002, TRY003, EM102

@@ -47,3 +47,33 @@ def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_raw_step
     )
     step.init_step()
     return step
+
+
+@pytest.fixture()
+def train_data_parallel_tiny_model_step_inited(
+    train_data_parallel_tiny_raw_step_inited,
+    train_data_parallel_tiny_vocab_step_inited,
+    marian_tiny_config_file,
+    opustrainer_tiny_config_file,
+):
+    """Create the mock train_model step."""
+    marian_dir = train_data_parallel_tiny_vocab_step_inited.marian_dir
+    step = build_step(
+        step="train_model",
+        step_label=f"train_model.{marian_dir}.test",
+        pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
+        **{
+            "marian_dir": marian_dir,
+            "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
+            "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
+            "marian_config": marian_tiny_config_file,
+            "vocab_step": train_data_parallel_tiny_vocab_step_inited,
+            "opustrainer_config": opustrainer_tiny_config_file,
+            "train_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "valid_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "train_category": train_data_parallel_tiny_raw_step_inited.categories[0],
+            "valid_dataset": train_data_parallel_tiny_raw_step_inited.dataset_list[0],
+        },
+    )
+    step.init_step()
+    return step
