@@ -3,16 +3,15 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import yaml
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
-from opuspocus.utils import file_to_shards, shards_to_file
+from opuspocus.utils import concat_files, file_line_index, read_shard
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: can we future-proof this against type changes in OpusCleaner?
+# TODO(varisd): can we future-proof this against type changes in OpusCleaner?
 class CategoryEntry(TypedDict):
     name: str
 
@@ -29,15 +28,11 @@ class CorpusStep(OpusPocusStep):
     or modify corpora, i.e. corpus cleaning, corpus translation, etc.
 
     Compared to OpusPocusStep, it provides additional functionality, such as
-    input sharding or indication of the corpora provided by the step at the end
+    file sharding or indication of the corpora provided by the step at the end
     of its execution.
-    Moving this common functionality from the corpus processing steps into
-    a single superclass reduces code duplicity.
     """
 
     categories_file = "categories.json"
-    shard_dirname = "shards"
-    shard_index_file = "shard_index.yml"
 
     def __init__(
         self,
@@ -47,14 +42,27 @@ class CorpusStep(OpusPocusStep):
         src_lang: str,
         tgt_lang: Optional[str] = None,
         previous_corpus_step: Optional["CorpusStep"] = None,
-        output_shard_size: Optional[int] = None,
+        shard_size: Optional[int] = None,
         **kwargs,  # noqa: ANN003
     ) -> None:
         """Object initialization.
 
         Definition of common corpus step attributes such as corpora language,
         previous corpus step or sharding size.
+
+        Args:
+            step: string used for step class registration
+            step_label: unique label of the step instance
+            pipeline_dir: root directory of a pipeline
+            src_lang: source-side language
+            tgt_lang: target-side language
+            prev_corpus_step: previous CorpusStep (being processed by the step)
+            shard_size: number of lines per individual dataset shards
         """
+        if src_lang is None:
+            raise ValueError("src_lang value cannot by NoneType.")  # noqa: TRY003, EM101
+        if shard_size is not None and shard_size <= 0:
+            raise ValueError(f"shard_size must be a positive integer value (value: {shard_size}).")  # noqa: TRY003, EM102
         super().__init__(
             step=step,
             step_label=step_label,
@@ -62,19 +70,9 @@ class CorpusStep(OpusPocusStep):
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
-            output_shard_size=output_shard_size,
+            shard_size=shard_size,
             **kwargs,
         )
-        if self._inherits_sharded and self.prev_corpus_step.is_sharded:
-            if output_shard_size is not None:
-                logger.warning(
-                    "Step %s always inherits sharding from its "
-                    "previous_corpus_step (%s). Ignoring the "
-                    "output_shard_size parameter...",
-                    self.step,
-                    self.prev_corpus_step.step_label,
-                )
-            self.output_shard_size = self.prev_corpus_step.shard_size
 
     @property
     def prev_corpus_step(self) -> "CorpusStep":
@@ -89,86 +87,80 @@ class CorpusStep(OpusPocusStep):
         return self.prev_corpus_step.output_dir
 
     @property
-    def input_shard_dir(self) -> Optional[Path]:
-        if self.prev_corpus_step is None:
-            return None
-        return self.prev_corpus_step.shard_dir
+    def line_index_dict(self) -> Dict[str, List[int]]:
+        """Provides a list of file seek indices for each registered dataset.
 
-    @property
-    def _inherits_sharded(self) -> bool:
-        """TODO: This should be implemented as an interface/subclass.
-        Something along corpus steps that can/cannot process sharded
-        prev_corpus_step steps.
+        Return:
+            A dictionary with keys reflecting the .output_dir filenames
+            and values containing the lists of seek indices indicating
+            beginning of line in the respective files.
         """
-        return False
+        assert self.state == StepState.DONE, (
+            f"{self.step_label}.output_dir dataset's line index can only be construceted "
+            "after the step successfully finished execution."
+        )
 
-    @property
-    def is_sharded(self) -> bool:
-        """Indicates whether the step output is sharded."""
-        return self.output_shard_size is not None
+        idx_dict = {}
+        for f_name in self.dataset_filename_list:
+            idx_dict[f_name] = file_line_index(Path(self.output_dir, f_name))
+        return idx_dict
 
-    @property
-    def shard_dir(self) -> Path:
-        """Path to the sharded output directory."""
-        if self.is_sharded:
-            return Path(self.output_dir, self.shard_dirname)
-        return None
+    def read_shard_from_dataset_file(self, filename: str, start: int, shard_size: int) -> List[str]:
+        """Provides input by reading a part of an input (.prev_corpus_step)
+        dataset corpus with regard to the output dataset shard.
 
-    @property
-    def shard_size(self) -> int:
-        """Syntactic sugar for output_shard_size."""
-        return self.output_shard_size
+        Args:
+            filename: filename within a directory (without full path)
+        """
+        if filename not in self.dataset_filename_list:
+            raise ValueError(
+                "{} is not in the list of dataset files ({})".format(filename, " ".join(self.dataset_filename_list))  # noqa: EM103
+            )
 
-    @property
-    def shard_index(self) -> Optional[Dict[str, List[Path]]]:
-        if not self.is_sharded:
-            return []
-        shard_dict = yaml.safe_load(open(Path(self.shard_dir, self.shard_index_file)))  # noqa: PTH123, SIM115
-        return {k: [Path(self.shard_dir, fname) for fname in v] for k, v in shard_dict.items()}
+        file_path = Path(self.output_dir, filename)
+        if not file_path.exists():
+            raise FileNotFoundError(f"File {file_path} does not exists")  # noqa: TRY003, EM102
 
-    def save_shard_dict(self, shard_dict: Dict[str, List[str]]) -> None:
-        assert self.is_sharded
-        yaml.dump(shard_dict, open(Path(self.shard_dir, self.shard_index_file), "w"))  # noqa: PTH123, SIM115
+        return read_shard(file_path, self.line_index_dict[filename], start, shard_size)
 
-    def get_shard_list(self, dset_filename: str) -> List[Path]:
-        assert self.shard_index
-        return self.shard_index[dset_filename]
+    def get_input_dataset_shard_path_list(self, filename: str) -> List[Path]:
+        """Gets a list of shard files useful for prallel data processing.
+
+        The shard filenames are computed based on the size of the respective
+        input .prev_corpus_step dataset. The CorpusStep suporting sharding
+        should implement .command in a way that fetches the relevant shard
+        input using the .prev_corpus_step.line_index_dict method.
+
+        Args:
+            filename: dataset's filename
+
+        Returns:
+            List of full paths to the respective dataset output shards.
+        """
+        # Get list of indexed filenames based on the prev_corpus_step dataset size
+        assert self.prev_corpus_step is not None, (
+            f"({self.step_label}).previous_corpus_step is not specified. Sharding "
+            f"of the {filename} dataset in the ({self.step_label}).output_dir is "
+            f"determined using ({self.step_label}).previvous_corpus_step.output_dir "
+            f"{filename} file"
+        )
+        n_lines = len(self.prev_corpus_step.line_index_dict[filename])
+        n_shards = n_lines // self.shard_size
+        if n_lines % self.shard_size != 0:
+            n_shards += 1
+        return [Path(self.tmp_dir, f"{filename}.{i}.gz") for i in range(n_shards)]
 
     def command_postprocess(self) -> None:
-        """TODO"""
-        if self.is_sharded and not self._inherits_sharded:
-            # Shard Output
-            shard_dict = {}
-            for dset in self.dataset_list:
-                for lang in self.languages:
-                    dset_path = Path(self.output_dir, f"{dset}.{lang}.gz")
-                    dset_filename = dset_path.stem + dset_path.suffix
-                    shard_dict[dset_filename] = file_to_shards(
-                        file_path=dset_path,
-                        shard_dir=self.shard_dir,
-                        shard_size=self.shard_size,
-                    )
-            self.save_shard_dict(shard_dict)
-        elif self._inherits_sharded:
-            # Merge Shards
-            for dset in self.dataset_list:
-                for lang in self.languages:
-                    dset_file_path = Path(self.output_dir, f"{dset}.{lang}.gz")
-                    dset_filename = dset_file_path.stem + dset_file_path.suffix
-                    shards_to_file(
-                        self.get_shard_list(dset_filename),
-                        dset_file_path,
-                    )
-
-    def create_directories(self) -> None:
-        """Create the internal directory structure.
-
-        If the output is sharded, additional directory for sharded output
-        is created.
+        """By default merges all output dataset shards (if shard_size is not
+        None) into the single dataset file.
         """
-        super().create_directories()
-        if self.shard_dir is not None:
-            self.shard_dir.mkdir()
+        # By default, all dataset files must be available after a successful
+        # step command execution. If not, there must be sharded output that can
+        # be concatenated into the target file
+        for f_name in self.dataset_filename_list:
+            target_file = Path(self.output_dir, f_name)
+            if not target_file.exists():
+                concat_files(self.get_input_dataset_shard_path_list(f_name), target_file)
 
     @property
     def categories_path(self) -> Path:
@@ -202,6 +194,11 @@ class CorpusStep(OpusPocusStep):
     def dataset_list(self) -> List[str]:
         """Return the list of step datasets (indicated by categories.json)."""
         return [dset for dset_list in self.category_mapping.values() for dset in dset_list]
+
+    @property
+    def dataset_filename_list(self) -> List[str]:
+        """Full list of all the output_dir dataset filenames."""
+        return [f"{dset}.{lang}.gz" for dset in self.dataset_list for lang in self.languages]
 
     # Loading and Saving abstractions
     # (if we want to change the file format in the future)

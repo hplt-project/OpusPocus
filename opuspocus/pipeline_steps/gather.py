@@ -22,7 +22,7 @@ class GatherCorpusStep(CorpusStep):
         previous_corpus_step: CorpusStep,
         src_lang: str,
         tgt_lang: Optional[str] = None,
-        output_shard_size: Optional[int] = None,
+        shard_size: Optional[int] = None,
     ) -> None:
         super().__init__(
             step=step,
@@ -31,7 +31,7 @@ class GatherCorpusStep(CorpusStep):
             previous_corpus_step=previous_corpus_step,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
-            output_shard_size=output_shard_size,
+            shard_size=shard_size,
         )
 
     def register_categories(self) -> None:

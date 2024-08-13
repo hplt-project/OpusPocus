@@ -29,7 +29,7 @@ class TranslateCorpusStep(CorpusStep):
         previous_corpus_step: CorpusStep,
         model_step: TrainModelStep,
         beam_size: int = 4,
-        output_shard_size: Optional[int] = None,
+        shard_size: Optional[int] = None,
         model_suffix: str = "best-chrf",
     ) -> None:
         super().__init__(
@@ -42,7 +42,7 @@ class TranslateCorpusStep(CorpusStep):
             previous_corpus_step=previous_corpus_step,
             model_step=model_step,
             beam_size=beam_size,
-            output_shard_size=output_shard_size,
+            shard_size=shard_size,
             model_suffix=model_suffix,
         )
 

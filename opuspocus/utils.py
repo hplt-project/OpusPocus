@@ -1,42 +1,60 @@
 import gzip
 import inspect
-import json
 import logging
 import os
 import subprocess
-from argparse import Namespace
 from pathlib import Path
-from typing import Any, Callable, Dict, List
-
-import yaml
+from typing import Any, Dict, List, TextIO
 
 logger = logging.getLogger(__name__)
 
 
-def get_open_fn(compressed: bool):  # noqa: ANN201, FBT001
-    if compressed:
-        return gzip.open
-    return open
+def open_file(file: Path, mode: str) -> TextIO:
+    """Return a correct file handle based on the file suffix."""
+    assert mode in ("r", "w")
+    if file.suffix == ".gz":
+        return gzip.open(file, f"{mode}t")
+    return file.open(f"{mode}t")
 
 
-def open_file(file: Path, mode: str):  # noqa: ANN201
-    assert mode == "r" or mode == "w"  # noqa: PLR1714
-    open_fn = get_open_fn(compressed=(file.suffix == ".gz"))
-    return open_fn(file, f"{mode}t")
+def file_line_index(file: Path) -> List[int]:
+    """Return a list of beginning of line indices for a given file."""
+    offsets = []
+    offset = 0
+    for line in open_file(file, "r"):
+        offsets.append(offset)
+        # Correctly measure the length of string with unicode characters
+        offset += len(bytes(line, "utf-8"))
+    return offsets
+
+
+def read_shard(file: Path, file_line_index: List[int], start: int, shard_size: int) -> List[str]:
+    """Read a subset of lines in a file using the line_index."""
+    assert shard_size > 0
+    assert start >= 0
+    lines = []
+    with open_file(file, "r") as fh:
+        fh.seek(file_line_index[start])
+        for line in fh:
+            lines.append(line)
+            shard_size -= 1
+            if shard_size == 0:
+                break
+    return lines
 
 
 def decompress_file(input_file: Path, output_file: Path) -> None:
-    with gzip.open(input_file, "rt") as in_fh:  # noqa: SIM117
-        with open(output_file, "w") as out_fh:  # noqa: PTH123
-            for line in in_fh:
-                print(line, end="", file=out_fh)
+    """Decompress a file."""
+    with gzip.open(input_file, "rt") as in_fh, output_file.open("w") as out_fh:
+        for line in in_fh:
+            print(line, end="", file=out_fh)
 
 
-def concat_files(input_files: List[Path], output_file: Path, compressed: bool = True) -> None:  # noqa: FBT001, FBT002
-    open_fn = get_open_fn(compressed)
-    with open_fn(output_file, "wt") as out_fh:
+def concat_files(input_files: List[Path], output_file: Path) -> None:
+    """Concatenate files from a given list."""
+    with open_file(output_file, "w") as out_fh:
         for input_file in input_files:
-            with open_fn(input_file, "rt") as in_fh:
+            with open_file(input_file, "r") as in_fh:
                 for line in in_fh:
                     print(line, end="", file=out_fh)
 
@@ -44,12 +62,11 @@ def concat_files(input_files: List[Path], output_file: Path, compressed: bool = 
 def paste_files(
     input_files: List[Path],
     output_file: Path,
-    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
-    open_fn = get_open_fn(compressed)
-    with open_fn(output_file, "wt") as out_fh:
-        in_fhs = [open_fn(input_file, "rt") for input_file in input_files]
+    """A simplified Unix paste command."""
+    with open_file(output_file, "w") as out_fh:
+        in_fhs = [open_file(input_file, "r") for input_file in input_files]
         for lines in zip(*in_fhs):
             lines = [line.rstrip("\n") for line in lines]  # noqa: PLW2901
             print(delimiter.join(lines), end="\n", file=out_fh)
@@ -58,14 +75,12 @@ def paste_files(
 def cut_file(
     input_file: Path,
     output_files: List[Path],
-    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
-    open_fn = get_open_fn(compressed)
+    """A simplified Unix cut command."""
     cut_filestream(
-        input_stream=open_fn(input_file, "rt"),
+        input_stream=open_file(input_file, "r"),
         output_files=output_files,
-        compressed=compressed,
         delimiter=delimiter,
     )
 
@@ -73,11 +88,10 @@ def cut_file(
 def cut_filestream(
     input_stream,  # noqa: ANN001
     output_files: List[Path],
-    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
-    open_fn = get_open_fn(compressed)
-    out_fhs = [open_fn(output_file, "wt") for output_file in output_files]
+    """A simplified Unix cut for processing filestreams."""
+    out_fhs = [open_file(output_file, "w") for output_file in output_files]
     for line in input_stream:
         for i, (col, fh) in enumerate(zip(line.split(delimiter), out_fhs)):
             if i == len(out_fhs) - 1:
@@ -89,46 +103,20 @@ def cut_filestream(
 def save_filestream(
     input_stream,  # noqa: ANN001
     output_file: Path,
-    compressed: bool = True,  # noqa: FBT001, FBT002
 ) -> None:
-    open_fn = get_open_fn(compressed)
-    out_fh = open_fn(output_file, "wt")
+    """Save a filestream to a file."""
+    out_fh = open_file(output_file, "w")
     for line in input_stream:
         print(line, end="", file=out_fh)
 
 
-def file_to_shards(
-    file_path: Path,
-    shard_dir: Path,
-    shard_size: int,
-    shard_index_pad_length: int = 4,  # noqa: ARG001
-) -> List[str]:
-    shard_list = []
-    out_fh = None
-    with open_file(file_path, "r") as in_fh:
-        for i, line in enumerate(in_fh):
-            if i % shard_size == 0:
-                n = i // shard_size
-                shard_filename = file_path.stem + file_path.suffix + f".{n}"
-                shard_list.append(shard_filename)
-                shard_file_path = Path(shard_dir, shard_filename)
-                out_fh = open_file(shard_file_path, "w")
-            print(line, end="", file=out_fh)
-    return shard_list
-
-
-def shards_to_file(
-    shard_list: List[str],
-    file_path: Path,
-) -> None:
-    with open_file(file_path, "w") as out_fh:
-        for shard_file_path in shard_list:
-            with open_file(shard_file_path, "r") as in_fh:
-                for line in in_fh:
-                    print(line, end="", file=out_fh)
-
-
 def clean_dir(directory: Path, exclude: str = None) -> None:  # noqa: RUF013
+    """Recursively remove contents of a directory.
+
+    Args:
+        directory: location of the directory
+        exclude: a filename to exclude from deletion
+    """
     for file_path in directory.iterdir():
         filename = file_path.stem + file_path.suffix
         if exclude is not None and exclude == filename:
@@ -143,48 +131,16 @@ def clean_dir(directory: Path, exclude: str = None) -> None:  # noqa: RUF013
 
 
 def count_lines(file_path: Path) -> int:
+    """Return the number of lines in a text file."""
     with open_file(file_path, "r") as fh:
         return len(fh.readlines())
 
 
 def subprocess_wait(proc: subprocess.Popen) -> None:
+    """Wait until the subprocess finishes execution."""
     rc = proc.wait()
     if rc:
         raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102, TRY003
-
-
-def get_action_type_map(parser) -> Dict[str, Callable]:  # noqa: ANN001
-    type_map = {}
-    for action in parser._actions:  # noqa: SLF001
-        type_map[action.dest] = action.type
-    return type_map
-
-
-def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  # noqa: ANN001, RUF013
-    """Loads default values from a config file."""
-    if config_path is None:
-        return parser
-    if not Path(config_path).exists():
-        raise ValueError(f"File {config_path} not found.")  # noqa: EM102, TRY003
-    config = yaml.safe_load(open(config_path))  # noqa: PTH123, SIM115
-
-    for v in parser._actions:  # noqa: SLF001
-        if v.dest in config:
-            v.required = False
-    parser.set_defaults(**config)
-
-    return parser
-
-
-def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
-    """Update a give namespace values."""
-
-    orig_vars = vars(orig_args)
-    updt_vars = vars(updt_args)
-    for k in orig_vars.keys():  # noqa: SIM118
-        if k in updt_vars:
-            del updt_vars[k]
-    return Namespace(**orig_vars, **updt_vars)
 
 
 def print_indented(text, level=0):  # noqa: ANN001, ANN201
@@ -205,7 +161,8 @@ def file_path(path_str):  # noqa: ANN001, ANN201
 class RunnerResources:
     """Runner-agnostic resources object.
 
-    TODO
+    This class aims at unifying various ways different schedulers represent
+    resources and resource variables.
     """
 
     def __init__(
@@ -219,11 +176,12 @@ class RunnerResources:
         self.mem = mem
 
     @classmethod
-    def list_parameters(cls) -> List[str]:  # noqa: ANN102
-        """TODO"""
+    def list_parameters(cls: "RunnerResources") -> List[str]:
+        """List all represented parameters."""
         return [param for param in inspect.signature(cls.__init__).parameters if param != "self"]
 
     def overwrite(self, resource_dict: Dict[str, Any]) -> "RunnerResources":
+        """Overwrite the resources using a different RunnerResources object."""
         params = {}
         for param in self.list_parameters():
             val = getattr(self, param)
@@ -232,34 +190,14 @@ class RunnerResources:
             params[param] = val
         return RunnerResources(**params)
 
-    def to_json(self, json_path: Path) -> None:
-        """Serialize the object (to JSON).
-
-        TODO
-        """
-        json_dict = {param: getattr(self, param) for param in self.list_parameters()}
-        json.dump(json_dict, open(json_path, "w"), indent=2)  # noqa: PTH123, SIM115
-
     @classmethod
-    def from_json(cls, json_path: Path) -> "RunnerResources":  # noqa: ANN102
-        """TODO"""
-        json_dict = json.load(open(json_path))  # noqa: PTH123, SIM115
-
-        cls_params = cls.list_parameters()
-        params = {}
-        for k, v in json_dict.items():
-            if k not in cls_params:
-                logger.warning("Resource %s not supported. Ignoring", k)
-            params[k] = v
-        return RunnerResources(**params)
-
-    @classmethod
-    def get_env_name(cls, name) -> str:  # noqa: ANN001, ANN102
-        """TODO"""
+    def get_env_name(cls: "RunnerResources", name: str) -> str:
+        """Get the environment name of a specific resource parameter."""
         assert name in cls.list_parameters()
         return f"OPUSPOCUS_{name}"
 
     def get_env_dict(self) -> Dict[str, str]:
+        """Get the dictionary with the resource environment variables."""
         env_dict = {}
         for param in self.list_parameters():
             param_val = getattr(self, param)

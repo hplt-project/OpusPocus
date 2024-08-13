@@ -25,7 +25,7 @@ class CleanCorpusStep(CorpusStep):
         python_venv_dir: Path,
         src_lang: str,
         tgt_lang: Optional[str] = None,
-        output_shard_size: Optional[int] = None,
+        shard_size: Optional[int] = None,
         opuscleaner_cmd: str = "opuscleaner-clean",
     ) -> None:
         super().__init__(
@@ -36,7 +36,7 @@ class CleanCorpusStep(CorpusStep):
             python_venv_dir=python_venv_dir,
             src_lang=src_lang,
             tgt_lang=tgt_lang,
-            output_shard_size=output_shard_size,
+            shard_size=shard_size,
             opuscleaner_cmd=opuscleaner_cmd,
         )
 
