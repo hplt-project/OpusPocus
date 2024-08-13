@@ -1,13 +1,13 @@
-import pytest
-
 from pathlib import Path
 
-from opuspocus.pipeline_steps import build_step, StepState
+import pytest
+
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.runners.debug import DebugRunner
 from opuspocus.utils import count_lines
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  # noqa: PT003
 def decontaminate_step_inited(train_data_parallel_tiny_raw_step_inited):
     """Create and initialize the decontaminate step."""
     step = build_step(
@@ -31,7 +31,7 @@ def test_decontaminate_step_inited(decontaminate_step_inited):
     assert decontaminate_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  # noqa: PT003
 def decontaminate_step_done(decontaminate_step_inited):
     """Execute the decontaminate step."""
     runner = DebugRunner("debug", decontaminate_step_inited.pipeline_dir)
@@ -51,13 +51,13 @@ def test_decontaminate_step_done_corpus_lines(decontaminate_step_done):
         src_lines = count_lines(
             Path(
                 decontaminate_step_done.output_dir,
-                "{}.{}.gz".format(dset, decontaminate_step_done.src_lang),
+                f"{dset}.{decontaminate_step_done.src_lang}.gz",
             )
         )
         tgt_lines = count_lines(
             Path(
                 decontaminate_step_done.output_dir,
-                "{}.{}.gz".format(dset, decontaminate_step_done.tgt_lang),
+                f"{dset}.{decontaminate_step_done.tgt_lang}.gz",
             )
         )
         assert src_lines == tgt_lines

@@ -1,17 +1,16 @@
-from typing import List, Optional
-
 import logging
 import os
 import signal
 import subprocess
 import sys
 from pathlib import Path
+from typing import List, Optional
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.generate_vocab import GenerateVocabStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
-from opuspocus.utils import concat_files, RunnerResources, subprocess_wait
-
+from opuspocus.utils import RunnerResources, concat_files, subprocess_wait
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,7 @@ class TrainModelStep(OpusPocusStep):
         seed: int = 42,
         train_category: str = "clean",
         valid_dataset: str = "flores200.dev",
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -60,10 +59,8 @@ class TrainModelStep(OpusPocusStep):
     def init_step(self) -> None:
         super().init_step()
         if self.valid_dataset not in self.valid_corpus_step.dataset_list:
-            raise ValueError(
-                "Dataset {} is not registered in the {} categories.json.".format(
-                    self.valid_dataset, self.valid_corpus_step.step_label
-                )
+            raise ValueError(  # noqa: TRY003
+                f"Dataset {self.valid_dataset} is not registered in the {self.valid_corpus_step.step_label} categories.json."  # noqa: E501, EM102
             )
 
     @property
@@ -102,10 +99,8 @@ class TrainModelStep(OpusPocusStep):
 
         # TODO: this should be fetched from the dependency in case that
         # file naming changes in the future
-        vocab_path = Path(
-            vocab_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang)
-        )
-        return vocab_path
+        vocab_path = Path(vocab_dir, f"model.{self.src_lang}-{self.tgt_lang}.spm")
+        return vocab_path  # noqa: RET504
 
     @property
     def vocab_size(self) -> int:
@@ -159,37 +154,29 @@ class TrainModelStep(OpusPocusStep):
             "--tempdir",
             str(self.tmp_dir),
             "--valid-translation-output",
-            "{}/valid.out".format(self.log_dir),
+            f"{self.log_dir}/valid.out",
             "--log-level",
             "info",
             "--log",
-            "{}/train.log".format(self.log_dir),
+            f"{self.log_dir}/train.log",
             "--valid-log",
-            "{}/valid.log".format(self.log_dir),
+            f"{self.log_dir}/valid.log",
         ]
 
         # Training data
         # TODO: Data concatenation should be removed when opustrainer support
         #       is added
-        train_paths = [
-            Path(self.tmp_dir, "train.{}.gz".format(lang)) for lang in self.languages
-        ]
-        if not all([p.exists() for p in train_paths]):
+        train_paths = [Path(self.tmp_dir, f"train.{lang}.gz") for lang in self.languages]
+        if not all([p.exists() for p in train_paths]):  # noqa: C419
             for lang, output_file in zip(self.languages, train_paths):
                 concat_files(
-                    [
-                        Path(self.input_dir, "{}.{}.gz".format(dset, lang))
-                        for dset in self.train_datasets
-                    ],
+                    [Path(self.input_dir, f"{dset}.{lang}.gz") for dset in self.train_datasets],
                     output_file,
                 )
         cmd += ["--train-sets"] + [str(p) for p in train_paths]
 
         # Validation data
-        cmd += ["--valid-sets"] + [
-            "{}/{}.{}.gz".format(self.valid_data_dir, self.valid_dataset, lang)
-            for lang in self.languages
-        ]
+        cmd += ["--valid-sets"] + [f"{self.valid_data_dir}/{self.valid_dataset}.{lang}.gz" for lang in self.languages]
 
         # GPU option
         if n_gpus:
@@ -202,12 +189,10 @@ class TrainModelStep(OpusPocusStep):
             cmd += ["--pretrained-model", str(self.model_init_path)]
 
         # Execute the command
-        proc = subprocess.Popen(
-            cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True
-        )
+        proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True)
 
         # Propagate the termination signal to the child process
-        def terminate_signal(signalnum, handler):
+        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202, ARG001
             logger.debug("Received SIGTERM, terminating child process...")
             proc.terminate()
 

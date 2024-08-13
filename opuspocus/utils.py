@@ -1,40 +1,38 @@
-from typing import Any, Callable, Dict, List
-from argparse import Namespace
-from pathlib import Path
-
 import gzip
 import inspect
 import json
 import logging
 import os
 import subprocess
+from argparse import Namespace
+from pathlib import Path
+from typing import Any, Callable, Dict, List
+
 import yaml
 
 logger = logging.getLogger(__name__)
 
 
-def get_open_fn(compressed: bool):
+def get_open_fn(compressed: bool):  # noqa: ANN201, FBT001
     if compressed:
         return gzip.open
     return open
 
 
-def open_file(file: Path, mode: str):
-    assert mode == "r" or mode == "w"
+def open_file(file: Path, mode: str):  # noqa: ANN201
+    assert mode == "r" or mode == "w"  # noqa: PLR1714
     open_fn = get_open_fn(compressed=(file.suffix == ".gz"))
     return open_fn(file, f"{mode}t")
 
 
 def decompress_file(input_file: Path, output_file: Path) -> None:
-    with gzip.open(input_file, "rt") as in_fh:
-        with open(output_file, "wt") as out_fh:
+    with gzip.open(input_file, "rt") as in_fh:  # noqa: SIM117
+        with open(output_file, "w") as out_fh:  # noqa: PTH123
             for line in in_fh:
                 print(line, end="", file=out_fh)
 
 
-def concat_files(
-    input_files: List[Path], output_file: Path, compressed: bool = True
-) -> None:
+def concat_files(input_files: List[Path], output_file: Path, compressed: bool = True) -> None:  # noqa: FBT001, FBT002
     open_fn = get_open_fn(compressed)
     with open_fn(output_file, "wt") as out_fh:
         for input_file in input_files:
@@ -46,21 +44,21 @@ def concat_files(
 def paste_files(
     input_files: List[Path],
     output_file: Path,
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
     with open_fn(output_file, "wt") as out_fh:
         in_fhs = [open_fn(input_file, "rt") for input_file in input_files]
         for lines in zip(*in_fhs):
-            lines = [line.rstrip("\n") for line in lines]
+            lines = [line.rstrip("\n") for line in lines]  # noqa: PLW2901
             print(delimiter.join(lines), end="\n", file=out_fh)
 
 
 def cut_file(
     input_file: Path,
     output_files: List[Path],
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
@@ -73,9 +71,9 @@ def cut_file(
 
 
 def cut_filestream(
-    input_stream,
+    input_stream,  # noqa: ANN001
     output_files: List[Path],
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
     delimiter: str = "\t",
 ) -> None:
     open_fn = get_open_fn(compressed)
@@ -89,9 +87,9 @@ def cut_filestream(
 
 
 def save_filestream(
-    input_stream,
+    input_stream,  # noqa: ANN001
     output_file: Path,
-    compressed: bool = True,
+    compressed: bool = True,  # noqa: FBT001, FBT002
 ) -> None:
     open_fn = get_open_fn(compressed)
     out_fh = open_fn(output_file, "wt")
@@ -103,7 +101,7 @@ def file_to_shards(
     file_path: Path,
     shard_dir: Path,
     shard_size: int,
-    shard_index_pad_length: int = 4,
+    shard_index_pad_length: int = 4,  # noqa: ARG001
 ) -> List[str]:
     shard_list = []
     out_fh = None
@@ -130,7 +128,7 @@ def shards_to_file(
                     print(line, end="", file=out_fh)
 
 
-def clean_dir(directory: Path, exclude: str = None) -> None:
+def clean_dir(directory: Path, exclude: str = None) -> None:  # noqa: RUF013
     for file_path in directory.iterdir():
         filename = file_path.stem + file_path.suffix
         if exclude is not None and exclude == filename:
@@ -140,8 +138,8 @@ def clean_dir(directory: Path, exclude: str = None) -> None:
                 file_path.unlink()
             elif file_path.is_dir():
                 file_path.rmdir()
-        except Exception as e:
-            logger.error("Failed to delete %s. Reason: %s", file_path, e.message)
+        except Exception as e:  # noqa: BLE001
+            logger.error("Failed to delete %s. Reason: %s", file_path, e.message)  # noqa: TRY400
 
 
 def count_lines(file_path: Path) -> int:
@@ -152,27 +150,25 @@ def count_lines(file_path: Path) -> int:
 def subprocess_wait(proc: subprocess.Popen) -> None:
     rc = proc.wait()
     if rc:
-        raise subprocess.SubprocessError(
-            "Process {} exited with non-zero value.".format(proc.pid)
-        )
+        raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102, TRY003
 
 
-def get_action_type_map(parser) -> Dict[str, Callable]:
+def get_action_type_map(parser) -> Dict[str, Callable]:  # noqa: ANN001
     type_map = {}
-    for action in parser._actions:
+    for action in parser._actions:  # noqa: SLF001
         type_map[action.dest] = action.type
     return type_map
 
 
-def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:
+def load_config_defaults(parser, config_path: Path = None) -> Dict[str, Any]:  # noqa: ANN001, RUF013
     """Loads default values from a config file."""
     if config_path is None:
         return parser
     if not Path(config_path).exists():
-        raise ValueError("File {} not found.".format(config_path))
-    config = yaml.safe_load(open(config_path, "r"))
+        raise ValueError(f"File {config_path} not found.")  # noqa: EM102, TRY003
+    config = yaml.safe_load(open(config_path))  # noqa: PTH123, SIM115
 
-    for v in parser._actions:
+    for v in parser._actions:  # noqa: SLF001
         if v.dest in config:
             v.required = False
     parser.set_defaults(**config)
@@ -185,28 +181,28 @@ def update_args(orig_args: Namespace, updt_args: Namespace) -> Namespace:
 
     orig_vars = vars(orig_args)
     updt_vars = vars(updt_args)
-    for k in orig_vars.keys():
+    for k in orig_vars.keys():  # noqa: SIM118
         if k in updt_vars:
             del updt_vars[k]
     return Namespace(**orig_vars, **updt_vars)
 
 
-def print_indented(text, level=0):
+def print_indented(text, level=0):  # noqa: ANN001, ANN201
     """A function wrapper for indented printing (of traceback)."""
     indent = " " * (2 * level)
-    print(indent + text)
+    print(indent + text)  # noqa: T201
 
 
-def file_path(path_str):
+def file_path(path_str):  # noqa: ANN001, ANN201
     """A file_path type definition for argparse."""
     path = Path(path_str)
     if path.exists():
         return path.absolute()
-    else:
+    else:  # noqa: RET505
         raise FileNotFoundError(path)
 
 
-class RunnerResources(object):
+class RunnerResources:
     """Runner-agnostic resources object.
 
     TODO
@@ -217,19 +213,15 @@ class RunnerResources(object):
         cpus: int = 1,
         gpus: int = 0,
         mem: str = "1g",
-    ):
+    ) -> None:
         self.cpus = cpus
         self.gpus = gpus
         self.mem = mem
 
     @classmethod
-    def list_parameters(cls) -> List[str]:
+    def list_parameters(cls) -> List[str]:  # noqa: ANN102
         """TODO"""
-        return [
-            param
-            for param in inspect.signature(cls.__init__).parameters
-            if param != "self"
-        ]
+        return [param for param in inspect.signature(cls.__init__).parameters if param != "self"]
 
     def overwrite(self, resource_dict: Dict[str, Any]) -> "RunnerResources":
         params = {}
@@ -246,26 +238,26 @@ class RunnerResources(object):
         TODO
         """
         json_dict = {param: getattr(self, param) for param in self.list_parameters()}
-        json.dump(json_dict, open(json_path, "w"), indent=2)
+        json.dump(json_dict, open(json_path, "w"), indent=2)  # noqa: PTH123, SIM115
 
     @classmethod
-    def from_json(cls, json_path: Path) -> "RunnerResources":
+    def from_json(cls, json_path: Path) -> "RunnerResources":  # noqa: ANN102
         """TODO"""
-        json_dict = json.load(open(json_path, "r"))
+        json_dict = json.load(open(json_path))  # noqa: PTH123, SIM115
 
         cls_params = cls.list_parameters()
         params = {}
         for k, v in json_dict.items():
             if k not in cls_params:
-                logger.warn("Resource %s not supported. Ignoring", k)
+                logger.warning("Resource %s not supported. Ignoring", k)
             params[k] = v
         return RunnerResources(**params)
 
     @classmethod
-    def get_env_name(cls, name) -> str:
+    def get_env_name(cls, name) -> str:  # noqa: ANN001, ANN102
         """TODO"""
         assert name in cls.list_parameters()
-        return "OPUSPOCUS_{}".format(name)
+        return f"OPUSPOCUS_{name}"
 
     def get_env_dict(self) -> Dict[str, str]:
         env_dict = {}

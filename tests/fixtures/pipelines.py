@@ -1,9 +1,9 @@
-import pytest
-
 from argparse import Namespace
 from pathlib import Path
 
-import opuspocus.pipeline_steps as pipeline_steps
+import pytest
+
+from opuspocus import pipeline_steps
 from opuspocus.pipelines import build_pipeline
 from opuspocus.runners.debug import DebugRunner
 
@@ -17,7 +17,7 @@ def pipeline_preprocess_tiny_inited(
     tmp_path_factory,
 ):
     """Initialize mock dataset preprocessing pipeline."""
-    setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_prerocess_tiny"))
     args = Namespace(
         **{
@@ -34,9 +34,7 @@ def pipeline_preprocess_tiny_inited(
 def pipeline_preprocess_tiny_done(pipeline_preprocess_tiny_inited):
     """Run mock dataset preprocessing pipeline."""
     runner = DebugRunner("debug", pipeline_preprocess_tiny_inited.pipeline_dir)
-    runner.run_pipeline(
-        pipeline_preprocess_tiny_inited, pipeline_preprocess_tiny_inited.get_targets()
-    )
+    runner.run_pipeline(pipeline_preprocess_tiny_inited, pipeline_preprocess_tiny_inited.get_targets())
     return pipeline_preprocess_tiny_inited
 
 
@@ -46,7 +44,7 @@ def pipeline_train_tiny_inited(
     tmp_path_factory,
 ):
     """Initialize mock training pipeline."""
-    setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_train_tiny"))
     args = Namespace(
         **{

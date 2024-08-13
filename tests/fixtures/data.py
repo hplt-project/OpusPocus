@@ -1,6 +1,6 @@
-import pytest
-
 from pathlib import Path
+
+import pytest
 
 from opuspocus.utils import decompress_file, open_file
 
@@ -10,11 +10,11 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
     """Creates a tiny mock parallel corpora (compressed)."""
     src_file = Path(
         tmp_path_factory.mktemp("train_data_parallel_tiny"),
-        "train.{}.gz".format(languages[0]),
+        f"train.{languages[0]}.gz",
     )
     with open_file(src_file, "w") as fh:
         print(
-            "\n".join(
+            "\n".join(  # noqa: FLY002
                 [
                     "the colorless ideas slept furiously",
                     "pooh slept all night",
@@ -26,10 +26,10 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
             file=fh,
         )
 
-    tgt_file = Path(src_file.parent, "train.{}.gz".format(languages[1]))
+    tgt_file = Path(src_file.parent, f"train.{languages[1]}.gz")
     with open_file(tgt_file, "w") as fh:
         print(
-            "\n".join(
+            "\n".join(  # noqa: FLY002
                 [
                     "les idées incolores dormaient furieusement",
                     "le caniche dormait toute la nuit",
@@ -44,9 +44,7 @@ def train_data_parallel_tiny(tmp_path_factory, languages):
 
 
 @pytest.fixture(scope="session")
-def train_data_parallel_tiny_decompressed(
-    train_data_parallel_tiny, tmp_path_factory, languages
-):
+def train_data_parallel_tiny_decompressed(train_data_parallel_tiny, tmp_path_factory, languages):  # noqa: ARG001
     """Creates a decompressed version of the tiny mock corpora."""
     src_file = Path(
         tmp_path_factory.mktemp("train_data_parallel_tiny_decompressed"),

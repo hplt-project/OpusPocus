@@ -2,7 +2,6 @@ import pytest
 
 from opuspocus.pipeline_steps import StepState
 
-
 ## DATA PREPROCESSING ##
 
 

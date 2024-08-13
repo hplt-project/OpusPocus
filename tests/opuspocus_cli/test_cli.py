@@ -1,6 +1,7 @@
-import pytest
 import importlib
 import sys
+
+import pytest
 
 from opuspocus_cli import CMD_MODULES, main
 
@@ -8,7 +9,7 @@ from opuspocus_cli import CMD_MODULES, main
 @pytest.mark.parametrize("cmd_name", CMD_MODULES.keys())
 def test_submodule_has_main(cmd_name):
     """Every subcommand module must contain "main" implementation."""
-    module_name = "opuspocus_cli.{}".format(cmd_name)
+    module_name = f"opuspocus_cli.{cmd_name}"
     importlib.import_module(module_name)
     assert hasattr(sys.modules[module_name], "main")
 
@@ -16,7 +17,7 @@ def test_submodule_has_main(cmd_name):
 @pytest.mark.parametrize("cmd_name", CMD_MODULES.keys())
 def test_submodule_has_parse_args(cmd_name):
     """Every subcommand module must contain "parse_args" implementation."""
-    module_name = "opuspocus_cli.{}".format(cmd_name)
+    module_name = f"opuspocus_cli.{cmd_name}"
     importlib.import_module(module_name)
     assert hasattr(sys.modules[module_name], "parse_args")
 
@@ -92,7 +93,7 @@ def test_defaults_stop(pipeline):
 
 
 @pytest.mark.parametrize(
-    "cmd_name, non_default_opts",
+    "cmd_name, non_default_opts",  # noqa: PT006
     [("run", "--runner bash"), ("status", ""), ("traceback", "")],
 )
 def test_defaults_other(cmd_name, non_default_opts, pipeline_preprocess_tiny_inited):

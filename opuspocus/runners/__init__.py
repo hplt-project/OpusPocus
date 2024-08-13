@@ -17,20 +17,20 @@ RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()
 
 
-def build_runner(runner: str, pipeline_dir: Path, args: Namespace):
+def build_runner(runner: str, pipeline_dir: Path, args: Namespace):  # noqa: ANN202
     """Runner builder function. Use this to create runner objects."""
     logger.info("Building runner (%s)...", runner)
 
     kwargs = {}
     for param in RUNNER_REGISTRY[runner].list_parameters():
-        if param == "runner" or param == "pipeline_dir":
+        if param == "runner" or param == "pipeline_dir":  # noqa: PLR1714
             continue
         kwargs[param] = getattr(args, param)
 
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **kwargs)
 
 
-def load_runner(pipeline_dir: Path):
+def load_runner(pipeline_dir: Path):  # noqa: ANN202
     """Recreate a previously used runner. Required for pipeline execution
     updates, i.e. execution termination.
 
@@ -45,7 +45,7 @@ def load_runner(pipeline_dir: Path):
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **runner_params)
 
 
-def register_runner(name):
+def register_runner(name):  # noqa: ANN001, ANN202
     """
     New runner can be added to OpusPocus with the
     :func:`~opuspocus.runners.register_runner` function decorator.
@@ -65,19 +65,13 @@ def register_runner(name):
         name (str): the name of the runner
     """
 
-    def register_runner_cls(cls):
+    def register_runner_cls(cls):  # noqa: ANN001, ANN202
         if name in RUNNER_REGISTRY:
-            raise ValueError("Cannot register duplicate runner ({})".format(name))
+            raise ValueError(f"Cannot register duplicate runner ({name})")  # noqa: EM102, TRY003
         if not issubclass(cls, OpusPocusRunner):
-            raise ValueError(
-                "Runner ({}: {}) must extend OpusPocusRunner".format(name, cls.__name__)
-            )
+            raise ValueError(f"Runner ({name}: {cls.__name__}) must extend OpusPocusRunner")  # noqa: EM102, TRY003, TRY004
         if cls.__name__ in RUNNER_CLASS_NAMES:
-            raise ValueError(
-                "Cannot register runner with duplicate class name ({})".format(
-                    cls.__name__
-                )
-            )
+            raise ValueError(f"Cannot register runner with duplicate class name ({cls.__name__})")  # noqa: EM102, TRY003
         RUNNER_REGISTRY[name] = cls
         RUNNER_CLASS_NAMES.add(cls.__name__)
         return cls

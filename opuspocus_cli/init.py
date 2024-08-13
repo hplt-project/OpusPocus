@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-from typing import Sequence
-
 import sys
 from argparse import Namespace
+from typing import Sequence
 
 from opuspocus.options import parse_init_args
 from opuspocus.pipelines import build_pipeline

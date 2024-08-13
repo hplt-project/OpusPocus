@@ -1,12 +1,11 @@
-from typing import List, Optional
-
 import logging
 import os
 from pathlib import Path
+from typing import List, Optional
 
-from opuspocus.pipeline_steps import load_step, StepState
+from opuspocus.pipeline_steps import StepState, load_step
 from opuspocus.runners import OpusPocusRunner, TaskId
-from opuspocus.utils import clean_dir, RunnerResources
+from opuspocus.utils import RunnerResources, clean_dir
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ class DebugRunner(OpusPocusRunner):
         self,
         runner: str,
         pipeline_dir: Path,
-    ):
+    ) -> None:
         super().__init__(
             runner=runner,
             pipeline_dir=pipeline_dir,
@@ -38,10 +37,10 @@ class DebugRunner(OpusPocusRunner):
         self,
         cmd_path: Path,
         target_file: Optional[Path] = None,
-        dependencies: Optional[List[TaskId]] = None,
+        dependencies: Optional[List[TaskId]] = None,  # noqa: ARG002
         step_resources: Optional[RunnerResources] = None,
-        stdout_file: Optional[Path] = None,
-        stderr_file: Optional[Path] = None,
+        stdout_file: Optional[Path] = None,  # noqa: ARG002
+        stderr_file: Optional[Path] = None,  # noqa: ARG002
     ) -> TaskId:
         """TODO"""
         step_label = cmd_path.parts[-2]
@@ -51,7 +50,7 @@ class DebugRunner(OpusPocusRunner):
 
         # Process a specific target file
         if target_file is not None:
-            os.environ = step_resources.get_env_dict()
+            os.environ = step_resources.get_env_dict()  # noqa: B003
             step.command(target_file)
             return TaskId(file_path=target_file, id=-1)
 

@@ -1,9 +1,9 @@
-import pytest
-
 from argparse import Namespace
 from pathlib import Path
 
-from opuspocus.pipelines import build_pipeline, load_pipeline, PipelineConfig
+import pytest
+
+from opuspocus.pipelines import PipelineConfig, build_pipeline, load_pipeline
 
 # TODO(varisd): add more tests:
 #   - test pipeline graph (building, structure comparison, cycle check, etc.)
@@ -30,9 +30,7 @@ def test_build_pipeline_method(
 
 def test_load_pipeline_method(pipeline_preprocess_tiny_inited):
     """Load previously created pipeline and compare the two instances."""
-    args = Namespace(
-        **{"pipeline_dir": Path(pipeline_preprocess_tiny_inited.pipeline_dir)}
-    )
+    args = Namespace(**{"pipeline_dir": Path(pipeline_preprocess_tiny_inited.pipeline_dir)})
     pipeline = load_pipeline(args)
     assert pipeline == pipeline_preprocess_tiny_inited
 
@@ -58,9 +56,7 @@ def test_load_pipeline_dir_not_directory(pipeline_preprocess_tiny_inited):
         load_pipeline(args)
 
 
-def test_pipeline_class_init_graph(
-    pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited
-):
+def test_pipeline_class_init_graph(pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited):
     """Compare pipeline steps with the steps declared in config file."""
     config = PipelineConfig.load(pipeline_preprocess_tiny_config_file)
     config_labels = [s["step_label"] for s in config["pipeline"]["steps"]]
@@ -69,9 +65,7 @@ def test_pipeline_class_init_graph(
         assert s.step_label in config_labels
 
 
-def test_pipeline_class_init_default_targets(
-    pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited
-):
+def test_pipeline_class_init_default_targets(pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited):
     """Compare pipeline targets with targets declared in config file."""
     config = PipelineConfig.load(pipeline_preprocess_tiny_config_file)
     config_targets = config["pipeline"]["default_targets"]

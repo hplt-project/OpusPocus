@@ -1,8 +1,8 @@
+import subprocess
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import hyperqueue
-import subprocess
-from pathlib import Path
 
 from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
 from opuspocus.utils import RunnerResources, file_path, subprocess_wait
@@ -13,7 +13,7 @@ class HyperqueueRunner(OpusPocusRunner):
     """TODO"""
 
     @staticmethod
-    def add_args(parser):
+    def add_args(parser):  # noqa: ANN001, ANN205
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
             "--hq-server-dir",
@@ -21,22 +21,12 @@ class HyperqueueRunner(OpusPocusRunner):
             default="opuspocus_hq_server",
             help="TODO",
         )
-        parser.add_argument(
-            "--hq-path", type=file_path, default="hyperqueue/bin/hq", help="TODO"
-        )
-        parser.add_argument(
-            "--hq-scheduler", type=str, choices=["slurm"], default="slurm", help="TODO"
-        )
-        parser.add_argument(
-            "--hq-alloc-time-limit", type=str, default="24h", help="TODO"
-        )
+        parser.add_argument("--hq-path", type=file_path, default="hyperqueue/bin/hq", help="TODO")
+        parser.add_argument("--hq-scheduler", type=str, choices=["slurm"], default="slurm", help="TODO")
+        parser.add_argument("--hq-alloc-time-limit", type=str, default="24h", help="TODO")
         parser.add_argument("--hq-alloc-backlog", type=int, default=1, help="TODO")
-        parser.add_argument(
-            "--hq-alloc-range-cpus", type=str, default="0,1", help="TODO"
-        )
-        parser.add_argument(
-            "--hq-alloc-range-gpus", type=str, default=None, help="TODO"
-        )
+        parser.add_argument("--hq-alloc-range-cpus", type=str, default="0,1", help="TODO")
+        parser.add_argument("--hq-alloc-range-gpus", type=str, default=None, help="TODO")
         parser.add_argument("--hq-max-worker-count", type=int, default=1, help="TODO")
 
     def __init__(
@@ -51,7 +41,7 @@ class HyperqueueRunner(OpusPocusRunner):
         hq_alloc_range_cpus: str = "0,1",
         hq_alloc_range_gpus: Optional[str] = None,
         hq_max_worker_count: int = 1,
-    ):
+    ) -> None:
         hq_alloc_range_cpus = [int(n) for n in hq_alloc_range_cpus.split(",")]
         if hq_alloc_range_gpus is not None:
             hq_alloc_range_gpus = [int(n) for n in hq_alloc_range_gpus.split(",")]
@@ -68,9 +58,9 @@ class HyperqueueRunner(OpusPocusRunner):
             hq_max_worker_count=hq_max_worker_count,
         )
         # TODO: Better typing and value checking
-        assert len(self.hq_alloc_range_cpus) == 2
+        assert len(self.hq_alloc_range_cpus) == 2  # noqa: PLR2004
         if self.hq_alloc_range_gpus is not None:
-            assert len(self.hq_alloc_range_gpus) == 2
+            assert len(self.hq_alloc_range_gpus) == 2  # noqa: PLR2004
 
         # Start the HQ server (if not running)
         # TODO: replace the launcher script with a better alternative
@@ -80,6 +70,7 @@ class HyperqueueRunner(OpusPocusRunner):
                 str(self.hq_server_dir),
             ],
             shell=False,
+            check=False,
         )
         subprocess_wait(proc)
 
@@ -162,24 +153,24 @@ class HyperqueueRunner(OpusPocusRunner):
             "alloc",
             "add",
             self.hq_scheduler,
-            "--server-dir={}".format(self.hq_server_dir),
-            "--time-limit={}".format(self.hq_alloc_time_limit),
-            "--backlog={}".format(self.hq_alloc_backlog),
-            "--max-worker-count={}".format(self.hq_max_worker_count),
+            f"--server-dir={self.hq_server_dir}",
+            f"--time-limit={self.hq_alloc_time_limit}",
+            f"--backlog={self.hq_alloc_backlog}",
+            f"--max-worker-count={self.hq_max_worker_count}",
         ]
-        hq_cmd += ["--resource", "cpus=range(0,{})".format(self.hq_alloc_range_cpus)]
+        hq_cmd += ["--resource", f"cpus=range(0,{self.hq_alloc_range_cpus})"]
 
         if self.hq_alloc_range_gpus is not None:
-            hq_cmd += ["--resource", "gpus=range({})".format(self.hq_alloc_range_gpus)]
+            hq_cmd += ["--resource", f"gpus=range({self.hq_alloc_range_gpus})"]
 
         hq_cmd += ["--"]
         if self.partition is not None:
-            hq_cmd += ["--partition={}".format(self.partition)]
+            hq_cmd += [f"--partition={self.partition}"]
 
         if self.account is not None:
-            hq_cmd += ["--account={}".format(self.account)]
+            hq_cmd += [f"--account={self.account}"]
 
-        subprocess.run(hq_cmd)
+        subprocess.run(hq_cmd, check=False)
 
         # TODO: info about the alloc queue
         self.client.submit(self.job)
@@ -197,10 +188,10 @@ class HyperqueueRunner(OpusPocusRunner):
 
     def _convert_memory(self, mem: str) -> int:
         unit = mem[-1]
-        if unit == "g" or unit == "G":
+        if unit == "g" or unit == "G":  # noqa: PLR1714
             return int(mem[:-1] * 1024**3)
-        if unit == "m" or unit == "M":
+        if unit == "m" or unit == "M":  # noqa: PLR1714
             return int(mem[:-1] * 1024**2)
-        if unit == "k" or unit == "K":
+        if unit == "k" or unit == "K":  # noqa: PLR1714
             return int(mem[:-1] * 1024)
-        raise ValueError("Unknown unit of memory ({}).".format(unit))
+        raise ValueError(f"Unknown unit of memory ({unit}).")  # noqa: EM102, TRY003

@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Optional, get_type_hints
-from typing_extensions import TypedDict
-
-from pathlib import Path
 import inspect
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional, get_type_hints
+
 import yaml
+from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline
@@ -12,33 +12,37 @@ from opuspocus.utils import RunnerResources
 
 logger = logging.getLogger(__name__)
 
-TaskId = TypedDict("TaskId", {"file_path": str, "id": Any})
-TaskInfo = TypedDict(
-    "TaskInfo", {"runner": str, "main_task": TaskId, "subtasks": List[TaskId]}
-)
+
+class TaskId(TypedDict):
+    file_path: str
+    id: Any
 
 
-class OpusPocusRunner(object):
+class TaskInfo(TypedDict):
+    runner: str
+    main_task: TaskId
+    subtasks: List[TaskId]
+
+
+class OpusPocusRunner:
     """Base class for OpusPocus runners."""
 
     parameter_file = "runner.parameters"
     info_file = "runner.task_info"
-    submitted_tasks = []
+    submitted_tasks = []  # noqa: RUF012
 
     @staticmethod
-    def add_args(parser):
+    def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
 
-    def __init__(self, runner: str, pipeline_dir: Path, **kwargs):
+    def __init__(self, runner: str, pipeline_dir: Path, **kwargs) -> None:  # noqa: ANN003
         self.runner = runner
         self.pipeline_dir = pipeline_dir
 
         self.register_parameters(**kwargs)
 
     @classmethod
-    def build_runner(
-        cls, runner: str, pipeline_dir: Path, **kwargs
-    ) -> "OpusPocusRunner":
+    def build_runner(cls, runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":  # noqa: ANN003, ANN102
         """Build a specified runner instance.
 
         Args:
@@ -51,7 +55,7 @@ class OpusPocusRunner(object):
         return cls(runner, pipeline_dir, **kwargs)
 
     @classmethod
-    def list_parameters(cls) -> List[str]:
+    def list_parameters(cls) -> List[str]:  # noqa: ANN102
         """TODO"""
         param_list = []
         for param in inspect.signature(cls.__init__).parameters:
@@ -61,13 +65,13 @@ class OpusPocusRunner(object):
         return param_list
 
     @classmethod
-    def load_parameters(cls, pipeline_dir: Path) -> Dict[str, Any]:
+    def load_parameters(cls, pipeline_dir: Path) -> Dict[str, Any]:  # noqa: ANN102
         """TODO"""
         params_path = Path(pipeline_dir, cls.parameter_file)
         logger.debug("Loading step variables from %s", params_path)
 
-        params_dict = yaml.safe_load(open(params_path, "r"))
-        return params_dict
+        params_dict = yaml.safe_load(open(params_path))  # noqa: PTH123, SIM115
+        return params_dict  # noqa: RET504
 
     def get_parameters_dict(self) -> Dict[str, Any]:
         """TODO"""
@@ -85,19 +89,19 @@ class OpusPocusRunner(object):
         """TODO"""
         yaml.dump(
             self.get_parameters_dict(),
-            open(Path(self.pipeline_dir, self.parameter_file), "w"),
+            open(Path(self.pipeline_dir, self.parameter_file), "w"),  # noqa: PTH123, SIM115
         )
 
-    def register_parameters(self, **kwargs) -> None:
+    def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
         """TODO"""
         type_hints = get_type_hints(self.__init__)
-        logger.debug("Class type hints: $s", type_hints)
+        logger.debug("Class type hints: $s", type_hints)  # noqa: PLE1205
 
         for param, val in kwargs.items():
             if type_hints[param] == Path and val is not None:
-                val = Path(val)
+                val = Path(val)  # noqa: PLW2901
             if type_hints[param] == List[Path]:
-                val = [Path(v) for v in val]
+                val = [Path(v) for v in val]  # noqa: PLW2901
             setattr(self, param, val)
 
     def stop_pipeline(self, pipeline: OpusPocusPipeline) -> None:
@@ -108,7 +112,7 @@ class OpusPocusRunner(object):
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be cancelled using {} runner because it "
+                    "Step {} cannot be cancelled using {} runner because it "  # noqa: EM103
                     "was submitted by a different runner type ({}).".format(
                         step.step_label, self.runner, task_info["runner"]
                     )
@@ -146,28 +150,22 @@ class OpusPocusRunner(object):
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be submitted because it is currently "
-                    "{} using a different runner ({}).".format(
+                    "Step {} cannot be submitted because it is currently {} using a different runner ({}).".format(  # noqa: EM103
                         step.step_label, step.state, task_info["runner"]
                     )
                 )
             return task_info
-        elif step.has_state(StepState.DONE):
+        elif step.has_state(StepState.DONE):  # noqa: RET505
             logger.info("Step %s has already finished. Skipping...", step.step_label)
             return None
         elif step.has_state(StepState.FAILED):
             step.clean_directories()
             logger.info(
-                "Step %s has previously failed. "
-                "Removing previous outputs and resubmitting...",
+                "Step %s has previously failed. Removing previous outputs and resubmitting...",
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):
-            raise ValueError(
-                "Cannot run step {}. Step is not in INITED state.".format(
-                    step.step_label
-                )
-            )
+            raise ValueError(f"Cannot run step {step.step_label}. Step is not in INITED state.")  # noqa: EM102, TRY003
 
         # Recursively submit step dependencies first
         dep_task_info_list = []
@@ -193,12 +191,12 @@ class OpusPocusRunner(object):
                 target_file=None,
                 dependencies=[dep["main_task"] for dep in dep_task_info_list],
                 step_resources=self.get_resources(step),
-                stdout_file=Path(step.log_dir, "{}.out".format(self.runner)),
-                stderr_file=Path(step.log_dir, "{}.err".format(self.runner)),
+                stdout_file=Path(step.log_dir, f"{self.runner}.out"),
+                stderr_file=Path(step.log_dir, f"{self.runner}.err"),
             )
         except Exception as e:
             step.set_state(StepState.FAILED)
-            raise e
+            raise e  # noqa: TRY201
 
         task_info = TaskInfo(runner=self.runner, main_task=task_id, subtasks=[])
         self.save_task_info(step, task_info)
@@ -213,7 +211,7 @@ class OpusPocusRunner(object):
             task_info = self.load_task_info(step)
             if task_info is None:
                 raise ValueError(
-                    "Step {} cannot be cancelled using {} runner because it "
+                    "Step {} cannot be cancelled using {} runner because it "  # noqa: EM103
                     "was submitted by a different runner type ({}).".format(
                         step.step_label, self.runner, task_info["runner"]
                     )
@@ -247,7 +245,7 @@ class OpusPocusRunner(object):
     def update_dependants(self, task_id: TaskId) -> None:
         raise NotImplementedError()
 
-    def cancel_task(task_id: TaskId) -> None:
+    def cancel_task(self, task_id: TaskId) -> None:
         """TODO"""
         raise NotImplementedError()
 
@@ -273,11 +271,11 @@ class OpusPocusRunner(object):
 
     def save_task_info(self, step: OpusPocusStep, task_info: TaskInfo) -> None:
         """TODO"""
-        yaml.dump(task_info, open(Path(step.step_dir, self.info_file), "w"))
+        yaml.dump(task_info, open(Path(step.step_dir, self.info_file), "w"))  # noqa: PTH123, SIM115
 
     def load_task_info(self, step: OpusPocusStep) -> Optional[TaskInfo]:
         """TODO"""
-        task_info = yaml.safe_load(open(Path(step.step_dir, self.info_file), "r"))
+        task_info = yaml.safe_load(open(Path(step.step_dir, self.info_file)))  # noqa: PTH123, SIM115
         if task_info["runner"] != self.runner:
             return None
         return task_info
@@ -287,9 +285,9 @@ class OpusPocusRunner(object):
         # TODO: expand the logic here
         return step.default_resources
 
-    def __eq__(self, other):
+    def __eq__(self, other):  # noqa: ANN001, ANN204
         """Object comparison logic."""
-        for param in self.list_parameters():
+        for param in self.list_parameters():  # noqa: SIM110
             if getattr(self, param, None) != getattr(other, param, None):
                 return False
         return True

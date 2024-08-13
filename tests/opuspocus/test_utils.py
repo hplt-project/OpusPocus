@@ -11,4 +11,4 @@ def test_count_lines(train_data_fixture, request):
     """Test line counting."""
     data = request.getfixturevalue(train_data_fixture)
     res = count_lines(data[0])
-    assert res == 5
+    assert res == 5  # noqa: PLR2004

@@ -1,6 +1,6 @@
+from pathlib import Path
 from typing import List, Optional
 
-from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.utils import concat_files
@@ -23,7 +23,7 @@ class GatherCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: Optional[str] = None,
         output_shard_size: Optional[int] = None,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -55,18 +55,16 @@ class GatherCorpusStep(CorpusStep):
         for c_dict in categories_dict["categories"]:
             dset_name = c_dict["name"]
             if self.tgt_lang is not None:
-                dset_name = "{}.{}-{}".format(
-                    c_dict["name"], self.src_lang, self.tgt_lang
-                )
+                dset_name = "{}.{}-{}".format(c_dict["name"], self.src_lang, self.tgt_lang)
             categories_dict["mapping"][c_dict["name"]] = [dset_name]
         self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
         langpair = ""
         if self.tgt_lang is not None:
-            langpair = ".{}-{}".format(self.src_lang, self.tgt_lang)
+            langpair = f".{self.src_lang}-{self.tgt_lang}"
         return [
-            Path(self.output_dir, "{}{}.{}.gz".format(category, langpair, lang))
+            Path(self.output_dir, f"{category}{langpair}.{lang}.gz")
             for category in self.categories
             for lang in self.languages
         ]
@@ -79,9 +77,6 @@ class GatherCorpusStep(CorpusStep):
         lang = target_stem_split[-1]
 
         concat_files(
-            [
-                Path(self.input_dir, "{}.{}.gz".format(dset, lang))
-                for dset in self.prev_corpus_step.category_mapping[category]
-            ],
+            [Path(self.input_dir, f"{dset}.{lang}.gz") for dset in self.prev_corpus_step.category_mapping[category]],
             target_file,
         )

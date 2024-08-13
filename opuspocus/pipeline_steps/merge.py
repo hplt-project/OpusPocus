@@ -1,12 +1,12 @@
+from pathlib import Path
 from typing import List, Optional
 
-from pathlib import Path
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 
 
-def extend_dataset_name(dset_name, label):
-    return "{}.{}".format(label, dset_name)
+def extend_dataset_name(dset_name, label):  # noqa: ANN001, ANN201
+    return f"{label}.{dset_name}"
 
 
 @register_step("merge")
@@ -29,9 +29,9 @@ class MergeCorpusStep(CorpusStep):
         other_corpus_step: CorpusStep,
         other_corpus_label: str,
         src_lang: str,
-        tgt_lang: str = None,
+        tgt_lang: str = None,  # noqa: RUF013
         output_shard_size: Optional[int] = None,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -51,9 +51,7 @@ class MergeCorpusStep(CorpusStep):
 
     def register_categories(self) -> None:
         categories_dict = {}
-        categories_dict["categories"] = [
-            {"name": cat} for cat in self.prev_corpus_step.categories
-        ]
+        categories_dict["categories"] = [{"name": cat} for cat in self.prev_corpus_step.categories]
 
         # Merge the category lists
         for cat in self.other_corpus_step.categories:
@@ -63,36 +61,25 @@ class MergeCorpusStep(CorpusStep):
         categories_dict["mapping"] = {}
         for cat, dset_list in self.prev_corpus_step.category_mapping.items():
             categories_dict["mapping"][cat] = [
-                extend_dataset_name(dset_name, self.previous_corpus_label)
-                for dset_name in dset_list
+                extend_dataset_name(dset_name, self.previous_corpus_label) for dset_name in dset_list
             ]
         for cat, dset_list in self.other_corpus_step.category_mapping.items():
             if cat not in categories_dict["mapping"]:
                 categories_dict["mapping"][cat] = []
             for dset_name in dset_list:
-                categories_dict["mapping"][cat].append(
-                    extend_dataset_name(dset_name, self.other_corpus_label)
-                )
+                categories_dict["mapping"][cat].append(extend_dataset_name(dset_name, self.other_corpus_label))
         self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(self.output_dir, "{}.{}.gz".format(dset, lang))
-            for dset in self.dataset_list
-            for lang in self.languages
-        ]
+        return [Path(self.output_dir, f"{dset}.{lang}.gz") for dset in self.dataset_list for lang in self.languages]
 
     def command(self, target_file: Path) -> None:
         target_filename = target_file.stem + target_file.suffix
         source_filename = ".".join(target_filename.split(".")[1:])
         source_label = target_filename.split(".")[0]
         if source_label == self.previous_corpus_label:
-            target_file.hardlink_to(
-                Path(self.prev_corpus_step.output_dir, source_filename)
-            )
+            target_file.hardlink_to(Path(self.prev_corpus_step.output_dir, source_filename))
         elif source_label == self.other_corpus_label:
-            target_file.hardlink_to(
-                Path(self.other_corpus_step.output_dir, source_filename)
-            )
+            target_file.hardlink_to(Path(self.other_corpus_step.output_dir, source_filename))
         else:
-            raise ValueError("Unknown corpus label ({}).".format(source_label))
+            raise ValueError(f"Unknown corpus label ({source_label}).")  # noqa: EM102, TRY003

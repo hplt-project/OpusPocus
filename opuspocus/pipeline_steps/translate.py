@@ -1,12 +1,11 @@
-from typing import List, Optional
-
-from pathlib import Path
 import logging
 import os
 import shutil
 import signal
 import subprocess
 import sys
+from pathlib import Path
+from typing import List, Optional
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -32,7 +31,7 @@ class TranslateCorpusStep(CorpusStep):
         beam_size: int = 4,
         output_shard_size: Optional[int] = None,
         model_suffix: str = "best-chrf",
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -57,11 +56,7 @@ class TranslateCorpusStep(CorpusStep):
 
     @property
     def model_config_path(self) -> Path:
-        return Path(
-            "{}.{}.npz.decoder.yml".format(
-                self.model_step.model_path, self.model_suffix
-            )
-        )
+        return Path(f"{self.model_step.model_path}.{self.model_suffix}.npz.decoder.yml")
 
     def register_categories(self) -> None:
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
@@ -72,9 +67,7 @@ class TranslateCorpusStep(CorpusStep):
             offset = 3
         tgt_filename = tgt_file.stem + tgt_file.suffix
         src_filename = ".".join(
-            tgt_filename.split(".")[:-offset]
-            + [self.src_lang]
-            + tgt_filename.split(".")[-(offset - 1) :]
+            tgt_filename.split(".")[:-offset] + [self.src_lang] + tgt_filename.split(".")[-(offset - 1) :]
         )
         if self.prev_corpus_step.is_sharded:
             src_file = Path(self.shard_dir, src_filename)
@@ -83,24 +76,17 @@ class TranslateCorpusStep(CorpusStep):
         else:
             src_file = Path(self.output_dir, src_filename)
             if not src_file.exists():
-                src_file.hardlink_to(
-                    Path(self.prev_corpus_step.output_dir, src_filename)
-                )
+                src_file.hardlink_to(Path(self.prev_corpus_step.output_dir, src_filename))
         return src_file
 
     def get_command_targets(self) -> List[Path]:
         if self.is_sharded:
             targets = []
             for dset in self.dataset_list:
-                dset_filename = "{}.{}.gz".format(dset, self.tgt_lang)
-                targets.extend(
-                    [shard_file for shard_file in self.get_shard_list(dset_filename)]
-                )
+                dset_filename = f"{dset}.{self.tgt_lang}.gz"
+                targets.extend([shard_file for shard_file in self.get_shard_list(dset_filename)])  # noqa: C416
             return targets
-        return [
-            Path(self.output_dir, "{}.{}.gz".format(dset, self.tgt_lang))
-            for dset in self.dataset_list
-        ]
+        return [Path(self.output_dir, f"{dset}.{self.tgt_lang}.gz") for dset in self.dataset_list]
 
     def command_preprocess(self) -> None:
         if self.is_sharded:
@@ -108,14 +94,9 @@ class TranslateCorpusStep(CorpusStep):
             for d_fname, s_list in self.prev_corpus_step.shard_index.items():
                 s_fname_list = [f.stem + f.suffix for f in s_list]
                 shard_dict[d_fname] = s_fname_list
-                d_fname_target = ".".join(
-                    d_fname.split(".")[:-2] + [self.tgt_lang, "gz"]
-                )
+                d_fname_target = ".".join(d_fname.split(".")[:-2] + [self.tgt_lang, "gz"])
                 shard_dict[d_fname_target] = [
-                    ".".join(
-                        shard.split(".")[:-3] + [self.tgt_lang] + shard.split(".")[-2:]
-                    )
-                    for shard in s_fname_list
+                    ".".join(shard.split(".")[:-3] + [self.tgt_lang] + shard.split(".")[-2:]) for shard in s_fname_list
                 ]
             self.save_shard_dict(shard_dict)
 
@@ -140,7 +121,7 @@ class TranslateCorpusStep(CorpusStep):
             "-i",
             str(input_file),
             "--log",
-            "{}/{}.log".format(self.log_dir, target_file.stem),
+            f"{self.log_dir}/{target_file.stem}.log",
             "-b",
             str(self.beam_size),
         ]
@@ -152,11 +133,9 @@ class TranslateCorpusStep(CorpusStep):
             cmd += ["--cpu-threads", str(n_cpus)]
 
         # Execute the command
-        proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=sys.stderr, env=env, text=True
-        )
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=sys.stderr, env=env, text=True)
 
-        def terminate_signal(signalnum, handler):
+        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202, ARG001
             logger.debug("Received SIGTERM, terminating child process...")
             proc.terminate()
 
@@ -167,4 +146,4 @@ class TranslateCorpusStep(CorpusStep):
         # Check the return code
         rc = proc.poll()
         if rc:
-            raise Exception("Process {} exited with non-zero value.".format(proc.pid))
+            raise Exception(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102, TRY002, TRY003

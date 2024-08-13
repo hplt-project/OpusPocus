@@ -1,16 +1,16 @@
 import pytest
 
-from opuspocus.pipeline_steps import build_step, StepState
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.pipeline_steps.evaluate import EvaluateStep
 from opuspocus.runners.debug import DebugRunner
 
 
-@pytest.fixture(scope="function", params=EvaluateStep.AVAILABLE_METRICS)
+@pytest.fixture(scope="function", params=EvaluateStep.AVAILABLE_METRICS)  # noqa: PT003
 def evaluate_step_inited(request, train_data_parallel_tiny_raw_step_inited):
     """Create and initialize the evaluate step."""
     step = build_step(
         step="evaluate",
-        step_label="evaluate.{}.test".format(request.param),
+        step_label=f"evaluate.{request.param}.test",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
             "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
@@ -27,7 +27,7 @@ def evaluate_step_inited(request, train_data_parallel_tiny_raw_step_inited):
 
 def test_evaluate_step_unknown_metric(train_data_parallel_tiny_raw_step_inited):
     """Step construction fails when presented with unknown metric."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         build_step(
             step="evaluate",
             step_label="evaluate.foo.test",
@@ -48,7 +48,7 @@ def test_evaluate_step_inited(evaluate_step_inited):
     assert evaluate_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  # noqa: PT003
 def evaluate_step_done(evaluate_step_inited):
     """Execute the evaluate step."""
     runner = DebugRunner("debug", evaluate_step_inited.pipeline_dir)

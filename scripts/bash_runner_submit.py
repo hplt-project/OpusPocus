@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-import psutil
 import subprocess
 import sys
 
-
-def raise_nonzero_error(arguments, pid):
-    raise subprocess.SubprocessError(
-        "Process {} exited with a non-zero value. Wrapper arguments: {}\n".format(
-            pid, arguments
-        )
-    )
+import psutil
 
 
-def main(argv):
+def raise_nonzero_error(arguments, pid):  # noqa: ANN001, ANN201 fixit
+    raise subprocess.SubprocessError(f"Process {pid} exited with a non-zero value. Wrapper arguments: {arguments}\n")  # noqa: EM102, TRY003
+
+
+def main(argv):  # noqa: ANN001, ANN201 fixit
     """Wrapper for executing Bash commands that have process dependencies."""
     cmd_path = argv[1]
     proc_ids = []
@@ -23,11 +20,11 @@ def main(argv):
     for pid in proc_ids:
         try:
             procs.append(psutil.Process(pid))
-        except psutil.NoSuchProcess:
-            print("Process {} does not exist. Ignoring...", file=sys.stderr)
+        except psutil.NoSuchProcess:  # noqa: PERF203
+            print("Process {} does not exist. Ignoring...", file=sys.stderr)  # noqa: T201
 
     gone, alive = psutil.wait_procs(procs)
-    print(
+    print(  # noqa: T201
         "bash_runner_submit.py: Running command: {}".format(" ".join(argv)),
         file=sys.stderr,
     )

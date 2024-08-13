@@ -1,15 +1,13 @@
-from typing import List, Optional
-
-
 import logging
 import shutil
 from argparse import Namespace
 from pathlib import Path
+from typing import List, Optional
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.tools.decontaminate import main as decontaminate_main
 from opuspocus.utils import cut_file, paste_files
-
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ class DecontaminateCorpusStep(CorpusStep):
         test_data_step: Optional[CorpusStep] = None,
         output_shard_size: Optional[int] = None,
         min_length: int = 25,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -42,9 +40,8 @@ class DecontaminateCorpusStep(CorpusStep):
             min_length=min_length,
         )
         if self.valid_step is None and self.test_step is None:
-            logger.warn(
-                "No valid_data_step or test_data_step was provided. "
-                "Step %s will do notning when executed",
+            logger.warning(
+                "No valid_data_step or test_data_step was provided. Step %s will do notning when executed",
                 self.step_label,
             )
 
@@ -67,24 +64,16 @@ class DecontaminateCorpusStep(CorpusStep):
                     "valid.{}.{}.gz".format(dset, "-".join(self.languages)),
                 )
                 paste_files(
-                    [
-                        Path(self.valid_step.output_dir, "{}.{}.gz".format(dset, lang))
-                        for lang in self.languages
-                    ],
+                    [Path(self.valid_step.output_dir, f"{dset}.{lang}.gz") for lang in self.languages],
                     infile,
                 )
                 valid_corpora.append(infile)
         if self.test_step is not None:
             test_corpora = []
             for dset in self.test_step.dataset_list:
-                infile = Path(
-                    self.tmp_dir, "test.{}.{}.gz".format(dset, "-".join(self.languages))
-                )
+                infile = Path(self.tmp_dir, "test.{}.{}.gz".format(dset, "-".join(self.languages)))
                 paste_files(
-                    [
-                        Path(self.test_step.output_dir, "{}.{}.gz".format(dset, lang))
-                        for lang in self.languages
-                    ],
+                    [Path(self.test_step.output_dir, f"{dset}.{lang}.gz") for lang in self.languages],
                     infile,
                 )
                 test_corpora.append(infile)
@@ -94,10 +83,7 @@ class DecontaminateCorpusStep(CorpusStep):
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(self.output_dir, "{}.{}.gz".format(dset, self.src_lang))
-            for dset in self.dataset_list
-        ]
+        return [Path(self.output_dir, f"{dset}.{self.src_lang}.gz") for dset in self.dataset_list]
 
     def command(self, target_file: Path) -> None:
         dset_name = ".".join(target_file.stem.split(".")[:-1])
@@ -107,10 +93,7 @@ class DecontaminateCorpusStep(CorpusStep):
         outfile = Path(self.tmp_dir, "output.{}.gz".format("-".join(self.languages)))
 
         paste_files(
-            [
-                Path(self.input_dir, "{}.{}.gz".format(dset_name, lang))
-                for lang in self.languages
-            ],
+            [Path(self.input_dir, f"{dset_name}.{lang}.gz") for lang in self.languages],
             infile,
         )
 
@@ -128,8 +111,5 @@ class DecontaminateCorpusStep(CorpusStep):
 
         cut_file(
             outfile,
-            [
-                Path(self.output_dir, "{}.{}.gz".format(dset_name, lang))
-                for lang in self.languages
-            ],
+            [Path(self.output_dir, f"{dset_name}.{lang}.gz") for lang in self.languages],
         )

@@ -1,8 +1,7 @@
-import pytest
-
-import yaml
 from pathlib import Path
 
+import pytest
+import yaml
 
 PIPELINE_TRAIN_CONFIGS = [
     Path("config", "pipeline.train.simple.yml"),
@@ -19,7 +18,7 @@ def marian_tiny_config_file(config_dir):
     # TODO(varisd): parametrize the fixture to test other (tiny)
     #   configurations?
 
-    config = yaml.safe_load(open(Path("config", "marian.train.teacher.base.yml"), "r"))
+    config = yaml.safe_load(open(Path("config", "marian.train.teacher.base.yml")))  # noqa: PTH123, SIM115
 
     config["workspace"] = 500
 
@@ -39,12 +38,12 @@ def marian_tiny_config_file(config_dir):
     config["valid-max-length"] = 100
 
     config_file = Path(config_dir, "marian.train.teacher.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))
+    yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115
     return config_file
 
 
 @pytest.fixture(scope="session")
-def opustrainer_tiny_config_file(config_dir):
+def opustrainer_tiny_config_file(config_dir):  # noqa: ARG001, PT004
     """Prepares small-data config for opustrainer training."""
     # TODO(varisd): implement this when OpusTrainer support is added.
     pass
@@ -58,7 +57,7 @@ def pipeline_preprocess_tiny_config_file(
     languages,
 ):
     """Prepares small-data preprocessing pipeline config for unit testing."""
-    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml"), "r"))
+    config = yaml.safe_load(open(Path("config", "pipeline.preprocess.yml")))  # noqa: PTH123, SIM115
 
     config["global"]["src_lang"] = languages[0]
     config["global"]["tgt_lang"] = languages[1]
@@ -73,7 +72,7 @@ def pipeline_preprocess_tiny_config_file(
     config["global"]["test_data_dir"] = data_dir_decompressed
 
     config_file = Path(config_dir, "pipeline.preprocess.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))
+    yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115
     return config_file
 
 
@@ -86,15 +85,13 @@ def pipeline_train_tiny_config_file(
     languages,
 ):
     """Prepares small-data training pipeline config for unit testing."""
-    config = yaml.safe_load(open(request.param, "r"))
+    config = yaml.safe_load(open(request.param))  # noqa: PTH123, SIM115
 
     config["global"]["original_config_file"] = str(request.param)
     config["global"]["src_lang"] = languages[0]
     config["global"]["tgt_lang"] = languages[1]
 
-    config["global"]["preprocess_pipeline_dir"] = str(
-        pipeline_preprocess_tiny_done.pipeline_dir
-    )
+    config["global"]["preprocess_pipeline_dir"] = str(pipeline_preprocess_tiny_done.pipeline_dir)
     config["global"]["marian_config"] = str(marian_tiny_config_file)
 
     # NOTE(varisd): value chosen to satisfy generate_vocab training
@@ -110,5 +107,5 @@ def pipeline_train_tiny_config_file(
         config["global"]["shard_size"] = 2
 
     config_file = Path(config_dir, "pipeline.train.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))
+    yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115
     return config_file

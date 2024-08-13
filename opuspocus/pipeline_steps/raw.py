@@ -1,12 +1,11 @@
-from typing import List, Optional
-
 import gzip
 import logging
 import shutil
 from pathlib import Path
+from typing import List, Optional
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +29,8 @@ class RawCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: Optional[str] = None,
         output_shard_size: Optional[int] = None,
-        compressed: bool = True,
-    ):
+        compressed: bool = True,  # noqa: FBT001, FBT002
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -51,9 +50,7 @@ class RawCorpusStep(CorpusStep):
         """
         categories_path = Path(self.raw_data_dir, self.categories_file)
         if categories_path.exists():
-            logger.info(
-                "[%s] OpusCleaner's categories.json found. Copying.", self.step_label
-            )
+            logger.info("[%s] OpusCleaner's categories.json found. Copying.", self.step_label)
             shutil.copy(categories_path, self.categories_path)
         else:
             logger.info(
@@ -64,10 +61,10 @@ class RawCorpusStep(CorpusStep):
                 "categories": [{"name": self.default_category}],
                 "mapping": {self.default_category: []},
             }
-            suffix = ".{}".format(self.src_lang)
+            suffix = f".{self.src_lang}"
             if self.compressed:
                 suffix += ".gz"
-            for corpus_path in self.raw_data_dir.glob("*{}".format(suffix)):
+            for corpus_path in self.raw_data_dir.glob(f"*{suffix}"):
                 corpus_prefix = ".".join(corpus_path.name.split(".")[:-1])
                 if self.compressed:
                     corpus_prefix = ".".join(corpus_path.name.split(".")[:-2])
@@ -75,11 +72,7 @@ class RawCorpusStep(CorpusStep):
             self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(self.output_dir, "{}.{}.gz".format(dset, lang))
-            for dset in self.dataset_list
-            for lang in self.languages
-        ]
+        return [Path(self.output_dir, f"{dset}.{lang}.gz") for dset in self.dataset_list for lang in self.languages]
 
     def command(self, target_file: Path) -> None:
         # Hardlink compressed files
@@ -89,9 +82,7 @@ class RawCorpusStep(CorpusStep):
         # Copy .filters.json files, if available
         # Only do this once (for src lang) in bilingual corpora
         if lang == self.src_lang:
-            filters_filename = ".".join(
-                target_file.stem.split(".")[:-1] + ["filters.json"]
-            )
+            filters_filename = ".".join(target_file.stem.split(".")[:-1] + ["filters.json"])
             filters_path = Path(self.raw_data_dir, filters_filename)
             if filters_path.exists():
                 shutil.copy(filters_path, Path(self.output_dir, filters_filename))
@@ -105,7 +96,7 @@ class RawCorpusStep(CorpusStep):
             corpus_path = Path(self.raw_data_dir, target_file.stem)
             if not corpus_path.exists():
                 raise FileNotFoundError(corpus_path)
-            with open(corpus_path, "r") as f_in:
+            with open(corpus_path) as f_in:  # noqa: PTH123, SIM117
                 with gzip.open(target_file, "wt") as f_out:
                     for line in f_in:
                         print(line, end="", file=f_out)

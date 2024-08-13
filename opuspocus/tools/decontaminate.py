@@ -12,19 +12,19 @@ class Counter:
     removed = 0
 
 
-def hash_mono(line):
+def hash_mono(line):  # noqa: ANN001, ANN201
     return line.strip().lower()
 
 
-def make_hashes(line):
+def make_hashes(line):  # noqa: ANN001, ANN201
     src, tgt = line.split("\t", 2)
     # maybe we want to translate(str.maketrans("", "", string.punctuation))
     return hash_mono(src), hash_mono(tgt)
 
 
-def main(args):
-    src_test_samples = dict()
-    tgt_test_samples = dict()
+def main(args):  # noqa: ANN001, ANN201, PLR0912, PLR0915
+    src_test_samples = dict()  # noqa: C408
+    tgt_test_samples = dict()  # noqa: C408
     removed = 0
     retained = 0
 
@@ -67,7 +67,7 @@ def main(args):
         # Remove sentences which are present on either side of the devsets but
         # only if the average length is greater than min_length
         if src_seen or tgt_seen:
-            if args.mono:
+            if args.mono:  # noqa: SIM108
                 limit = len(src) * 2
             else:
                 limit = len(src) + len(tgt)
@@ -79,7 +79,7 @@ def main(args):
                     tgt_test_samples[tgt].removed += 1
                 removed += 1
                 continue
-            else:
+            else:  # noqa: RET507
                 if src in src_test_samples:
                     src_test_samples[src].kept += 1
                 if not args.mono and tgt in tgt_test_samples:
@@ -90,7 +90,7 @@ def main(args):
         # We never stripped the original newline
         print(line, end="", file=output_fh)
 
-    print(
+    print(  # noqa: T201
         f"Removed {removed:,} lines out of {i:,}. Retained {retained:,} below length threshold",
         file=sys.stderr,
     )
@@ -99,34 +99,30 @@ def main(args):
         total_seen = sum(v.seen for v in samples.values())
         was_seen = sum(1 if v.seen > 0 else 0 for v in samples.values())
 
-        print("Seen", file=sys.stderr)
-        print(f"{side} total: {total_seen}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_seen/len(samples):%}", file=sys.stderr)
+        print("Seen", file=sys.stderr)  # noqa: T201
+        print(f"{side} total: {total_seen}/{i}", file=sys.stderr)  # noqa: T201
+        print(f"{side} was: {was_seen/len(samples):%}", file=sys.stderr)  # noqa: T201
 
         total_removed = sum(v.removed for v in samples.values())
         was_removed = sum(1 if v.removed > 0 else 0 for v in samples.values())
 
-        print("Removed", file=sys.stderr)
-        print(f"{side} total: {total_removed}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_removed/len(samples):%}", file=sys.stderr)
+        print("Removed", file=sys.stderr)  # noqa: T201
+        print(f"{side} total: {total_removed}/{i}", file=sys.stderr)  # noqa: T201
+        print(f"{side} was: {was_removed/len(samples):%}", file=sys.stderr)  # noqa: T201
 
         total_kept = sum(v.kept for v in samples.values())
         was_kept = sum(1 if v.kept > 0 else 0 for v in samples.values())
 
-        print("Kept", file=sys.stderr)
-        print(f"{side} total: {total_kept}/{i}", file=sys.stderr)
-        print(f"{side} was: {was_kept/len(samples):%}", file=sys.stderr)
+        print("Kept", file=sys.stderr)  # noqa: T201
+        print(f"{side} total: {total_kept}/{i}", file=sys.stderr)  # noqa: T201
+        print(f"{side} was: {was_kept/len(samples):%}", file=sys.stderr)  # noqa: T201
 
 
-def parse_args():
+def parse_args():  # noqa: ANN201
     parser = argparse.ArgumentParser("Dataset Decontamination")
-    parser.add_argument(
-        "--input-file", type=str, default=None, help="Dataset to be decontaminated."
-    )
+    parser.add_argument("--input-file", type=str, default=None, help="Dataset to be decontaminated.")
     parser.add_argument("--output-file", type=str, default=None, help="Output file.")
-    parser.add_argument(
-        "--test-files", type=str, required=True, help="Comma-separated list of files."
-    )
+    parser.add_argument("--test-files", type=str, required=True, help="Comma-separated list of files.")
     parser.add_argument("--min-length", type=int, default=0, help="TODO")
     parser.add_argument("--mono", action="store_true", help="TODO")
     return parser.parse_args()

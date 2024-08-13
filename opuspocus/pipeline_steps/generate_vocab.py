@@ -1,18 +1,18 @@
-from typing import List
-
 import logging
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import List
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.utils import (
+    RunnerResources,
     concat_files,
     decompress_file,
-    RunnerResources,
     subprocess_wait,
 )
 
@@ -33,7 +33,7 @@ class GenerateVocabStep(OpusPocusStep):
         corpus_step: CorpusStep,
         seed: int = 42,
         vocab_size: int = 64000,
-    ):
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -56,10 +56,8 @@ class GenerateVocabStep(OpusPocusStep):
                     self.corpus_step.step_label,
                     self.corpus_step.categories_dict,
                 )
-                raise ValueError(
-                    "Dataset {} is not registered in the {} categories.json".format(
-                        dset, self.corpus_step.step_label
-                    )
+                raise ValueError(  # noqa: TRY003
+                    f"Dataset {dset} is not registered in the {self.corpus_step.step_label} categories.json"  # noqa: EM102
                 )
 
     @property
@@ -75,25 +73,17 @@ class GenerateVocabStep(OpusPocusStep):
         return [self.src_lang, self.tgt_lang]
 
     def get_command_targets(self) -> List[Path]:
-        return [
-            Path(
-                self.output_dir, "model.{}-{}.spm".format(self.src_lang, self.tgt_lang)
-            )
-        ]
+        return [Path(self.output_dir, f"model.{self.src_lang}-{self.tgt_lang}.spm")]
 
     def command(self, target_file: Path) -> None:
         spm_train_path = Path(self.marian_dir, "bin", "spm_train")
-        model_prefix = "{}/{}".format(self.output_dir, target_file.stem)
+        model_prefix = f"{self.output_dir}/{target_file.stem}"
         n_cpus = int(os.environ[RunnerResources.get_env_name("cpus")])
 
         train_concat_gz = Path(self.tmp_dir, "train_concat.gz")
         train_concat = Path(self.tmp_dir, train_concat_gz.stem)
         concat_files(
-            [
-                Path(self.input_dir, "{}.{}.gz".format(dset, lang))
-                for dset in self.datasets
-                for lang in self.languages
-            ],
+            [Path(self.input_dir, f"{dset}.{lang}.gz") for dset in self.datasets for lang in self.languages],
             train_concat_gz,
         )
         decompress_file(train_concat_gz, train_concat)
@@ -102,22 +92,20 @@ class GenerateVocabStep(OpusPocusStep):
         # TODO: make this Unix non-exclusive
         cmd = [
             str(spm_train_path),
-            "--random_seed={}".format(self.seed),
+            f"--random_seed={self.seed}",
             "--bos_id=-1",
             "--eos_id=0",
             "--unk_id=1",
-            "--model_prefix={}".format(model_prefix),
-            "--vocab_size={}".format(self.vocab_size),
-            "--input={}".format(str(train_concat)),
+            f"--model_prefix={model_prefix}",
+            f"--vocab_size={self.vocab_size}",
+            f"--input={train_concat!s}",
             "--input_sentence_size=10000000",
             "--shuffle_input_sentence=true",
             "--train_extremely_large_corpus",
             "--byte_fallback",
-            "--num_threads={}".format(n_cpus),
+            f"--num_threads={n_cpus}",
         ]
-        proc = subprocess.Popen(
-            cmd, stdout=sys.stdout, stderr=sys.stderr, env=os.environ, text=True
-        )
+        proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=os.environ, text=True)
         subprocess_wait(proc)
 
         # Rename the output file
@@ -126,5 +114,5 @@ class GenerateVocabStep(OpusPocusStep):
         for suffix in ["spm", "vocab"]:
             Path(
                 self.output_dir,
-                "model.{}-{}.{}".format(self.tgt_lang, self.src_lang, suffix),
+                f"model.{self.tgt_lang}-{self.src_lang}.{suffix}",
             ).symlink_to(Path(self.output_dir, target_file.stem + suffix))

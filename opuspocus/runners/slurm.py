@@ -1,10 +1,9 @@
-from typing import List, Optional
-
 import logging
 import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import List, Optional
 
 from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
 from opuspocus.utils import RunnerResources
@@ -20,19 +19,17 @@ class SlurmRunner(OpusPocusRunner):
     """TODO"""
 
     @staticmethod
-    def add_args(parser):
+    def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
-        parser.add_argument(
-            "--slurm_other_options", type=str, default=None, help="TODO"
-        )
+        parser.add_argument("--slurm_other_options", type=str, default=None, help="TODO")
 
     def __init__(
         self,
         runner: str,
         pipeline_dir: Path,
         slurm_other_options: str,
-    ):
+    ) -> None:
         super().__init__(
             runner=runner,
             pipeline_dir=pipeline_dir,
@@ -57,16 +54,12 @@ class SlurmRunner(OpusPocusRunner):
 
         if dep_jids:
             cmd.append("--dependency")
-            cmd.append(",".join(["afterok:{}".format(dep) for dep in dep_jids]))
+            cmd.append(",".join([f"afterok:{dep}" for dep in dep_jids]))
 
         cmd += self._convert_resources(step_resources)
         cmd += self._add_environment_variables(step_resources)
 
-        jobname = "{}.{}.{}".format(
-            self.runner,
-            self.pipeline_dir.stem + self.pipeline_dir.suffix,
-            target_file.stem,
-        )
+        jobname = f"{self.runner}.{self.pipeline_dir.stem + self.pipeline_dir.suffix}.{target_file.stem}"
         cmd += ["--jobname", jobname]
         cmd += ["--signal", "TERM@10:00"]  # send SIGTERM 10m before time-limit
 
@@ -79,9 +72,7 @@ class SlurmRunner(OpusPocusRunner):
 
         if target_file is not None:
             cmd += [str(cmd_path), str(target_file)]
-            proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False
-            )
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
         else:
             cmd += [str(cmd_path)]
             proc = subprocess.Popen(
@@ -113,11 +104,11 @@ class SlurmRunner(OpusPocusRunner):
         """TODO"""
         proc = subprocess.Popen(["squeue", "-j", task_id["id"]], shell=False)
         rc = proc.wait()
-        if rc:
+        if rc:  # noqa: SIM103
             return False
         return True
 
-    def _convert_resources(resources: RunnerResources) -> List[str]:
+    def _convert_resources(self, resources: RunnerResources) -> List[str]:
         converted = []
         if resources.cpus is not None:
             converted += ["--cpus", str(resources.cpus)]
@@ -130,15 +121,6 @@ class SlurmRunner(OpusPocusRunner):
 
         return converted
 
-    def _add_environment_variables(resources: RunnerResources) -> List[str]:
+    def _add_environment_variables(self, resources: RunnerResources) -> List[str]:
         # TODO finish this
-        return [
-            "--export={}".format(
-                ",".join(
-                    [
-                        "{}='{}'".format(k, str(v))
-                        for k, v in resources.get_env_dict().items()
-                    ]
-                )
-            )
-        ]
+        return ["--export={}".format(",".join([f"{k}='{v!s}'" for k, v in resources.get_env_dict().items()]))]

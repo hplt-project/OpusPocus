@@ -1,6 +1,6 @@
-import pytest
-
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture(scope="session")
@@ -14,12 +14,7 @@ def marian_cpu_dir():
     """Location of CPU-compiled Marian NMT."""
     marian_dir = Path("marian_cpu")
     if not marian_dir.exists():
-        pytest.skip(
-            reason=(
-                "A compiled CPU version of Marian NMT in 'marian_cpu_dir' "
-                "must be available."
-            )
-        )
+        pytest.skip(reason=("A compiled CPU version of Marian NMT in 'marian_cpu_dir' must be available."))
     return marian_dir
 
 
@@ -28,12 +23,7 @@ def marian_gpu_dir():
     """Location of the GPU-compiled Marian NMT."""
     marian_dir = Path("marian_gpu")
     if not marian_dir.exists():
-        pytest.skip(
-            reason=(
-                "A compiled GPU version of Marian NMT in 'marian_gpu_dir' "
-                "must be available."
-            )
-        )
+        pytest.skip(reason=("A compiled GPU version of Marian NMT in 'marian_gpu_dir' must be available."))
     return marian_dir
 
 
@@ -42,9 +32,7 @@ def hyperqueue_dir():
     """Location of the HyperQueue program binary."""
     hq_dir = Path("hyperqueue")
     if not hq_dir.exists():
-        pytest.skip(
-            reason=("Hyperqueue binary must be located at " "{}/bin/hq.".format(hq_dir))
-        )
+        pytest.skip(reason=("Hyperqueue binary must be located at " f"{hq_dir}/bin/hq."))  # noqa: ISC001
     return hq_dir
 
 

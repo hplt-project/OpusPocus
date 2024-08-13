@@ -1,6 +1,6 @@
 import pytest
 
-from opuspocus.pipeline_steps import build_step, StepState
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.runners.debug import DebugRunner
 
 # TODO(varisd): test cpu vs gpu run (single vs multi)
@@ -9,7 +9,7 @@ from opuspocus.runners.debug import DebugRunner
 # TODO(varisd): test model tuning (loading a model and continuing traning)
 
 
-@pytest.fixture(scope="function", params=["marian_cpu_dir", "marian_gpu_dir"])
+@pytest.fixture(scope="function", params=["marian_cpu_dir", "marian_gpu_dir"])  # noqa: PT003
 def train_model_step_inited(
     request,
     train_data_parallel_tiny_raw_step_inited,
@@ -22,7 +22,7 @@ def train_model_step_inited(
 
     step = build_step(
         step="train_model",
-        step_label="train_model.{}.test".format(request.param),
+        step_label=f"train_model.{request.param}.test",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
             "marian_dir": marian_dir,
@@ -46,7 +46,7 @@ def test_train_model_step_inited(train_model_step_inited):
     assert train_model_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function")  # noqa: PT003
 def train_model_step_done(train_model_step_inited):
     """Execute the train_model step."""
     runner = DebugRunner("debug", train_model_step_inited.pipeline_dir)
@@ -60,6 +60,6 @@ def test_train_model_step_done(train_model_step_done):
 
 
 @pytest.mark.xfail(reason="not implemented")
-def test_train_model_step_done_model(train_model_step_done):
+def test_train_model_step_done_model(train_model_step_done):  # noqa: ARG001
     """Check whether the train_step model was saved correctly."""
-    assert False
+    assert False  # noqa: B011, PT015

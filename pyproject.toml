@@ -4,7 +4,7 @@ name = "opuspocus"
 description = "Modular NLP pipeline manager."
 readme = "README.md"
 requires-python = ">=3.7"
-license = {text = "MIT"}
+license = { text = "MIT" }
 keywords = ["OPUS", "HPLT", "pipeline manager"]
 authors = [{ name = "Dušan Variš", email = "varis@ufal.mff.cuni.cz" }]
 classifiers = [
@@ -22,6 +22,56 @@ Issues = "https://github.com/hplt-project/opuspocus/issues"
 Repository = "https://github.com/hplt-project/OpusPocus.git"
 
 [tool.pytest.ini_options]
-log_cli=true
-log_level="CRITICAL"
+log_cli = true
+log_level = "CRITICAL"
 pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
+lint.select = [
+  "F",    # https://docs.astral.sh/ruff/rules/#pyflakes-f
+  "E",    # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+  "W",    # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
+  "I",    # https://docs.astral.sh/ruff/rules/#isort-i
+  "N",    # https://docs.astral.sh/ruff/rules/#pep8-naming-n
+  "UP",   # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+  "YTT",  # https://docs.astral.sh/ruff/rules/#flake8-2020-ytt
+  "ANN",  # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
+  "BLE",  # https://docs.astral.sh/ruff/rules/#flake8-bugbear-ble
+  "FBT",  # https://docs.astral.sh/ruff/rules/#flake8-bandit-fbt
+  "B",    # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
+  "A",    # https://docs.astral.sh/ruff/rules/#flake8-annotations-a
+  "C4",   # https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
+  "EM",   # https://docs.astral.sh/ruff/rules/#flake8-eradicate-em
+  "ISC",  # https://docs.astral.sh/ruff/rules/#flake8-implicit-str-concat-isc
+  "ICN",  # https://docs.astral.sh/ruff/rules/#flake8-import-conventions-icn
+  "LOG",  # https://docs.astral.sh/ruff/rules/#flake8-logging-log
+  "G",    # https://docs.astral.sh/ruff/rules/#flake8-logging-format-g
+  "T20",  # https://docs.astral.sh/ruff/rules/#flake8-print-t20
+  "PYI",
+  "PT",   # https://docs.astral.sh/ruff/rules/#flake8-pytest-style-pt
+  "Q",
+  "RET",
+  "SLF",
+  "SIM",
+  "SLOT",
+  "TID",
+  "TCH",
+  "ARG",
+  "PTH",
+  "PL",
+  "TRY",
+  "FLY",
+  "PERF",
+  "FURB",
+  "RUF",
+]
+
+lint.ignore = [
+  "ANN101",  # missing type annotation for self in method (legacy ruff remove it)
+  "PLR0913", # too many arguments in function call
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN201", "ANN001"]

@@ -1,5 +1,6 @@
-import logging
 import argparse
+import logging
+
 from .opuspocus_pipeline import OpusPocusPipeline, PipelineConfig
 
 __all__ = ["OpusPocusPipeline", "PipelineConfig"]
