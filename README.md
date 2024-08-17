@@ -38,6 +38,8 @@ pip install -r requirements.txt
 Either run the main script `go.py` or the subcommand scripts from `opuspocus_cli/` directory.
 Run the scripts directly from the root directory for this repository.
 
+_Barry: I find that I still need to set my `PYTHONPATH` in the environment, otherwise all scripts fail because opuspocus cannot be imported._
+
 # Data preparation
 
 TODO: setup `data/` dir (modify the config/pipeline... to work with this directory
