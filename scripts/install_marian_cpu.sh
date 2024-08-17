@@ -23,4 +23,4 @@ cmake .. \
 	-DCOMPILE_CPU=ON \
 	-DCOMPILE_CUDA=OFF \
 	-DUSE_SENTENCEPIECE=ON
-make -j $n_threads 2>&1 | tee $build_dir/build.log
+make -j $n_threads 2>&1 | tee build.log
