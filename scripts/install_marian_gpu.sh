@@ -35,7 +35,7 @@ cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
     -DCOMPILE_CUDA=ON \
     -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root \
-    -DUSE_CUDNN=OFF \
+    -DUSE_CUDNN=ON \
     -DCUDNN_LIBRARY=$cuda_root/cudnn/$cudnn_ver/lib/libcudnn.so \
     -DCUDNN_INCLUDE_DIR=$cuda_root/cudnn/$cudnn_ver/include \
 	-DUSE_SENTENCEPIECE=ON
