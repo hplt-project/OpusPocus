@@ -22,10 +22,13 @@ It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for
 ## Installation
 
 1. Install [MarianNMT](https://marian-nmt.github.io/docs/).
+```
+./scripts/install_marian_gpu.sh PATH_TO_CUDA CUDNN_VERSION [NUM_THREADS]
+```
 
-2. Prepare the [OpusCleaner](https://github.com/hplt-project/OpusCleaner/blob/main/README.md#installation-for-cleaning) (at the moment, OpusCleaner has conflicting dependencies with OpusTrainer, therefore, has to be in an isolated Python environment).
+3. Prepare the [OpusCleaner](https://github.com/hplt-project/OpusCleaner/blob/main/README.md#installation-for-cleaning) (at the moment, OpusCleaner has conflicting dependencies with OpusTrainer, therefore, has to be in an isolated Python environment).
 
-3. Install the OpusPocus requirements.
+4. Install the OpusPocus requirements.
 ```
 pip install --upgrade pip setuptools
 pip install -r requirements.txt
