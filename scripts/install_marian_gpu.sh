@@ -39,4 +39,4 @@ cmake .. \
     -DCUDNN_LIBRARY=$cuda_root/cudnn/$cudnn_ver/lib/libcudnn.so \
     -DCUDNN_INCLUDE_DIR=$cuda_root/cudnn/$cudnn_ver/include \
 	-DUSE_SENTENCEPIECE=ON
-make -j $n_threads 2>&1 | tee $build_dir/build.log
+make -j $n_threads 2>&1 | tee build.log
