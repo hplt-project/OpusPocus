@@ -1,17 +1,19 @@
 import logging
 import subprocess
 import sys
+import time
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Optional
 
-from psutil import Process, wait_procs
+from psutil import NoSuchProcess, Process, wait_procs
 
-from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
+from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
 from opuspocus.utils import RunnerResources, subprocess_wait
 
 logger = logging.getLogger(__name__)
 
-SLEEP_TIME = 0.1
+SLEEP_TIME = 0.5
 
 
 @register_runner("bash")
@@ -21,10 +23,10 @@ class BashRunner(OpusPocusRunner):
     submit_wrapper = "scripts/bash_runner_submit.py"
 
     @staticmethod
-    def add_args(parser):  # noqa: ANN001, ANN205
+    def add_args(parser: ArgumentParser) -> None:
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
-            "--run-subtasks-in-parallel",
+            "--run-tasks-in-parallel",
             action="store_true",
             default=False,
             help="TODO",
@@ -34,23 +36,24 @@ class BashRunner(OpusPocusRunner):
         self,
         runner: str,
         pipeline_dir: Path,
-        run_subtasks_in_parallel: bool = False,  # noqa: FBT001, FBT002
+        *,
+        run_tasks_in_parallel: bool = False,
     ) -> None:
         super().__init__(
             runner=runner,
             pipeline_dir=pipeline_dir,
-            run_subtasks_in_parallel=run_subtasks_in_parallel,
+            run_tasks_in_parallel=run_tasks_in_parallel,
         )
 
     def submit_task(
         self,
         cmd_path: Path,
         target_file: Optional[Path] = None,
-        dependencies: Optional[List[TaskId]] = None,
+        dependencies: Optional[List[TaskInfo]] = None,
         step_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
-    ) -> TaskId:
+    ) -> TaskInfo:
         """TODO"""
         dependencies_str = ""
         if dependencies is not None:
@@ -59,12 +62,12 @@ class BashRunner(OpusPocusRunner):
 
         stdout = sys.stdout
         if stdout_file is not None:
-            stdout = open(stdout_file, "w")  # noqa: PTH123, SIM115
+            stdout = stdout_file.open("w")
         stderr = sys.stderr
         if stderr_file is not None:
-            stderr = open(stderr_file, "w")  # noqa: PTH123, SIM115
+            stderr = stderr_file.open("w")
 
-        # Subtasks do not have dependencies, no need for the wrapper
+        # Subtasks do not have dependencies - no need for the wrapper
         if target_file is not None:
             proc = subprocess.Popen(
                 [str(cmd_path), str(target_file)],
@@ -73,13 +76,8 @@ class BashRunner(OpusPocusRunner):
                 shell=False,
                 env=env_dict,
             )
-            if not self.run_subtasks_in_parallel:
-                logger.debug("Waiting for process to finish...")
-                subprocess_wait(proc)
-            task_id = TaskId(file_path=str(target_file), id=proc.pid)
+            task_info = TaskInfo(file_path=str(target_file), id=proc.pid)
         else:
-            if not self.run_subtasks_in_parallel:
-                dependencies_str = " ".join(str(task["main_task"]["id"]) for task in self.submitted_tasks)
             proc = subprocess.Popen(
                 [
                     self.submit_wrapper,
@@ -92,38 +90,42 @@ class BashRunner(OpusPocusRunner):
                 shell=False,
                 env=env_dict,
             )
-            task_id = TaskId(file_path=None, id=proc.pid)
-        return task_id
+            task_info = TaskInfo(file_path=None, id=proc.pid)
+        time.sleep(SLEEP_TIME)  # We do not want to start proccess too quickly
+        # If executing serially, we wait for each process to finish before submitting next
+        if not self.run_tasks_in_parallel:
+            logger.debug("Waiting for process to finish...")
+            subprocess_wait(proc)
+        return task_info
 
-    def update_dependants(self, task_id: TaskId) -> None:  # noqa: ARG002
-        return NotImplementedError()
-
-    def cancel_task(self, task_id: TaskId) -> None:
+    def cancel_task(self, task_info: TaskInfo) -> None:
         """TODO"""
-        proc = self._get_process(task_id)
+        proc = self._get_process(task_info)
         if proc is not None:
             proc.terminate()
 
-    def wait_for_single_task(self, task_id: TaskId) -> None:
-        proc = self._get_process(task_id)
+    def wait_for_single_task(self, task_info: TaskInfo) -> None:
+        pid = task_info["id"]
+        proc = self._get_process(pid)
         if proc is None:
             return
         gone, _ = wait_procs([proc])
         for p in gone:
             if p.returncode:
-                self.remove_task_file(task_id)
-                raise subprocess.SubprocessError("Process {} exited with non-zero value.".format(task_id["id"]))  # noqa: EM103
+                Path(task_info["file_path"]).unlink()
+                err_msg = f"Process {pid} exited with non-zero value."
+                raise subprocess.SubprocessError(err_msg)
 
-    def is_task_running(self, task_id: TaskId) -> bool:
+    def is_task_running(self, task_info: TaskInfo) -> bool:
         """TODO"""
-        proc = self._get_process(task_id)
+        proc = self._get_process(task_info)
         return proc is not None
 
-    def _get_process(self, task_id: TaskId) -> Optional[Process]:
+    def _get_process(self, task_info: TaskInfo) -> Optional[Process]:
         """TODO"""
         try:
-            proc = Process(task_id["id"])
-        except Exception:  # noqa: BLE001
-            logger.debug("Process with pid=%i does not exist. Ignoring...", task_id)
+            proc = Process(task_info["id"])
+        except NoSuchProcess:
+            logger.debug("Process with pid=%i does not exist. Ignoring...", task_info["id"])
             return None
         return proc
