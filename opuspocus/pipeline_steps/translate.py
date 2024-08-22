@@ -139,15 +139,20 @@ class TranslateCorpusStep(CorpusStep):
         # Execute the command
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=sys.stderr, env=env, text=True)
 
-        def terminate_signal(signalnum, _) -> None:  # noqa: ANN001
-            logger.debug("Received signal %i, terminating child process...", signalnum)
+        # Propagate the termination signal to the child process
+        def step_terminate_handler(signum, _):  # noqa: ANN001, ANN202
+            logger.debug("Received signal %i, gracefully terminating Marian child process...", signum)
             proc.terminate()
+            err_msg = f"{self.step_label}.command received signal {signum}. Terminating..."
+            raise InterruptedError(err_msg)
 
-        signal.signal(signal.SIGTERM, terminate_signal)
+        signal.signal(signal.SIGUSR1, step_terminate_handler)
+        signal.signal(signal.SIGTERM, step_terminate_handler)
 
         save_filestream(input_stream=proc.stdout, output_file=target_file)
 
         # Check the return code
         rc = proc.poll()
         if rc:
-            raise Exception(f"Process {proc.pid} exited with non-zero value.")  # noqa: TRY002, TRY003, EM102
+            err_msg = f"Process {proc.pid} exited with non-zero value."
+            raise Exception(err_msg)  # noqa: TRY002
