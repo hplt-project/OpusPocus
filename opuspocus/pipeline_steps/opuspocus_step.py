@@ -2,8 +2,8 @@ import enum
 import inspect
 import json
 import logging
-import os
-from argparse import Namespace
+import signal
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, get_type_hints
 
@@ -51,17 +51,17 @@ class OpusPocusStep:
         self.pipeline_dir = pipeline_dir
 
         if pipeline_dir is None:
-            raise ValueError(  # noqa: TRY003
-                f"{step_label}.pipeline_dir was not specified. Use --pipeline-dir "  # noqa: EM102
+            err_msg = (
+                f"{step_label}.pipeline_dir was not specified. Use --pipeline-dir "
                 "option to set global pipeline_dir or set the pipeline_dir "
                 "for the step using the config file."
             )
+            raise ValueError(err_msg)
 
         self.register_parameters(**kwargs)
-        self.state = self.load_state()
 
     @classmethod
-    def build_step(cls, step: str, step_label: str, pipeline_dir: Path, **kwargs) -> "OpusPocusStep":  # noqa: ANN003, ANN102
+    def build_step(cls: "OpusPocusStep", step: str, step_label: str, pipeline_dir: Path, **kwargs) -> "OpusPocusStep":  # noqa: ANN003
         """Build a specified step instance.
 
         Args:
@@ -74,19 +74,19 @@ class OpusPocusStep:
         """
         try:
             cls_inst = cls(step, step_label, pipeline_dir, **kwargs)
-        except TypeError as err:
+        except TypeError:
             sig = inspect.signature(cls.__init__)
-            logger.error(  # noqa: TRY400
+            logger.exception(
                 "Error occured while building step %s (%s).\nStep Signature:\n%s\n",
                 step_label,
                 step,
                 "\n".join([f"\t{sig.parameters[x]}" for x in sig.parameters]),
             )
-            raise err  # noqa: TRY201
+            raise
         return cls_inst
 
     @classmethod
-    def list_parameters(cls, exclude_dependencies: bool = True) -> List[str]:  # noqa: ANN102, FBT001, FBT002
+    def list_parameters(cls: "OpusPocusStep", *, exclude_dependencies: bool = True) -> List[str]:
         """Return a list of arguments/required for initialization
 
         Args:
@@ -108,7 +108,7 @@ class OpusPocusStep:
 
     @classmethod
     def load_parameters(
-        cls,  # noqa: ANN102
+        cls: "OpusPocusStep",
         step_label: str,
         pipeline_dir: Path,
     ) -> Dict[str, Any]:
@@ -116,14 +116,14 @@ class OpusPocusStep:
         params_path = Path(pipeline_dir, step_label, cls.parameter_file)
         logger.debug("Loading step variables from %s", params_path)
 
-        params_dict = yaml.safe_load(open(params_path))  # noqa: PTH123, SIM115
-        # TODO: check for missing/unknown parameters
-        return params_dict  # noqa: RET504
+        with params_path.open("r") as fh:
+            # TODO(varisd): check for missing/unknown parameters
+            return yaml.safe_load(fh)
 
-    def get_parameters_dict(self, exclude_dependencies: bool = True) -> Dict[str, Any]:  # noqa: FBT001, FBT002
+    def get_parameters_dict(self, *, exclude_dependencies: bool = True) -> Dict[str, Any]:
         """Serialize the step parameters"""
         param_dict = {}
-        for param in self.list_parameters(exclude_dependencies):
+        for param in self.list_parameters(exclude_dependencies=exclude_dependencies):
             if "_step" in param:
                 if param in self.dependencies and self.dependencies[param] is not None:
                     p = self.dependencies[param].step_label
@@ -140,10 +140,8 @@ class OpusPocusStep:
 
     def save_parameters(self) -> None:
         """Save the step instance parameters."""
-        yaml.dump(
-            self.get_parameters_dict(),
-            open(Path(self.step_dir, self.parameter_file), "w"),  # noqa: PTH123, SIM115
-        )
+        with Path(self.step_dir, self.parameter_file).open("w") as fh:
+            yaml.dump(self.get_parameters_dict(), fh)
 
     def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
         """Class agnostic registration of the step instance parameters.
@@ -167,23 +165,26 @@ class OpusPocusStep:
             if "_step" in param:
                 self.dependencies[param] = val
             else:
+                v = val
                 if type_hints[param] == Path and val is not None:
-                    val = Path(val)  # noqa: PLW2901
+                    v = Path(val)
                 if type_hints[param] == List[Path]:
-                    val = [Path(v) for v in val]  # noqa: PLW2901
-                setattr(self, param, val)
+                    v = [Path(v) for v in val]
+                setattr(self, param, v)
 
     @classmethod
-    def load_dependencies(cls, step_label: str, pipeline_dir: Path) -> Dict[str, str]:  # noqa: ANN102
+    def load_dependencies(cls: "OpusPocusStep", step_label: str, pipeline_dir: Path) -> Dict[str, str]:
         """Load step dependecies based on their unique step_label values."""
         deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
         logger.debug("Loading dependencies from %s", deps_path)
-        return yaml.safe_load(open(deps_path))  # noqa: PTH123, SIM115
+        with deps_path.open("r") as fh:
+            return yaml.safe_load(fh)
 
     def save_dependencies(self) -> None:
         """Save the step dependencies using their unique step_label values."""
         deps_dict = {k: v.step_label for k, v in self.dependencies.items() if v is not None}
-        yaml.dump(deps_dict, open(Path(self.step_dir, self.dependency_file), "w"))  # noqa: PTH123, SIM115
+        with Path(self.step_dir, self.dependency_file).open("w") as fh:
+            yaml.dump(deps_dict, fh)
 
     @property
     def step_dir(self) -> Path:
@@ -220,16 +221,15 @@ class OpusPocusStep:
         4. create the step command
         5. set set.state to INITED
         """
-        self.state = self.load_state()
         if self.state is not None:
             if self.has_state(StepState.INITED):
                 logger.info("Step already initialized. Skipping...")
                 return
-            else:  # noqa: RET505
-                raise ValueError(f"Trying to initialize step in a {self.state} state.")  # noqa: EM102, TRY003
+            err_msg = f"Trying to initialize step in a {self.state} state."
+            raise ValueError(err_msg)
         # Set state to incomplete until finished initializing.
         self.create_directories()
-        self.set_state(StepState.INIT_INCOMPLETE)
+        self.state = StepState.INIT_INCOMPLETE
 
         # Initialization of dependencies after directory creation and setting
         # state to 'incomplete' helps to detect possible dependency cycles.
@@ -240,7 +240,7 @@ class OpusPocusStep:
 
         # initialize state
         logger.info("[%s] Step Initialized.", self.step_label)
-        self.set_state(StepState.INITED)
+        self.state = StepState.INITED
 
     def init_dependencies(self) -> None:
         """Recursively call the init_step method of the step dependencies.
@@ -263,15 +263,19 @@ class OpusPocusStep:
         # create step dir
         logger.debug("Creating step dir.")
         if self.step_dir.is_dir():
-            raise FileExistsError(f"Cannot create {self.step_dir}. Directory already exists.")  # noqa: EM102, TRY003
+            err_msg = f"Cannot create {self.step_dir}. Directory already exists."
+            raise FileExistsError(err_msg)
         for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
 
-    def clean_directories(self) -> None:
+    def clean_directories(self, *, keep_finished: bool = False) -> None:
         """TODO"""
         logger.debug("Cleaning step subdirectory contents.")
-        for d in [self.log_dir, self.output_dir, self.tmp_dir]:
+        for d in [self.log_dir, self.tmp_dir]:
             clean_dir(d, exclude="categories.json")
+
+        if not keep_finished:
+            clean_dir(self.output_dir, exclude="categories.json")
 
     def create_command(self) -> None:
         """Save the string composed using into the compose_command method.
@@ -281,22 +285,15 @@ class OpusPocusStep:
         """
         cmd_path = Path(self.step_dir, self.command_file)
         if cmd_path.exists():
-            raise FileExistsError(f"File {cmd_path} already exists.")  # noqa: EM102, TRY003
+            err_msg = f"File {cmd_path} already exists."
+            raise FileExistsError(err_msg)
 
         logger.debug("Creating step command.")
-        print(self.compose_command(), file=open(cmd_path, "w"))  # noqa: PTH123, SIM115
-        os.chmod(cmd_path, 0o755)  # noqa: PTH101
+        with cmd_path.open("w") as fh:
+            print(self.compose_command(), file=fh)
+        cmd_path.chmod(0o755)
 
-    def retry_step(self, args: Namespace):  # noqa: ANN201
-        """Try to recover from a failed state.
-
-        Default behavior is to change state and just rerun.
-        Derived class should override this method if necessary.
-        """
-        self.set_state(StepState.INITED)
-        self.run_step(args)
-
-    def traceback_step(self, level: int = 0, full: bool = False) -> None:  # noqa: FBT001, FBT002
+    def traceback_step(self, level: int = 0, *, full: bool = False) -> None:
         """Print the information about the step state and variables.
 
         If the step has any dependencies, call their respective traceback_step
@@ -312,41 +309,93 @@ class OpusPocusStep:
             if dep is None:
                 print_indented("+ None", level + 1)
                 continue
-            dep.traceback_step(level + 1, full)
+            dep.traceback_step(level + 1, full=full)
 
-    def load_state(self) -> Optional[StepState]:
-        """Load the current state of a step."""
-        state_file = Path(self.step_dir, self.state_file)
-        if state_file.exists():
-            state = StepState(json.load(open(Path(self.step_dir, self.state_file))))  # noqa: PTH123, SIM115
+    @property
+    def state(self) -> Optional[StepState]:
+        state_path = Path(self.step_dir, self.state_file)
+        if state_path.exists():
+            with state_path.open("r") as fh:
+                state = StepState(json.load(fh))
             assert state in StepState
             return state
         return None
 
-    def set_state(self, state: StepState) -> None:
+    @state.setter
+    def state(self, state: StepState) -> None:
         """Change the state of a step and save it into step.state file."""
         assert state in StepState
         if state == self.state:
             logger.warning("The new step state is identical to the old one.")
+            return
 
         logger.debug("Old state: %s -> New state: %s", self.state, state)
-        self.state = state
-        json.dump(state, fp=open(Path(self.step_dir, self.state_file), "w"))  # noqa: PTH123, SIM115
+        state_path = Path(self.step_dir, self.state_file)
+        with state_path.open("w") as fh:
+            json.dump(state, fp=fh)
 
     def has_state(self, state: StepState) -> bool:
         """Check whether the step is in a specific state."""
-        if self.state is not None and self.state == state:  # noqa: SIM103
-            return True
-        return False
+        return self.state is not None and self.state == state
 
     @property
     def is_running_or_submitted(self) -> bool:
-        if self.has_state(StepState.RUNNING) or self.has_state(StepState.SUBMITTED):  # noqa: SIM103
-            return True
-        return False
+        return any(self.has_state(state) for state in [StepState.RUNNING, StepState.SUBMITTED])
 
     def get_command_targets(self) -> List[Path]:
         raise NotImplementedError()
+
+    def run_main_task(self, runner: "OpusPocusRunner") -> None:  # noqa: F821
+        self.state = StepState.RUNNING
+        self.command_preprocess()
+
+        def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
+            # logger.info(f"Received signal {signum}. Terminating subtasks...")
+            for task_id in task_ids:
+                runner.cancel_task(task_id)
+            self.state = StepState.FAILED
+            sys.exit(signum)
+
+        signal.signal(signal.SIGTERM, cancel_signal_hander)
+        signal.signal(signal.SIGINT, cancel_signal_hander)
+
+        task_ids = []
+        for target_file in self.get_command_targets():
+            if target_file.exists():
+                logger.info("File {target_file!s} already finished. Skipping...")
+                continue
+
+            cmd_path = Path(self.step_dir, self.command_file)
+            task_id = runner.submit_task(
+                cmd_path=cmd_path,
+                target_file=target_file,
+                dependencies=None,
+                step_resources=runner.get_resources(self),
+                stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.out"),
+                stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.err"),
+            )
+            task_ids.append(task_id)
+            import time
+
+            time.sleep(1)
+
+        def resubmit_signal_handler(signum, _) -> None:  # noqa: ANN001
+            # If the main task receives SIGUSR1, terminate all subtasks,
+            # FAIL and resubmit it
+            logger.info("Received signal %i. Terminating subtasks...", signum)
+            for task_id in task_ids:
+                runner.cancel_task(task_id)
+            self.state = StepState.FAILED
+            logger.info("Resubmitting step...")
+            runner.resubmit_step(self)
+
+        signal.signal(signal.SIGUSR1, resubmit_signal_handler)
+
+        runner.wait_for_tasks(task_ids)
+        self.command_postprocess()
+
+        clean_dir(self.tmp_dir)
+        self.state = StepState.DONE
 
     def command_preprocess(self) -> None:
         """TODO"""
@@ -355,6 +404,15 @@ class OpusPocusStep:
     def command_postprocess(self) -> None:
         """TODO"""
         pass
+
+    def run_subtask(self, target_file: Path) -> None:
+        """TODO"""
+        try:
+            self.command(target_file)
+        except Exception:
+            if target_file is not None and target_file.exists():
+                target_file.unlink()
+            raise
 
     def command(self, target_file: Path) -> None:
         """TODO"""
@@ -371,70 +429,35 @@ class OpusPocusStep:
         method.
         """
         return f"""#!/usr/bin/env python3
-import signal
 import sys
 from pathlib import Path
 
-from opuspocus.pipeline_steps import load_step, StepState
 from opuspocus.runners import load_runner
-from opuspocus.utils import clean_dir
+from opuspocus.pipeline_steps import StepState, load_step
 
 
-def run_main(step):
-    runner = load_runner(Path("{self.pipeline_dir}"))
-
-    step.set_state(StepState.RUNNING)
-    step.command_preprocess()
-
-    task_ids = []
-    for target_file in step.get_command_targets():
-        if target_file.exists():
-            print(
-                "File " + str(target_file) + " already finished. Skipping..."
-            )
-            continue
-
-        cmd_path = Path(step.step_dir, step.command_file)
-        task_id = runner.submit_task(
-            cmd_path=cmd_path,
-            target_file=target_file,
-            dependencies=None,
-            step_resources=runner.get_resources(step),
-            stdout_file=None,
-            stderr_file=None,
-        )
-        task_ids.append(task_id)
-
-    def terminate_signal(signalnum, handler):
-        # If the main task receives SIGTERM, terminate all subtasks,
-        # FAIL and resubmit it
-        for task_id in task_ids:
-            runner.cancel_task(task_id)
-        step.set_state(StepState.FAILED)
-        runner.resubmit_step(step)
-    signal.signal(signal.SIGTERM, terminate_signal)
-
-    runner.wait_for_tasks(task_ids)
-    step.command_postprocess()
-
-    clean_dir(step.tmp_dir)
-    step.set_state(StepState.DONE)
+def main(argv):
+    try:
+        step = load_step("{self.step_label}", Path("{self.pipeline_dir}"))
+        target_file = None
+        if len(argv) == 2:
+            # Subtask
+            target_file = Path(argv[1])
+            step.run_subtask(target_file)
+        elif len(argv) == 1:
+            # Main task
+            runner = load_runner(Path("{self.pipeline_dir}"))
+            step.run_main_task(runner)
+        else:
+            ValueError("Wrong number of arguments.")
+    except Exception as e:
+        if len(argv) == 1:
+            step.state = StepState.FAILED
+        raise e
 
 
 if __name__ == "__main__":
-    try:
-        step = load_step("{self.step_label}", Path("{self.pipeline_dir}"))
-
-        if len(sys.argv) == 1:
-            run_main(step)
-        else:
-            # Run Subtask
-            assert len(sys.argv) == 2
-            step.command(Path(sys.argv[1]))
-
-    except Exception as e:
-        step.set_state(StepState.FAILED)
-        raise e
+    main(sys.argv)
 """
 
     @property
@@ -442,7 +465,7 @@ if __name__ == "__main__":
         """Definition of defeault runner resources for a specific step."""
         return RunnerResources()
 
-    def __eq__(self, other):  # noqa: ANN001, ANN204
+    def __eq__(self, other: "OpusPocusStep") -> bool:
         """Object comparison logic."""
         for param in self.list_parameters(exclude_dependencies=False):
             if getattr(self, param, None) != getattr(other, param, None):
