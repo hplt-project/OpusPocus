@@ -1,7 +1,8 @@
 import inspect
 import logging
+from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Dict, List, Optional, get_type_hints
+from typing import Any, ClassVar, Dict, List, Optional, get_type_hints
 
 import yaml
 from typing_extensions import TypedDict
@@ -29,10 +30,10 @@ class OpusPocusRunner:
 
     parameter_file = "runner.parameters"
     info_file = "runner.task_info"
-    submitted_tasks = []  # noqa: RUF012
+    submitted_tasks: ClassVar[List[TaskId]] = []
 
     @staticmethod
-    def add_args(parser):  # noqa: ANN001, ANN205
+    def add_args(parser: ArgumentParser) -> None:
         """Add runner-specific arguments to the parser."""
 
     def __init__(self, runner: str, pipeline_dir: Path, **kwargs) -> None:  # noqa: ANN003
@@ -42,7 +43,7 @@ class OpusPocusRunner:
         self.register_parameters(**kwargs)
 
     @classmethod
-    def build_runner(cls, runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":  # noqa: ANN003, ANN102
+    def build_runner(cls: "OpusPocusRunner", runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":  # noqa: ANN003
         """Build a specified runner instance.
 
         Args:
@@ -55,7 +56,7 @@ class OpusPocusRunner:
         return cls(runner, pipeline_dir, **kwargs)
 
     @classmethod
-    def list_parameters(cls) -> List[str]:  # noqa: ANN102
+    def list_parameters(cls: "OpusPocusRunner") -> List[str]:
         """TODO"""
         param_list = []
         for param in inspect.signature(cls.__init__).parameters:
@@ -65,13 +66,13 @@ class OpusPocusRunner:
         return param_list
 
     @classmethod
-    def load_parameters(cls, pipeline_dir: Path) -> Dict[str, Any]:  # noqa: ANN102
+    def load_parameters(cls: "OpusPocusRunner", pipeline_dir: Path) -> Dict[str, Any]:
         """TODO"""
         params_path = Path(pipeline_dir, cls.parameter_file)
         logger.debug("Loading step variables from %s", params_path)
 
-        params_dict = yaml.safe_load(open(params_path))  # noqa: PTH123, SIM115
-        return params_dict  # noqa: RET504
+        with params_path.open("r") as fh:
+            return yaml.safe_load(fh)
 
     def get_parameters_dict(self) -> Dict[str, Any]:
         """TODO"""
@@ -87,22 +88,21 @@ class OpusPocusRunner:
 
     def save_parameters(self) -> None:
         """TODO"""
-        yaml.dump(
-            self.get_parameters_dict(),
-            open(Path(self.pipeline_dir, self.parameter_file), "w"),  # noqa: PTH123, SIM115
-        )
+        with Path(self.pipeline_dir, self.parameter_file).open("w") as fh:
+            yaml.dump(self.get_parameters_dict(), fh)
 
     def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
         """TODO"""
         type_hints = get_type_hints(self.__init__)
-        logger.debug("Class type hints: $s", type_hints)  # noqa: PLE1205
+        logger.debug("Class type hints: %s", type_hints)
 
         for param, val in kwargs.items():
+            v = val
             if type_hints[param] == Path and val is not None:
-                val = Path(val)  # noqa: PLW2901
+                v = Path(val)
             if type_hints[param] == List[Path]:
-                val = [Path(v) for v in val]  # noqa: PLW2901
-            setattr(self, param, val)
+                v = [Path(v) for v in val]
+            setattr(self, param, v)
 
     def stop_pipeline(self, pipeline: OpusPocusPipeline) -> None:
         """TODO"""
@@ -111,23 +111,24 @@ class OpusPocusRunner:
                 continue
             task_info = self.load_task_info(step)
             if task_info is None:
-                raise ValueError(
-                    "Step {} cannot be cancelled using {} runner because it "  # noqa: EM103
-                    "was submitted by a different runner type ({}).".format(
-                        step.step_label, self.runner, task_info["runner"]
-                    )
+                t_info_runner = task_info["runner"]
+                err_msg = (
+                    f"Step {step.step_label} cannot be cancelled using {self.runner} runner because it "
+                    f"was submitted by a different runner type ({t_info_runner})."
                 )
+                raise ValueError(err_msg)
             logger.info("Stopping %s. Setting state to FAILED.", step.step_label)
 
-            for task_id in task_info["subtasks"] + [task_info["main_task"]]:
-                logger.debug("Stopping task %i.", task_id)
-                self.cancel_task(task_id)
-            step.set_state(StepState.FAILED)
+            task_id = task_info["main_task"]
+            logger.debug("Stopping task %i.", task_id)
+            self.cancel_task(task_id)
 
     def run_pipeline(
         self,
         pipeline: OpusPocusPipeline,
         targets: List[str],
+        *,
+        keep_finished: bool = False,
     ) -> None:
         """TODO"""
         logger.info("Submitting pipeline tasks...")
@@ -135,7 +136,7 @@ class OpusPocusRunner:
         self.save_parameters()
         self.submitted_tasks = []
         for step in pipeline.get_targets(targets):
-            self.submit_step(step)
+            self.submit_step(step, keep_finished=keep_finished)
 
         self.run()
         logger.info("Pipeline tasks submitted successfully.")
@@ -144,28 +145,30 @@ class OpusPocusRunner:
         """TODO"""
         pass
 
-    def submit_step(self, step: OpusPocusStep) -> Optional[TaskInfo]:
+    def submit_step(self, step: OpusPocusStep, *, keep_finished: bool = False) -> Optional[TaskInfo]:
         """TODO"""
         if step.is_running_or_submitted:
             task_info = self.load_task_info(step)
-            if task_info is None:
-                raise ValueError(
-                    "Step {} cannot be submitted because it is currently {} using a different runner ({}).".format(  # noqa: EM103
-                        step.step_label, step.state, task_info["runner"]
-                    )
+            if task_info["runner"] != self.runner:
+                t_info_runner = task_info["runner"]
+                err_msg = (
+                    f"Step {step.step_label} cannot be submitted because it is currently {step.state} using a "
+                    f"different runner ({t_info_runner})."
                 )
+                raise ValueError(err_msg)
             return task_info
-        elif step.has_state(StepState.DONE):  # noqa: RET505
+        if step.has_state(StepState.DONE):
             logger.info("Step %s has already finished. Skipping...", step.step_label)
             return None
-        elif step.has_state(StepState.FAILED):
-            step.clean_directories()
+        if step.has_state(StepState.FAILED):
+            step.clean_directories(keep_finished=keep_finished)
             logger.info(
-                "Step %s has previously failed. Removing previous outputs and resubmitting...",
+                "Step %s has previously failed. Resubmitting...",
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):
-            raise ValueError(f"Cannot run step {step.step_label}. Step is not in INITED state.")  # noqa: EM102, TRY003
+            err_msg = f"Cannot run step {step.step_label}. Step is not in INITED state."
+            raise ValueError(err_msg)
 
         # Recursively submit step dependencies first
         dep_task_info_list = []
@@ -183,52 +186,25 @@ class OpusPocusRunner:
 
         # We set the state to SUBMITTED befor actual submit to avoid possible
         # race conditions
-        step.set_state(StepState.SUBMITTED)
-
+        step.state = StepState.SUBMITTED
         try:
             task_id = self.submit_task(
                 cmd_path=cmd_path,
                 target_file=None,
                 dependencies=[dep["main_task"] for dep in dep_task_info_list],
                 step_resources=self.get_resources(step),
-                stdout_file=Path(step.log_dir, f"{self.runner}.out"),
-                stderr_file=Path(step.log_dir, f"{self.runner}.err"),
+                stdout_file=Path(step.log_dir, f"{self.runner}.main.out"),
+                stderr_file=Path(step.log_dir, f"{self.runner}.main.err"),
             )
-        except Exception as e:
-            step.set_state(StepState.FAILED)
-            raise e  # noqa: TRY201
+        except Exception:
+            step.state = StepState.FAILED
+            raise
 
         task_info = TaskInfo(runner=self.runner, main_task=task_id, subtasks=[])
         self.save_task_info(step, task_info)
 
         self.submitted_tasks.append(task_info)
         return task_info
-
-    def resubmit_step(self, step: OpusPocusStep) -> Optional[TaskId]:
-        """TODO"""
-        # Cancel the original job if running
-        if step.is_running_or_submitted:
-            task_info = self.load_task_info(step)
-            if task_info is None:
-                raise ValueError(
-                    "Step {} cannot be cancelled using {} runner because it "  # noqa: EM103
-                    "was submitted by a different runner type ({}).".format(
-                        step.step_label, self.runner, task_info["runner"]
-                    )
-                )
-
-            logger.info("Stopping %s. Setting state to FAILED.", step.step_label)
-            step.set_state(StepState.FAILED)
-
-            task_ids = task_info["subtasks"] + [task_info["main_task"]]
-            for task_id in task_ids:
-                self.cancel(task_id)
-
-        # Submit the job again
-        task_id = self.submit_step(step)
-        self.update_dependants(task_id)
-
-        return task_id
 
     def submit_task(
         self,
@@ -271,23 +247,19 @@ class OpusPocusRunner:
 
     def save_task_info(self, step: OpusPocusStep, task_info: TaskInfo) -> None:
         """TODO"""
-        yaml.dump(task_info, open(Path(step.step_dir, self.info_file), "w"))  # noqa: PTH123, SIM115
+        with Path(step.step_dir, self.info_file).open("w") as fh:
+            yaml.dump(task_info, fh)
 
     def load_task_info(self, step: OpusPocusStep) -> Optional[TaskInfo]:
         """TODO"""
-        task_info = yaml.safe_load(open(Path(step.step_dir, self.info_file)))  # noqa: PTH123, SIM115
-        if task_info["runner"] != self.runner:
-            return None
-        return task_info
+        with Path(step.step_dir, self.info_file).open("r") as fh:
+            return yaml.safe_load(fh)
 
     def get_resources(self, step: OpusPocusStep) -> RunnerResources:
         """TODO"""
         # TODO: expand the logic here
         return step.default_resources
 
-    def __eq__(self, other):  # noqa: ANN001, ANN204
+    def __eq__(self, other: "OpusPocusRunner") -> bool:
         """Object comparison logic."""
-        for param in self.list_parameters():  # noqa: SIM110
-            if getattr(self, param, None) != getattr(other, param, None):
-                return False
-        return True
+        return all(getattr(self, param, None) == getattr(other, param, None) for param in self.list_parameters())

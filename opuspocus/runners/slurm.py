@@ -59,9 +59,11 @@ class SlurmRunner(OpusPocusRunner):
         cmd += self._convert_resources(step_resources)
         cmd += self._add_environment_variables(step_resources)
 
-        jobname = f"{self.runner}.{self.pipeline_dir.stem + self.pipeline_dir.suffix}.{target_file.stem}"
-        cmd += ["--jobname", jobname]
-        cmd += ["--signal", "TERM@10:00"]  # send SIGTERM 10m before time-limit
+        jobname = f"{self.runner}.{self.pipeline_dir.stem + self.pipeline_dir.suffix}"
+        if target_file is not None:
+            jobname += ".{target_file.stem}"
+        cmd += ["--job-name", jobname]
+        cmd += ["--signal", "15@600"]  # send SIGTERM 10m before time-limit
 
         if stdout_file is not None:
             cmd += ["-o", stdout_file]
@@ -82,7 +84,7 @@ class SlurmRunner(OpusPocusRunner):
                 shell=False,
             )
         time.sleep(SLEEP_TIME)
-        jid = int(proc.stdout.readline())
+        jid = int(proc.stdout.readline().decode().strip("\n"))
         return TaskId(filename=str(target_file), id=jid)
 
     def update_dependants(self, task_id: TaskId) -> None:
@@ -111,7 +113,7 @@ class SlurmRunner(OpusPocusRunner):
     def _convert_resources(self, resources: RunnerResources) -> List[str]:
         converted = []
         if resources.cpus is not None:
-            converted += ["--cpus", str(resources.cpus)]
+            converted += ["--cpus-per-task", str(resources.cpus)]
 
         if resources.gpus is not None:
             converted += ["--gpus", str(resources.gpus)]

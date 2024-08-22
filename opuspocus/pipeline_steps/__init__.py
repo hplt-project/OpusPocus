@@ -1,5 +1,6 @@
 import importlib
 from pathlib import Path
+from typing import Callable
 
 from .opuspocus_step import OpusPocusStep, StepState
 
@@ -13,14 +14,14 @@ STEP_INSTANCE_REGISTRY = {}
 STEP_CLASS_NAMES = set()
 
 
-def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):  # noqa: ANN003, ANN202
+def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs) -> OpusPocusStep:  # noqa: ANN003
     """Pipeline step builder function. Use this to create pipeline step
     objects.
     """
     if step_label is not None and step_label in STEP_INSTANCE_REGISTRY:
         return STEP_INSTANCE_REGISTRY[step_label]
 
-    step_instance = STEP_REGISTRY[step].build_step(step, step_label, pipeline_dir, **kwargs)
+    step_instance = get_step(step).build_step(step, step_label, pipeline_dir, **kwargs)
 
     # sanity check (TODO: make this test into a warning)
     if step_label is not None:
@@ -30,7 +31,7 @@ def build_step(step: str, step_label: str, pipeline_dir: Path, **kwargs):  # noq
     return step_instance
 
 
-def load_step(step_label: str, pipeline_dir: Path):  # noqa: ANN202
+def load_step(step_label: str, pipeline_dir: Path) -> OpusPocusStep:
     """Load an existing (initialized) pipeline step."""
     step_params = OpusPocusStep.load_parameters(step_label, pipeline_dir)
 
@@ -46,7 +47,7 @@ def load_step(step_label: str, pipeline_dir: Path):  # noqa: ANN202
     return build_step(step, step_label, pipeline_dir, **step_params)
 
 
-def register_step(name: str):  # noqa: ANN202
+def register_step(name: str) -> Callable:
     """
     New steps can be added to OpusPocus with the
     :func:`~opuspocus.opuspocus_steps.register_step` function decorator.
@@ -70,13 +71,16 @@ def register_step(name: str):  # noqa: ANN202
         name (str): the name of the pipeline step
     """
 
-    def register_step_cls(cls):  # noqa: ANN001, ANN202
+    def register_step_cls(cls: OpusPocusStep) -> OpusPocusStep:
         if name in STEP_REGISTRY:
-            raise ValueError(f"Cannot register duplicate step ({name})")  # noqa: EM102, TRY003
+            err_msg = f"Cannot register duplicate step ({name})"
+            raise ValueError(err_msg)
         if not issubclass(cls, OpusPocusStep):
-            raise ValueError(f"Pipeline step ({name}: {cls.__name__}) must extend OpusPocusStep")  # noqa: EM102, TRY003, TRY004
+            err_msg = f"Pipeline step ({name}: {cls.__name__}) must extend OpusPocusStep"
+            raise TypeError(err_msg)
         if cls.__name__ in STEP_CLASS_NAMES:
-            raise ValueError(f"Cannot register pipeline step with duplicate class name ({cls.__name__})")  # noqa: EM102, TRY003
+            err_msg = f"Cannot register pipeline step with duplicate class name ({cls.__name__})"
+            raise ValueError(err_msg)
         STEP_REGISTRY[name] = cls
         STEP_CLASS_NAMES.add(cls.__name__)
         return cls
@@ -84,7 +88,7 @@ def register_step(name: str):  # noqa: ANN202
     return register_step_cls
 
 
-def get_step(name):  # noqa: ANN001, ANN202
+def get_step(name: str) -> OpusPocusStep:
     return STEP_REGISTRY[name]
 
 

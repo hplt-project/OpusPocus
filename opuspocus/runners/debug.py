@@ -54,7 +54,7 @@ class DebugRunner(OpusPocusRunner):
             step.command(target_file)
             return TaskId(file_path=target_file, id=-1)
 
-        step.set_state(StepState.RUNNING)
+        step.state = StepState.RUNNING
         step.command_preprocess()
 
         # Recursively process all the target files
@@ -69,6 +69,6 @@ class DebugRunner(OpusPocusRunner):
             )
         step.command_postprocess()
         clean_dir(step.tmp_dir)
-        step.set_state(StepState.DONE)
+        step.state = StepState.DONE
 
         return TaskId(file_path=target_file, id=-1)
