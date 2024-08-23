@@ -1,10 +1,10 @@
 import pytest
 
 from opuspocus.options import parse_run_args
-from opuspocus.runners import RUNNER_REGISTRY, build_runner
+from opuspocus.runners import build_runner
 
 
-#@pytest.fixture(params=RUNNER_REGISTRY.keys())
+# @pytest.fixture(params=RUNNER_REGISTRY.keys())
 @pytest.fixture(params=["bash"])
 def parsed_runner_args(request, foo_step_inited):
     """Create default runner arguments."""
@@ -33,5 +33,4 @@ def parsed_runner_args(request, foo_step_inited):
 
 @pytest.fixture()
 def foo_runner(parsed_runner_args):
-    runner = build_runner(parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args)
-    return runner
+    return build_runner(parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args)

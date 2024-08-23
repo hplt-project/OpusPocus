@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
+from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
 from opuspocus.utils import RunnerResources
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,11 @@ class SlurmRunner(OpusPocusRunner):
         self,
         cmd_path: Path,
         target_file: Optional[Path] = None,
-        dependencies: Optional[List[TaskId]] = None,
+        dependencies: Optional[List[TaskInfo]] = None,
         step_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
-    ) -> TaskId:
+    ) -> TaskInfo:
         dep_jids = []
         if dependencies:
             dep_jids = [dep["jid"] for dep in dependencies]
@@ -85,24 +85,24 @@ class SlurmRunner(OpusPocusRunner):
             )
         time.sleep(SLEEP_TIME)
         jid = int(proc.stdout.readline().decode().strip("\n"))
-        return TaskId(filename=str(target_file), id=jid)
+        return TaskInfo(filename=str(target_file), id=jid)
 
-    def update_dependants(self, task_id: TaskId) -> None:
+    def update_dependants(self, task_id: TaskInfo) -> None:
         raise NotImplementedError()
 
-    def cancel_task(self, task_id: TaskId) -> None:
+    def cancel_task(self, task_id: TaskInfo) -> None:
         """TODO"""
         proc = subprocess.Popen(["scancel", str(task_id["id"])], shell=False)
         rc = proc.wait()
         if rc:
             raise ("Failed to cancel SLURM task {}".format(task_id["id"]))
 
-    def wait_for_single_task(self, task_id: TaskId) -> None:
+    def wait_for_single_task(self, task_id: TaskInfo) -> None:
         """TODO"""
         while self.is_task_running(task_id):
             sys.sleep(WAIT_TIME)
 
-    def is_task_running(self, task_id: TaskId) -> bool:
+    def is_task_running(self, task_id: TaskInfo) -> bool:
         """TODO"""
         proc = subprocess.Popen(["squeue", "-j", task_id["id"]], shell=False)
         rc = proc.wait()

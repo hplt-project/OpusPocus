@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 SLEEP_TIME = 0.5
 
 
+class BashTaskInfo(TaskInfo):
+    id: int
+
+
 @register_runner("bash")
 class BashRunner(OpusPocusRunner):
     """TODO"""
@@ -49,11 +53,11 @@ class BashRunner(OpusPocusRunner):
         self,
         cmd_path: Path,
         target_file: Optional[Path] = None,
-        dependencies: Optional[List[TaskInfo]] = None,
+        dependencies: Optional[List[BashTaskInfo]] = None,
         step_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
-    ) -> TaskInfo:
+    ) -> BashTaskInfo:
         """TODO"""
         dependencies_str = ""
         if dependencies is not None:
@@ -76,7 +80,7 @@ class BashRunner(OpusPocusRunner):
                 shell=False,
                 env=env_dict,
             )
-            task_info = TaskInfo(file_path=str(target_file), id=proc.pid)
+            task_info = BashTaskInfo(file_path=str(target_file), id=proc.pid)
         else:
             proc = subprocess.Popen(
                 [
@@ -90,23 +94,23 @@ class BashRunner(OpusPocusRunner):
                 shell=False,
                 env=env_dict,
             )
-            task_info = TaskInfo(file_path=None, id=proc.pid)
+            task_info = BashTaskInfo(file_path=None, id=proc.pid)
         time.sleep(SLEEP_TIME)  # We do not want to start proccess too quickly
         # If executing serially, we wait for each process to finish before submitting next
-        if not self.run_tasks_in_parallel:
-            logger.debug("Waiting for process to finish...")
+        if target_file is not None and not self.run_tasks_in_parallel:
+            logger.info("Waiting for process to finish...")
             subprocess_wait(proc)
         return task_info
 
-    def cancel_task(self, task_info: TaskInfo) -> None:
+    def cancel_task(self, task_info: BashTaskInfo) -> None:
         """TODO"""
         proc = self._get_process(task_info)
         if proc is not None:
             proc.terminate()
 
-    def wait_for_single_task(self, task_info: TaskInfo) -> None:
+    def wait_for_single_task(self, task_info: BashTaskInfo) -> None:
         pid = task_info["id"]
-        proc = self._get_process(pid)
+        proc = self._get_process(task_info)
         if proc is None:
             return
         gone, _ = wait_procs([proc])
@@ -116,12 +120,12 @@ class BashRunner(OpusPocusRunner):
                 err_msg = f"Process {pid} exited with non-zero value."
                 raise subprocess.SubprocessError(err_msg)
 
-    def is_task_running(self, task_info: TaskInfo) -> bool:
+    def is_task_running(self, task_info: BashTaskInfo) -> bool:
         """TODO"""
         proc = self._get_process(task_info)
         return proc is not None
 
-    def _get_process(self, task_info: TaskInfo) -> Optional[Process]:
+    def _get_process(self, task_info: BashTaskInfo) -> Optional[Process]:
         """TODO"""
         try:
             proc = Process(task_info["id"])

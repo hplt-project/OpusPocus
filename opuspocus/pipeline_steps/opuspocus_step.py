@@ -4,6 +4,7 @@ import json
 import logging
 import signal
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, get_type_hints
 
@@ -351,22 +352,21 @@ class OpusPocusStep:
 
         def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
             # logger.info(f"Received signal {signum}. Terminating subtasks...")
-            for task_id in task_ids:
-                runner.cancel_task(task_id)
+            for task_info in task_info_list:
+                runner.cancel_task(task_info)
             self.state = StepState.FAILED
             sys.exit(signum)
-
         signal.signal(signal.SIGTERM, cancel_signal_hander)
         signal.signal(signal.SIGINT, cancel_signal_hander)
 
-        task_ids = []
+        task_info_list = []
         for target_file in self.get_command_targets():
             if target_file.exists():
                 logger.info("File {target_file!s} already finished. Skipping...")
                 continue
 
             cmd_path = Path(self.step_dir, self.command_file)
-            task_id = runner.submit_task(
+            task_info = runner.submit_task(
                 cmd_path=cmd_path,
                 target_file=target_file,
                 dependencies=None,
@@ -374,24 +374,29 @@ class OpusPocusStep:
                 stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.out"),
                 stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.err"),
             )
-            task_ids.append(task_id)
-            import time
+            task_info_list.append(task_info)
+            time.sleep(0.5)
 
-            time.sleep(1)
+        # Update the submission info
+        submission_info = runner.load_submission_info(self)
+        submission_info["subtasks"] = task_info_list
+        runner.save_submission_info(self, submission_info)
 
         def resubmit_signal_handler(signum, _) -> None:  # noqa: ANN001
             # If the main task receives SIGUSR1, terminate all subtasks,
             # FAIL and resubmit it
             logger.info("Received signal %i. Terminating subtasks...", signum)
-            for task_id in task_ids:
-                runner.cancel_task(task_id)
-            self.state = StepState.FAILED
+            for task_info in task_info_list:
+                runner.cancel_task(task_info)
             logger.info("Resubmitting step...")
-            runner.resubmit_step(self)
-
+            self.state = StepState.INITED
+            runner.submit_step(self)
+            runner.update_dependants(self)
+            runner.run()
+            sys.exit(0)
         signal.signal(signal.SIGUSR1, resubmit_signal_handler)
 
-        runner.wait_for_tasks(task_ids)
+        runner.wait_for_tasks(task_info_list)
         self.command_postprocess()
 
         clean_dir(self.tmp_dir)
@@ -458,6 +463,7 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv)
+    sys.exit(0)
 """
 
     @property

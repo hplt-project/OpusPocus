@@ -1,8 +1,8 @@
-import pytest
-
 import time
-from typing import List, Optional
 from pathlib import Path
+from typing import List, Optional
+
+import pytest
 
 from opuspocus import pipeline_steps
 from opuspocus.pipeline_steps import OpusPocusStep, build_step, register_step
@@ -11,13 +11,10 @@ from opuspocus.pipeline_steps import OpusPocusStep, build_step, register_step
 @register_step("foo")
 class FooStep(OpusPocusStep):
     SLEEP_TIME = 10
+
     def __init__(
-        self,
-        step: str,
-        step_label:str,
-        pipeline_dir: Path,
-        dependency_step: Optional["FooStep"] = None
-    ):
+        self, step: str, step_label: str, pipeline_dir: Path, dependency_step: Optional["FooStep"] = None
+    ) -> None:
         super().__init__(
             step=step,
             step_label=step_label,
@@ -52,11 +49,7 @@ def foo_step_inited(tmp_path_factory):
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = tmp_path_factory.mktemp("foo.mock")
 
-    step = build_step(
-        step="foo",
-        step_label="foo.test",
-        pipeline_dir=pipeline_dir
-    )
+    step = build_step(step="foo", step_label="foo.test", pipeline_dir=pipeline_dir)
     step.init_step()
     return step
 
@@ -67,7 +60,7 @@ def bar_step_inited(foo_step_inited):
         step="foo",
         step_label="bar.test",
         pipeline_dir=foo_step_inited.pipeline_dir,
-        **{"dependency_step": foo_step_inited}
+        **{"dependency_step": foo_step_inited},
     )
     step.init_step()
     return step

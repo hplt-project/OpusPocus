@@ -109,8 +109,8 @@ class OpusPocusRunner:
             if not step.is_running_or_submitted:
                 continue
             sub_info = self.load_submission_info(step)
-            if sub_info is None:
-                sub_runner = sub_info["runner"]
+            sub_runner = sub_info["runner"]
+            if sub_runner != self.runner:
                 err_msg = (
                     f"Step {step.step_label} cannot be cancelled using {self.runner} runner because it "
                     f"was submitted by a different runner type ({sub_runner})."
@@ -122,8 +122,8 @@ class OpusPocusRunner:
             logger.debug("Stopping task %i.", task_id)
 
             # TODO(varisd): the main task should take care of cancelling / cleaning up its subtasks after receiving a
-            #   SIGUSR1 signal, however, we should probably take care of situations where the main task dies before
-            #   finishing the cleanup
+            #   SIGTERM/SIGUSR1 signal, however, we should probably take care of situations where the main task dies
+            #   before finishing the cleanup
             self.cancel_task(task_id)
             step.state = StepState.FAILED
 
@@ -150,8 +150,8 @@ class OpusPocusRunner:
         """TODO"""
         if step.is_running_or_submitted:
             sub_info = self.load_submission_info(step)
-            if sub_info["runner"] != self.runner:
-                sub_runner = sub_info["runner"]
+            sub_runner = sub_info["runner"]
+            if sub_runner != self.runner:
                 err_msg = (
                     f"Step {step.step_label} cannot be submitted because it is currently {step.state} "
                     f"using a different runner ({sub_runner})."
@@ -216,11 +216,14 @@ class OpusPocusRunner:
         """TODO"""
         raise NotImplementedError()
 
-    def cancel_task(self, task_info: TaskInfo) -> None:
+    def cancel_task(self, task_info: TaskInfo, signal: int) -> None:
         """TODO"""
         raise NotImplementedError()
 
-    def update_dependants(self, task_info: TaskInfo) -> None:
+    def send_signal(self, step: OpusPocusStep) -> None:
+        raise NotImplementedError()
+
+    def update_step_dependants(self, step: OpusPocusStep) -> None:
         raise NotImplementedError()
 
     def wait_for_tasks(self, task_info_list: Optional[List[TaskInfo]] = None) -> None:
