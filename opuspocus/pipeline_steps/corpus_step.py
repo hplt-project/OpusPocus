@@ -60,9 +60,11 @@ class CorpusStep(OpusPocusStep):
             shard_size: number of lines per individual dataset shards
         """
         if src_lang is None:
-            raise ValueError("src_lang value cannot by NoneType.")  # noqa: TRY003, EM101
+            err_msg = "src_lang value cannot by NoneType."
+            raise ValueError(err_msg)
         if shard_size is not None and shard_size <= 0:
-            raise ValueError(f"shard_size must be a positive integer value (value: {shard_size}).")  # noqa: TRY003, EM102
+            err_msg = f"shard_size must be a positive integer value (value: {shard_size})."
+            raise ValueError(err_msg)
         super().__init__(
             step=step,
             step_label=step_label,
@@ -113,13 +115,14 @@ class CorpusStep(OpusPocusStep):
             filename: filename within a directory (without full path)
         """
         if filename not in self.dataset_filename_list:
-            raise ValueError(
-                "{} is not in the list of dataset files ({})".format(filename, " ".join(self.dataset_filename_list))  # noqa: EM103
-            )
+            dlist_str = " ".join(self.dataset_filename_list)
+            err_msg = f"{filename} is not in the list of dataset files ({dlist_str})"
+            raise ValueError(err_msg)
 
         file_path = Path(self.output_dir, filename)
         if not file_path.exists():
-            raise FileNotFoundError(f"File {file_path} does not exists")  # noqa: TRY003, EM102
+            err_msg = f"File {file_path} does not exists"
+            raise FileNotFoundError(err_msg)
 
         return read_shard(file_path, self.line_index_dict[filename], start, shard_size)
 
@@ -220,16 +223,16 @@ class CorpusStep(OpusPocusStep):
         categories.json initialization.
         """
         # TODO: refactor opuscleaner_step.init_step to reduce code duplication
-        self.state = self.load_state()
         if self.state is not None:
             if self.has_state(StepState.INITED):
                 logger.info("Step already initialized. Skipping...")
                 return
             else:  # noqa: RET505
-                raise ValueError(f"Trying to initialize step in a {self.state} state.")  # noqa: EM102, TRY003
+                err_msg = f"Trying to initialize step in a {self.state} state."
+                raise ValueError(err_msg)
         # Set state to incomplete until finished initializing.
         self.create_directories()
-        self.set_state(StepState.INIT_INCOMPLETE)
+        self.state = StepState.INIT_INCOMPLETE
 
         self.init_dependencies()
         self.init_categories_file()
@@ -239,16 +242,17 @@ class CorpusStep(OpusPocusStep):
 
         # Initialize state
         logger.info("[%s] Step Initialized.", self.step_label)
-        self.set_state(StepState.INITED)
+        self.state = StepState.INITED
 
     def init_categories_file(self) -> None:
         """Initialize the categories.json file."""
         self.register_categories()
         if not self.categories_path.exists():
-            raise FileNotFoundError(  # noqa: TRY003
-                f"{self.categories_file} not found after initialization. Perhaps there is an issue "  # noqa: EM102
-                "with the register_categories derived method implementation? "
+            err_msg = (
+                f"{self.categories_file} not found after initialization. Perhaps there is an issue "
+                "with the register_categories derived method implementation?"
             )
+            raise FileNotFoundError(err_msg)
 
     def register_categories(self) -> None:
         """Step-specific code for listing corpora available in the step output.

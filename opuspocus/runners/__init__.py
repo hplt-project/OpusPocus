@@ -2,6 +2,7 @@ import importlib
 import logging
 from argparse import Namespace
 from pathlib import Path
+from typing import Callable
 
 from .opuspocus_runner import OpusPocusRunner, TaskId, TaskInfo
 
@@ -17,20 +18,20 @@ RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()
 
 
-def build_runner(runner: str, pipeline_dir: Path, args: Namespace):  # noqa: ANN202
+def build_runner(runner: str, pipeline_dir: Path, args: Namespace) -> OpusPocusRunner:
     """Runner builder function. Use this to create runner objects."""
     logger.info("Building runner (%s)...", runner)
 
     kwargs = {}
     for param in RUNNER_REGISTRY[runner].list_parameters():
-        if param == "runner" or param == "pipeline_dir":  # noqa: PLR1714
+        if param in set(["runner", "pipeline_dir"]):
             continue
         kwargs[param] = getattr(args, param)
 
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **kwargs)
 
 
-def load_runner(pipeline_dir: Path):  # noqa: ANN202
+def load_runner(pipeline_dir: Path) -> OpusPocusRunner:
     """Recreate a previously used runner. Required for pipeline execution
     updates, i.e. execution termination.
 
@@ -45,7 +46,7 @@ def load_runner(pipeline_dir: Path):  # noqa: ANN202
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **runner_params)
 
 
-def register_runner(name):  # noqa: ANN001, ANN202
+def register_runner(name: str) -> Callable:
     """
     New runner can be added to OpusPocus with the
     :func:`~opuspocus.runners.register_runner` function decorator.
@@ -65,13 +66,16 @@ def register_runner(name):  # noqa: ANN001, ANN202
         name (str): the name of the runner
     """
 
-    def register_runner_cls(cls):  # noqa: ANN001, ANN202
+    def register_runner_cls(cls: OpusPocusRunner) -> OpusPocusRunner:
         if name in RUNNER_REGISTRY:
-            raise ValueError(f"Cannot register duplicate runner ({name})")  # noqa: EM102, TRY003
+            err_msg = f"Cannot register duplicate runner ({name})"
+            raise ValueError(err_msg)
         if not issubclass(cls, OpusPocusRunner):
-            raise ValueError(f"Runner ({name}: {cls.__name__}) must extend OpusPocusRunner")  # noqa: EM102, TRY003, TRY004
+            err_msg = f"Runner ({name}: {cls.__name__}) must extend OpusPocusRunner"
+            raise TypeError(err_msg)
         if cls.__name__ in RUNNER_CLASS_NAMES:
-            raise ValueError(f"Cannot register runner with duplicate class name ({cls.__name__})")  # noqa: EM102, TRY003
+            err_msg = f"Cannot register runner with duplicate class name ({cls.__name__})"
+            raise ValueError(err_msg)
         RUNNER_REGISTRY[name] = cls
         RUNNER_CLASS_NAMES.add(cls.__name__)
         return cls

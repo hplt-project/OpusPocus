@@ -1,0 +1,73 @@
+import pytest
+
+import time
+from typing import List, Optional
+from pathlib import Path
+
+from opuspocus import pipeline_steps
+from opuspocus.pipeline_steps import OpusPocusStep, build_step, register_step
+
+
+@register_step("foo")
+class FooStep(OpusPocusStep):
+    SLEEP_TIME = 10
+    def __init__(
+        self,
+        step: str,
+        step_label:str,
+        pipeline_dir: Path,
+        dependency_step: Optional["FooStep"] = None
+    ):
+        super().__init__(
+            step=step,
+            step_label=step_label,
+            pipeline_dir=pipeline_dir,
+            dependency_step=dependency_step,
+        )
+
+    @property
+    def dep_step(self) -> "FooStep":
+        return self.dependencies["dependency_step"]
+
+    def get_command_targets(self) -> List[Path]:
+        return [Path(self.output_dir, f"out_{x}.txt") for x in ["A", "B"]]
+
+    def get_output_str(self, outfile: Path) -> str:
+        return outfile.stem + outfile.suffix
+
+    def command(self, target_file: Path) -> None:
+        time.sleep(self.SLEEP_TIME)
+        with target_file.open("w") as fh:
+            print(self.get_output_str(target_file), file=fh)
+
+    def compose_command(self) -> str:
+        cmd = super().compose_command()
+        cmd_split = cmd.split("\n")
+        cmd_split = [cmd_split[0], "import tests.fixtures.steps", *cmd_split[1:]]
+        return "\n".join(cmd_split)
+
+
+@pytest.fixture()
+def foo_step_inited(tmp_path_factory):
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
+    pipeline_dir = tmp_path_factory.mktemp("foo.mock")
+
+    step = build_step(
+        step="foo",
+        step_label="foo.test",
+        pipeline_dir=pipeline_dir
+    )
+    step.init_step()
+    return step
+
+
+@pytest.fixture()
+def bar_step_inited(foo_step_inited):
+    step = build_step(
+        step="foo",
+        step_label="bar.test",
+        pipeline_dir=foo_step_inited.pipeline_dir,
+        **{"dependency_step": foo_step_inited}
+    )
+    step.init_step()
+    return step

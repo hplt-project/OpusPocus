@@ -59,9 +59,11 @@ class TrainModelStep(OpusPocusStep):
     def init_step(self) -> None:
         super().init_step()
         if self.valid_dataset not in self.valid_corpus_step.dataset_list:
-            raise ValueError(  # noqa: TRY003
-                f"Dataset {self.valid_dataset} is not registered in the {self.valid_corpus_step.step_label} categories.json."  # noqa: E501, EM102
+            err_msg = (
+                f"Dataset {self.valid_dataset} is not registered in {self.valid_corpus_step.step_label}"
+                "categories.json"
             )
+            raise ValueError(err_msg)
 
     @property
     def train_corpus_step(self) -> CorpusStep:
@@ -192,10 +194,12 @@ class TrainModelStep(OpusPocusStep):
         proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=env, text=True)
 
         # Propagate the termination signal to the child process
-        def terminate_signal(signalnum, handler):  # noqa: ANN001, ANN202, ARG001
-            logger.debug("Received SIGTERM, terminating child process...")
+        def step_terminate_handler(signum, _):  # noqa: ANN001, ANN202
+            logger.debug("Received signal %i, gracefully terminating Marian child process...", signum)
             proc.terminate()
+            err_msg = f"{self.step_label}.command received signal {signum}. Terminating..."
+            raise InterruptedError(err_msg)
 
-        signal.signal(signal.SIGTERM, terminate_signal)
-
+        signal.signal(signal.SIGUSR1, step_terminate_handler)
+        signal.signal(signal.SIGTERM, step_terminate_handler)
         subprocess_wait(proc)

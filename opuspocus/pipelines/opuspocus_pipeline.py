@@ -61,7 +61,7 @@ class OpusPocusPipeline:
 
     @classmethod
     def build_pipeline(
-        cls,  # noqa: ANN102
+        cls: "OpusPocusPipeline",
         pipeline_config_path: Path,
         pipeline_dir: Path,
     ) -> "OpusPocusPipeline":
@@ -78,14 +78,16 @@ class OpusPocusPipeline:
 
     @classmethod
     def load_pipeline(
-        cls,  # noqa: ANN102
+        cls: "OpusPocusPipeline",
         pipeline_dir: Path,
     ) -> "OpusPocusPipeline":
         """TODO"""
         if not pipeline_dir.exists():
-            raise FileNotFoundError(f"Pipeline directory ({pipeline_dir}) does not exist.")  # noqa: EM102, TRY003
+            err_msg = f"Pipeline directory ({pipeline_dir}) does not exist."
+            raise FileNotFoundError(err_msg)
         if not pipeline_dir.is_dir():
-            raise NotADirectoryError(f"{pipeline_dir} is not a directory.")  # noqa: EM102, TRY003
+            err_msg = f"{pipeline_dir} is not a directory."
+            raise NotADirectoryError(err_msg)
 
         pipeline_config_path = Path(pipeline_dir, cls.config_file)
         return cls(pipeline_config_path, pipeline_dir)
@@ -117,14 +119,15 @@ class OpusPocusPipeline:
 
             # Create the arguments for the step instance initialization
             step_args = {}
-            logger.info(f"Creating parameters to build {step_label} object.")  # noqa: G004
+            logger.info("Creating parameters to build %s object.", step_label)
             for k, v in pipeline_steps_configs[step_label].items():
                 # Simply assing the value if None or not a dependency parameter
                 if "_step" not in k or v is None:
                     step_args[k] = v
                 else:
                     if v not in pipeline_steps_configs:
-                        raise ValueError(f'Step "{step_label}" has an undefined dependency "{k}={v}".')  # noqa: EM102, TRY003
+                        err_msg = f"Step '{step_label}' has an undefined dependency '{k}={v}'."
+                        raise ValueError(err_msg)
                     step_args[k] = _build_step_inner(v)
 
             # Set default (global) pipeline_dir
@@ -134,13 +137,13 @@ class OpusPocusPipeline:
             try:
                 pipeline_steps[step_label] = build_step(**step_args)
             except Exception as e:
-                print(f"Step parameters:\n{step_args}")  # noqa: T201
+                logger.exception("Step parameters:\n%s", step_args)
                 raise e  # noqa: TRY201
 
             return pipeline_steps[step_label]
 
         # Create pipeline step objects
-        for step_label in pipeline_steps_configs.keys():  # noqa: SIM118
+        for step_label in pipeline_steps_configs:
             _build_step_inner(step_label)
 
         default_targets = []
@@ -150,18 +153,18 @@ class OpusPocusPipeline:
 
     def init(self) -> None:
         """Initialize the pipeline."""
-        logger.info(f"Initializing pipeline ({self.pipeline_dir})")  # noqa: G004
-        for _, v in self.pipeline_graph.items():  # noqa: PERF102
+        logger.info("Initializing pipeline (%s)", self.pipeline_dir)
+        for v in self.pipeline_graph.values():
             v.init_step()
 
         self.save_pipeline()
-        logger.info(f"Pipeline ({self.pipeline_dir}) initialized successfully.")  # noqa: G004
+        logger.info("Pipeline (%s) initialized successfully.", self.pipeline_dir)
 
     def status(self, steps: List[OpusPocusStep]) -> None:
         for s in steps:
             print(f"{s.step_label}: {s.state!s}")  # noqa: T201
 
-    def traceback(self, targets: List[str] = None, full: bool = False) -> None:  # noqa: FBT001, FBT002, RUF013
+    def traceback(self, targets: Optional[List[str]] = None, *, full: bool = False) -> None:
         """Print the pipeline structure and status of the individual steps."""
         targets = self.get_targets(targets)
         for i, v in enumerate(targets):
@@ -169,27 +172,25 @@ class OpusPocusPipeline:
             v.traceback_step(level=0, full=full)
             print()  # noqa: T201
 
-    def get_targets(self, targets: List[str] = None):  # noqa: ANN201, RUF013
+    def get_targets(self, targets: Optional[List[str]] = None) -> List[OpusPocusStep]:
         if targets is not None:
             return targets
         if self.default_targets is not None:
             logger.info("No target steps were specified. Using default targets.")
             return self.default_targets
-        raise ValueError(  # noqa: TRY003
-            "The pipeline does not contain any default target steps. "  # noqa: EM101
-            'Please specify the targets using the "--pipeline-targets" '
-            "option."
+        err_msg = (
+            "The pipeline does not contain any default target steps. "
+            'Please specify the targets using the "--pipeline-targets" option.'
         )
+        raise ValueError(err_msg)
 
-    def __eq__(self, other):  # noqa: ANN001, ANN204
+    def __eq__(self, other: "OpusPocusPipeline") -> bool:
         """Object comparison logic."""
         if self.pipeline_graph != other.pipeline_graph:
             return False
         if len(self.default_targets) != len(other.default_targets):
             return False
-        for target in self.default_targets:  # noqa: SIM110
-            if target not in other.default_targets:
-                return False
+        return all(target in other.default_targets for target in self.default_targets)
         # if self.pipeline_config != other.pipeline_config:
         #    return False
         return True
@@ -245,27 +246,30 @@ class PipelineConfig(OmegaConf):
         # Top has known keys
         for key in config.keys():  # noqa: SIM118
             if key not in cls.top_keys:
-                logger.warning(f"Config file contains unsupported top key ({key}). Ignoring...")  # noqa: G004
+                logger.warning("Config file contains unsupported top key (%s). Ignoring...", key)
         # Contains "pipeline" top key
         if "pipeline" not in config:
-            raise ValueError("Config file must contain pipeline definition " '("pipeline" top key).')  # noqa: EM101, ISC001, TRY003
+            err_msg = 'Config file must contain pipeline definition of the ("pipeline" top key).'
+            raise ValueError(err_msg)
         # Pipeline has known keys
         for key in config.pipeline.keys():  # noqa: SIM118
             if key not in cls.pipeline_keys:
-                logger.warning(f"Pipeline definition contains unsupported key ({key}). " "Ignoring...")  # noqa: G004, ISC001
+                logger.warning("Pipeline definition contains unsupported key (%s). Ignoring...", key)
         # Contains "pipeline.steps" key
         if "steps" not in config.pipeline:
-            raise ValueError('Config file must contain the list of steps ("pipeline.steps")')  # noqa: EM101, TRY003
+            err_msg = 'Config file must contain the list of steps ("pipeline.steps")'
+            raise ValueError(err_msg)
 
         # All steps have an unique step_label
         steps = {}
         for step in config.pipeline.steps:
             if step.step_label in steps:
-                raise ValueError(  # noqa: TRY003
-                    "Duplicate step_label found in pipeline definition. Please "  # noqa: EM102
+                err_msg = (
+                    "Duplicate step_label found in pipeline definition. Please "
                     "make sure that each pipeline step has a unique step_label "
                     "value.\n"
                     f"Step-1: {step[step.step_label]},\nStep-{step}"
                 )
+                raise ValueError(err_msg)
             steps[step.step_label] = step
         return True

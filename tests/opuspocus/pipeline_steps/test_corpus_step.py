@@ -17,7 +17,7 @@ from opuspocus.utils import count_lines, open_file, read_shard
 #   CorpusStep implementation
 
 
-@register_step("foo")
+@register_step("foo_corpus")
 class FooCorpusStep(CorpusStep):
     """Mock that copies the input dataset files into the .output_dir, or copies
     the dataset files from the .prev_corpus_step .output_dir
@@ -133,7 +133,7 @@ def test_foo_corpus_invalid_values(foo_languages, shard_size, train_data_paralle
     tgt_lang = foo_languages[1]
     with pytest.raises(ValueError):  # noqa: PT011
         build_step(
-            step="foo",
+            step="foo_corpus",
             step_label="foo.test",
             pipeline_dir=pipeline_dir,
             **{
@@ -157,7 +157,7 @@ def foo_corpus_step_inited(foo_corpus_languages, train_data_parallel_tiny, tmp_p
     if len(foo_corpus_languages) == 2:  # noqa: PLR2004
         tgt_lang = foo_corpus_languages[1]
     step = build_step(
-        step="foo",
+        step="foo_corpus",
         step_label="foo.test",
         pipeline_dir=pipeline_dir,
         **{
@@ -187,7 +187,7 @@ def foo_shard_size(request, foo_corpus_step_inited):
 def bar_corpus_step_inited(foo_shard_size, foo_corpus_step_inited):
     """Create and initialize the follow up mock corpus step."""
     step = build_step(
-        step="foo",
+        step="foo_corpus",
         step_label="bar.test",
         pipeline_dir=foo_corpus_step_inited.pipeline_dir,
         **{

@@ -76,6 +76,7 @@ class BashRunner(OpusPocusRunner):
             if not self.run_subtasks_in_parallel:
                 logger.debug("Waiting for process to finish...")
                 subprocess_wait(proc)
+            task_id = TaskId(file_path=str(target_file), id=proc.pid)
         else:
             if not self.run_subtasks_in_parallel:
                 dependencies_str = " ".join(str(task["main_task"]["id"]) for task in self.submitted_tasks)
@@ -91,15 +92,15 @@ class BashRunner(OpusPocusRunner):
                 shell=False,
                 env=env_dict,
             )
-
-        return TaskId(file_path=str(target_file), id=proc.pid)
+            task_id = TaskId(file_path=None, id=proc.pid)
+        return task_id
 
     def update_dependants(self, task_id: TaskId) -> None:  # noqa: ARG002
         return NotImplementedError()
 
     def cancel_task(self, task_id: TaskId) -> None:
         """TODO"""
-        proc = self._get_process(task_id["id"])
+        proc = self._get_process(task_id)
         if proc is not None:
             proc.terminate()
 

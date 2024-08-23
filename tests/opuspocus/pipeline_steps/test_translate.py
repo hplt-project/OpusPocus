@@ -1,13 +1,13 @@
-import pytest
-
 from pathlib import Path
 
-from opuspocus.pipeline_steps import build_step, StepState
+import pytest
+
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.runners.debug import DebugRunner
 from opuspocus.utils import count_lines
 
 
-@pytest.fixture(scope="function", params=["null", "1", "3", "dataset"])
+@pytest.fixture(params=["null", "1", "3", "dataset"])
 def translate_step_inited(
     request,
     train_data_parallel_tiny,
@@ -25,7 +25,7 @@ def translate_step_inited(
     marian_dir = train_data_parallel_tiny_model_step_inited.marian_dir
     step = build_step(
         step="translate",
-        step_label="translate.{}.test".format(marian_dir),
+        step_label=f"translate.{marian_dir}.test",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
             "marian_dir": marian_dir,
@@ -46,7 +46,7 @@ def test_translate_step_inited(translate_step_inited):
     assert translate_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture()
 def translate_step_done(translate_step_inited):
     """Execute the translate step."""
     runner = DebugRunner("debug", translate_step_inited.pipeline_dir)
@@ -62,8 +62,7 @@ def test_translate_step_done(translate_step_done):
 @pytest.mark.parametrize("lang", ["src_lang", "tgt_lang"])
 def test_translate_step_done_output(translate_step_done, lang):
     for dset in translate_step_done.dataset_list:
-        f_name = "{}.{}.gz".format(dset, getattr(translate_step_done, lang))
+        f_name = f"{dset}.{getattr(translate_step_done, lang)}.gz"
         src_lines = count_lines(Path(translate_step_done.input_dir, f_name))
         tgt_lines = count_lines(Path(translate_step_done.output_dir, f_name))
         assert src_lines == tgt_lines
-

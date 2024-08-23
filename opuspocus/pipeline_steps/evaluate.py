@@ -53,13 +53,11 @@ class EvaluateStep(OpusPocusStep):
             self.datasets = self.translated_step.dataset_list
         for dset in self.datasets:
             if dset not in self.translated_step.dataset_list:
-                raise ValueError(  # noqa: TRY003
-                    f"Dataset {dset} is not registered in the {self.translated_step.step_label} categories.json"  # noqa: EM102
-                )
+                err_msg = f"Dataset {dset} is not registered in the {self.translated_step.step_label} categories.json"
+                raise ValueError(err_msg)
             if dset not in self.reference_step.dataset_list:
-                raise ValueError(  # noqa: TRY003
-                    f"Dataset {dset} is not registered in the {self.reference_step.step_label} categories.json"  # noqa: EM102
-                )
+                err_msg = f"Dataset {dset} is not registered in the {self.reference_step.step_label} categories.json"
+                raise ValueError(err_msg)
 
     @property
     def translated_step(self) -> OpusPocusStep:

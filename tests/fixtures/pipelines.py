@@ -4,11 +4,34 @@ from pathlib import Path
 import pytest
 
 from opuspocus import pipeline_steps
-from opuspocus.pipelines import build_pipeline
+from opuspocus.pipeline_steps import OpusPocusStep
+from opuspocus.pipelines import OpusPocusPipeline, PipelineConfig, build_pipeline
 from opuspocus.runners.debug import DebugRunner
 
 # NOTE(varisd): module-level (and lower) pipeline fixtures need to reset
 #   pipeline_step registry to work correctly
+
+
+class FooPipeline(OpusPocusPipeline):
+    def __init__(self, bar_step: OpusPocusStep) -> None:
+        foo_step = bar_step.dep_step
+        self.pipeline_graph = {
+            foo_step.step_label: foo_step,
+            bar_step.step_label: bar_step,
+        }
+        self.default_targets = [bar_step]
+        self.pipeline_config = PipelineConfig.create(
+            bar_step.pipeline_dir,
+            self.pipeline_graph,
+            self.default_targets,
+        )
+
+
+@pytest.fixture()
+def foo_pipeline_inited(bar_step_inited):
+    pipeline = FooPipeline(bar_step_inited)
+    pipeline.init()
+    return pipeline
 
 
 @pytest.fixture(scope="module")

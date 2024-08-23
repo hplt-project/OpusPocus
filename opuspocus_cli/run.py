@@ -21,7 +21,7 @@ def main(args: Namespace) -> int:
     """
     pipeline = load_pipeline(args)
     runner = build_runner(args.runner, args.pipeline_dir, args)
-    runner.run_pipeline(pipeline, pipeline.get_targets(args.targets))
+    runner.run_pipeline(pipeline, targets=pipeline.get_targets(args.targets))
     return 0
 
 

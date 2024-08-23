@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -56,9 +57,8 @@ class GenerateVocabStep(OpusPocusStep):
                     self.corpus_step.step_label,
                     self.corpus_step.categories_dict,
                 )
-                raise ValueError(  # noqa: TRY003
-                    f"Dataset {dset} is not registered in the {self.corpus_step.step_label} categories.json"  # noqa: EM102
-                )
+                err_msg = f"Dataset {dset} is not registered in the {self.corpus_step.step_label} categories.json"
+                raise ValueError(err_msg)
 
     @property
     def corpus_step(self) -> OpusPocusStep:
@@ -106,6 +106,17 @@ class GenerateVocabStep(OpusPocusStep):
             f"--num_threads={n_cpus}",
         ]
         proc = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, env=os.environ, text=True)
+
+        # Propagate the termination signal to the child process
+        def step_terminate_handler(signum, _):  # noqa: ANN001, ANN202
+            logger.debug("Received signal %i, gracefully terminating Marian child process...", signum)
+            proc.terminate()
+            err_msg = f"{self.step_label}.command received signal {signum}. Terminating..."
+            raise InterruptedError(err_msg)
+
+        signal.signal(signal.SIGUSR1, step_terminate_handler)
+        signal.signal(signal.SIGTERM, step_terminate_handler)
+
         subprocess_wait(proc)
 
         # Rename the output file
