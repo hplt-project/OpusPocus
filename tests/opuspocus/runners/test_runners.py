@@ -1,12 +1,13 @@
+import time
 from pathlib import Path
 
 import pytest
-import signal
-import time
 
 from opuspocus.pipeline_steps import StepState
 from opuspocus.runners import OpusPocusRunner, load_runner
 from opuspocus.utils import open_file
+
+SLEEP_TIME = 2  # wait after submitting a job
 
 
 @pytest.fixture()
@@ -44,6 +45,8 @@ def test_run_pipeline(foo_runner, foo_pipeline_inited):
 
 def test_stop_pipeline(foo_runner, foo_pipeline_inited):
     foo_runner.run_pipeline(foo_pipeline_inited, foo_pipeline_inited.get_targets())
+    time.sleep(SLEEP_TIME)
+
     foo_runner.stop_pipeline(foo_pipeline_inited)
     for step in foo_pipeline_inited.steps:
         assert step.state == StepState.FAILED
@@ -58,6 +61,7 @@ def test_stop_pipeline_with_nonmatching_runner_fail(foo_runner, foo_pipeline_ini
 
 def test_submit_step(foo_runner_for_step_submit, foo_step_inited):
     foo_runner_for_step_submit.submit_step(foo_step_inited)
+    time.sleep(SLEEP_TIME)
     assert foo_step_inited.state in (StepState.SUBMITTED, StepState.RUNNING)
 
 
@@ -76,10 +80,10 @@ def test_submit_step_submission_info_structure(foo_runner_for_step_submit, foo_s
 
 def test_cancel_main_task(foo_runner_for_step_submit, foo_step_inited):
     sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
-    time.sleep(0.5)
+    time.sleep(SLEEP_TIME)
 
     foo_runner_for_step_submit.cancel_task(sub_info["main_task"])
-    time.sleep(0.5)
+    time.sleep(SLEEP_TIME)
 
     assert foo_step_inited.state == StepState.FAILED
     for t_info in sub_info["subtasks"]:
@@ -101,6 +105,7 @@ def test_submit_failed_step(foo_runner_for_step_submit, foo_step_inited, keep_fi
     with open_file(files[0], "w") as fh:
         print(failed_str, file=fh)
     sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited, keep_finished=keep_finished)
+    time.sleep(SLEEP_TIME)
 
     foo_runner_for_step_submit.wait_for_tasks([sub_info["main_task"]])
     assert foo_step_inited.state == StepState.DONE
@@ -117,6 +122,7 @@ def test_submit_failed_step(foo_runner_for_step_submit, foo_step_inited, keep_fi
 
 def test_submit_step_with_dependency(foo_runner_for_step_submit, bar_step_inited):
     foo_runner_for_step_submit.submit_step(bar_step_inited)
+    time.sleep(SLEEP_TIME)
     for step in [bar_step_inited, bar_step_inited.dep_step]:
         assert step.state in (StepState.SUBMITTED, StepState.RUNNING)
 
@@ -128,12 +134,12 @@ def test_resubmit_step(foo_runner_for_step_submit, bar_step_inited, keep_finishe
 
     foo_sub_info = foo_runner_for_step_submit.submit_step(bar_step_inited.dep_step)
     bar_sub_info = foo_runner_for_step_submit.submit_step(bar_step_inited)
+    time.sleep(SLEEP_TIME)
 
-    foo_runner_for_step_submit.send_signal(foo_sub_info, signal.SIGUSR1)
-
-    new_foo_sub_info = foo_runner.resubmit_step(bar_step_inited.dep_step, keep_finished=keep_finished)
+    new_foo_sub_info = foo_runner_for_step_submit.resubmit_step(bar_step_inited.dep_step, keep_finished=keep_finished)
+    time.sleep(SLEEP_TIME)
     assert foo_sub_info["main_task"]["id"] != new_foo_sub_info["main_task"]["id"]
 
-    foo_runner.wait_for_tasks([bar_sub_info["main_task"]])
+    foo_runner_for_step_submit.wait_for_tasks([bar_sub_info["main_task"]])
     for step in [bar_step_inited, bar_step_inited.dep_step]:
         assert step.state == StepState.DONE

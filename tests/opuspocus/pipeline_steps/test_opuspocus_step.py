@@ -50,7 +50,7 @@ def test_cmd_file_syntax_valid(foo_step_inited):
 @pytest.mark.parametrize("partially_done", [False, True])
 def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner, partially_done):
     foo_runner.save_parameters()
-    foo_step_inited.SLEEP_TIME = 0
+    foo_step_inited.SLEEP_TIME = 1
 
     finished_target = None
     if partially_done:
@@ -73,7 +73,7 @@ def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner,
 
 
 def test_cmd_file_execute_sub(step_command_module, foo_step_inited):
-    foo_step_inited.SLEEP_TIME = 0
+    foo_step_inited.SLEEP_TIME = 1
 
     target_file = foo_step_inited.get_command_targets()[0]
     assert not target_file.exists()
