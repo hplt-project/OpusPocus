@@ -1,5 +1,6 @@
 import inspect
 import logging
+import signal
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, get_type_hints
@@ -68,7 +69,7 @@ class OpusPocusRunner:
     def load_parameters(cls: "OpusPocusRunner", pipeline_dir: Path) -> Dict[str, Any]:
         """TODO"""
         params_path = Path(pipeline_dir, cls.parameter_file)
-        logger.debug("Loading step variables from %s", params_path)
+        logger.debug("[OpusPocusRunner] Loading step variables from %s", params_path)
 
         with params_path.open("r") as fh:
             return yaml.safe_load(fh)
@@ -93,7 +94,7 @@ class OpusPocusRunner:
     def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
         """TODO"""
         type_hints = get_type_hints(self.__init__)
-        logger.debug("Class type hints: %s", type_hints)
+        logger.debug("[%s] Class type hints: %s", self.runner, type_hints)
 
         for param, val in kwargs.items():
             v = val
@@ -116,15 +117,14 @@ class OpusPocusRunner:
                     f"was submitted by a different runner type ({sub_runner})."
                 )
                 raise ValueError(err_msg)
-            logger.info("Stopping %s. Setting state to FAILED.", step.step_label)
 
-            task_id = sub_info["main_task"]
-            logger.debug("Stopping task %i.", task_id)
+            logger.info("[%s] Stopping step %s and setting the step state to FAILED.", self.runner, step.step_label)
+            task_info = sub_info["main_task"]
 
             # TODO(varisd): the main task should take care of cancelling / cleaning up its subtasks after receiving a
             #   SIGTERM/SIGUSR1 signal, however, we should probably take care of situations where the main task dies
             #   before finishing the cleanup
-            self.cancel_task(task_id)
+            self.cancel_task(task_info)
             step.state = StepState.FAILED
 
     def run_pipeline(
@@ -135,12 +135,11 @@ class OpusPocusRunner:
         keep_finished: bool = False,
     ) -> None:
         """TODO"""
-        logger.info("Submitting pipeline tasks...")
         self.save_parameters()
         for step in pipeline.get_targets(targets):
             self.submit_step(step, keep_finished=keep_finished)
         self.run()
-        logger.info("Pipeline tasks submitted successfully.")
+        logger.info("[%s] Pipeline tasks submitted successfully.", self.runner)
 
     def run(self) -> None:
         """TODO"""
@@ -159,12 +158,13 @@ class OpusPocusRunner:
                 raise ValueError(err_msg)
             return sub_info
         if step.has_state(StepState.DONE):
-            logger.info("Step %s has already finished. Skipping...", step.step_label)
+            logger.info("[%s] Step %s has already finished. Skipping...", self.runner, step.step_label)
             return None
         if step.has_state(StepState.FAILED):
             step.clean_directories(keep_finished=keep_finished)
             logger.info(
-                "Step %s has previously failed. Resubmitting...",
+                "[%s] Step %s is in FAILED state. Resubmitting...",
+                self.runner,
                 step.step_label,
             )
         elif not step.has_state(StepState.INITED):
@@ -183,7 +183,7 @@ class OpusPocusRunner:
         cmd_path = Path(step.step_dir, step.command_file)
 
         # Submit the main step task which then is responsible of submitting its subtasks
-        logger.info("[%s] Submitting main step task.", step.step_label)
+        logger.info("[%s] Submitting '%s' main step task.", self.runner, step.step_label)
 
         # NOTE(varisd): we set the state to SUBMITTED before actual submission to avoid possible race conditions
         step.state = StepState.SUBMITTED
@@ -204,6 +204,16 @@ class OpusPocusRunner:
         self.save_submission_info(step, sub_info)
         return sub_info
 
+    def resubmit_step(self, step: OpusPocusStep, *, keep_finished: bool = False) -> None:
+        """TODO"""
+        sub_info = self.load_submission_info(step)
+        if keep_finished:
+            self.send_signal(sub_info["main_task"], signal.SIGUSR1)
+        else:
+            self.send_signal(sub_info["main_task"], signal.SIGUSR2)
+        self.wait_for_single_task(sub_info["main_task"])  # wait until the original task resubmits and finishes
+        return self.load_submission_info(step)
+
     def submit_task(
         self,
         cmd_path: Path,
@@ -216,25 +226,19 @@ class OpusPocusRunner:
         """TODO"""
         raise NotImplementedError()
 
-    def cancel_task(self, task_info: TaskInfo, signal: int) -> None:
+    def send_signal(self, task_info: TaskInfo, signal: int) -> None:
         """TODO"""
         raise NotImplementedError()
 
-    def send_signal(self, step: OpusPocusStep) -> None:
-        raise NotImplementedError()
-
-    def update_step_dependants(self, step: OpusPocusStep) -> None:
-        raise NotImplementedError()
+    def cancel_task(self, task_info: TaskInfo, signal: int = signal.SIGTERM) -> None:
+        """TODO"""
+        self.send_signal(task_info, signal.SIGTERM)
 
     def wait_for_tasks(self, task_info_list: Optional[List[TaskInfo]] = None) -> None:
         for task_info in task_info_list:
             self.wait_for_single_task(task_info)
 
     def wait_for_single_task(self, task_info: TaskInfo) -> None:
-        raise NotImplementedError()
-
-    def is_task_running(self, task_info: TaskInfo) -> bool:
-        """TODO"""
         raise NotImplementedError()
 
     def save_submission_info(self, step: OpusPocusStep, sub_info: SubmissionInfo) -> None:

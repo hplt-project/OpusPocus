@@ -1,4 +1,5 @@
 import logging
+import signal
 import subprocess
 import sys
 import time
@@ -80,7 +81,6 @@ class BashRunner(OpusPocusRunner):
                 shell=False,
                 env=env_dict,
             )
-            task_info = BashTaskInfo(file_path=str(target_file), id=proc.pid)
         else:
             proc = subprocess.Popen(
                 [
@@ -94,19 +94,25 @@ class BashRunner(OpusPocusRunner):
                 shell=False,
                 env=env_dict,
             )
-            task_info = BashTaskInfo(file_path=None, id=proc.pid)
+        t_file_str = None
+        if target_file is not None:
+            t_file_str = str(target_file)
+        task_info = BashTaskInfo(file_path=t_file_str, id=proc.pid)
+        logger.info("Submitted command: '%s %s', pid: %i", cmd_path, t_file_str, proc.pid)
         time.sleep(SLEEP_TIME)  # We do not want to start proccess too quickly
+
         # If executing serially, we wait for each process to finish before submitting next
         if target_file is not None and not self.run_tasks_in_parallel:
-            logger.info("Waiting for process to finish...")
+            logger.debug("Waiting for process %i to finish...", proc.pid)
             subprocess_wait(proc)
         return task_info
 
-    def cancel_task(self, task_info: BashTaskInfo) -> None:
+    def send_signal(self, task_info: BashTaskInfo, signal: int = signal.SIGTERM) -> None:
         """TODO"""
         proc = self._get_process(task_info)
+        logger.debug("Signal %i was sent to process %i.", signal, task_info["id"])
         if proc is not None:
-            proc.terminate()
+            proc.send_signal(signal)
 
     def wait_for_single_task(self, task_info: BashTaskInfo) -> None:
         pid = task_info["id"]
@@ -116,14 +122,12 @@ class BashRunner(OpusPocusRunner):
         gone, _ = wait_procs([proc])
         for p in gone:
             if p.returncode:
-                Path(task_info["file_path"]).unlink()
+                if task_info["file_path"] is not None:
+                    file_path = Path(task_info["file_path"])
+                    if file_path.exists():
+                        file_path.unlink()
                 err_msg = f"Process {pid} exited with non-zero value."
                 raise subprocess.SubprocessError(err_msg)
-
-    def is_task_running(self, task_info: BashTaskInfo) -> bool:
-        """TODO"""
-        proc = self._get_process(task_info)
-        return proc is not None
 
     def _get_process(self, task_info: BashTaskInfo) -> Optional[Process]:
         """TODO"""
