@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 4. Setup the Python virtual environment for Opuscleaner. (OpusCleaner is currently not supported by Python>=3.10.)
 ```
-/usr/bin/virtualenv -p /usr/bin/python3.10 opuscleaner-venv
+/usr/bin/virtualenv -p /usr/bin/python3.9 opuscleaner-venv
 ```
 
 5. Activate the OpusCleaner virtualenv and install OpusCleaner's dependencies
