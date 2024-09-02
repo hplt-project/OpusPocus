@@ -8,8 +8,8 @@ mkdir -p $DATA_DIR
 # Prepare the training data
 wget https://data.hplt-project.org/one/bitext/en-eu.raw.gz
 mkdir -p $DATA_DIR/raw
-zcat en-eu.raw.gz | cut -f3 | gzip -c > data/en-eu/raw.en.gz
-zcat en-eu.raw.gz | cut -f4 | gzip -c > data/en-eu/raw.eu.gz
+zcat en-eu.raw.gz | cut -f3 | gzip -c > $DATA_DIR/raw/raw.en.gz
+zcat en-eu.raw.gz | cut -f4 | gzip -c > $DATA_DIR/raw/raw.eu.gz
 rm en-eu.raw.gz
 
 # Prepare the validation data
