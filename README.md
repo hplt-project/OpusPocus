@@ -26,23 +26,38 @@ It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for
 ```
 ./scripts/install_marian_gpu.sh PATH_TO_CUDA CUDNN_VERSION [NUM_THREADS]
 ```
-2. Create a virtual environment for  [OpusCleaner](https://github.com/hplt-project/OpusCleaner/blob/main/README.md#installation-for-cleaning) and install it (at the moment, OpusCleaner has conflicting dependencies with OpusTrainer, therefore, has to be in an isolated Python environment).
-3. Create another virtual environment for OpusPocus and install the OpusPocus.
+Alternatively, you can usel `scripts/install_marian_cpu.sh` for CPU version. Note that the scripts may require modification based on your system.
+
+2. (Optional) Setup the Python virtual environment (using virtualenv):
 ```
+/usr/bin/virtualenv -p /usr/bin/python3.10 python-venv
+```
+
+3. Install the Python dependencies.
+```
+(source python-venv/bin/activate  # if using virtual environment)
 pip install --upgrade pip setuptools
 pip install -r requirements.txt
 ```
+
+4. Setup the Python virtual environment for Opuscleaner. (OpusCleaner is currently not supported by Python>=3.10.)
+```
+/usr/bin/virtualenv -p /usr/bin/python3.10 opuscleaner-venv
+```
+
+5. Activate the OpusCleaner virtualenv and install OpusCleaner's dependencies
+```
+source opuscleaner-venv/bin/activate
+pip install --upgrade pip setuptools
+pip install -r requirements-opuscleaner.txt
+```
+
 
 ## Usage (Simple Pipeline)
 
 Either run the main script `go.py` or the subcommand scripts from `opuspocus_cli/` directory.
 Run the scripts directly from the root directory for this repository.
-
-_Barry: I find that I still need to set my `PYTHONPATH` in the environment, otherwise all scripts fail because opuspocus cannot be imported._
-
-# Data preparation
-
-TODO: setup `data/` dir (modify the config/pipeline... to work with this directory
+(You may need to add the path to the local OpusPocus repository directory to your PYTHONPATH.)
 
 # Pipeline execution
 
@@ -52,13 +67,19 @@ There are two main subcommands (init, run) which need to be executed separately.
 
 (See the ``examples/`` directory for example execution)
 
-# Data preprocessing example
+# I. Data preprocessing example
+
+0. Download the data and setup the dataset directory structure.
+```
+scripts/prepare_data.en-eu.sh
+```
 
 1. Initialize the (data preprocessing) pipeline.
 ```
+mkdir -p experiments/en-eu/preprocess.simple
 $ ./go.py init \
     --pipeline-config config/pipeline.preprocess.yml \
-    --pipeline-dir preprocess_pipeline/destination/directory \
+    --pipeline-dir experiments/en-eu/preprocess.simple
 ```
 - `--pipeline-config` (required) provides the details about the pipeline steps and their dependencies
 - `--pipeline-dir` (optional) overrides the `pipeline.pipeline_dir` value from the pipeline-config
@@ -66,47 +87,42 @@ $ ./go.py init \
 2. Execute the (data preprocessing) pipeline.
 ```
 $ ./go.py run \
-    --pipeline-dir preprocess_pipeline/destination/directory \
-    --runner bash \
+    --pipeline-dir experiments/en-eu/preprocess.simple \
+    --runner bash 
 ```
 - `--pipeline-dir` (required) path to the initialized pipeline directory.
-- `--runner` (required) runner to be used for pipeline execution.
+- `--runner` (required) runner to be used for pipeline execution. Use --runner slurm for more effective HPC execution (if Slurm is available)
 
 3. Check the pipeline status.
 ```
-$ ./go.py traceback --pipeline-dir pipeline/destination/directory
+$ ./go.py traceback --pipeline-dir experiments/en-eu/preprocess.simple
 ```
 OR
 ```
-$ ./go.py status --pipeline-dir pipeline/destination/directory
+$ ./go.py status --pipeline-dir experiments/en-eu/preprocess.simple
 ```
 
-# Model training example
+# II. Model training example (preprocessing follow-up)
 
-(The data preprocessing pipeline must be finished, i.e. all steps must be in the DONE step)
+0. Check the preprocessing pipeline status (The data preprocessing pipeline must be finished, i.e. all steps must be in the DONE step)
+```
+$ ./go.py status --pipeline-dir experiments/en-eu/preprocess.simple
+```
 
-0. Edit the location (TODO) of the preprocessing pipeline and directories
-
-1. Initialize the (data preprocessing) pipeline.
+1. Initialize the training pipeline.
 ```
 $ ./go.py init \
     --pipeline-config config/pipeline.train.simple.yml \
-    --pipeline-dir training_pipeline/destination/directory \
+    --pipeline-dir experiments/en-eu/train.simple 
 ```
 
 2. Execute the (data preprocessing) pipeline.
 ```
 $ ./go.py run \
-    --pipeline-dir training_pipeline/destination/directory \
-    --runner bash \
+    --pipeline-dir experiments/en-eu/train.simple \
+    --runner bash 
 ```
 
 # (Advanced) Config modification examples
 
-1. Preprocessing your own data
-
-TODO
-
-2. Using own (preprocessed) data
-
-TODO
+TBD

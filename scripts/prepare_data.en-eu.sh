@@ -16,7 +16,7 @@ rm en-eu.raw.gz
 wget https://github.com/openlanguagedata/flores/releases/download/v2.0-rc.2/floresp-v2.0-rc.2.zip
 unzip -P "multilingual machine translation" floresp-v2.0-rc.2.zip && rm floresp-v2.0-rc.2.zip
 mkdir -p $DATA_DIR/valid $DATA_DIR/test
-cp -v floresp-v2.0-rc.2/dev/dev.eng_Latn $DATA_DIR/valid/floresp-v2.0-rc.2.en
-cp -v floresp-v2.0-rc.2/dev/dev.eus_Latn $DATA_DIR/valid/floresp-v2.0-rc.2.eu 
-cp -v floresp-v2.0-rc.2/devtest/devtest.eng_Latn $DATA_DIR/test/floresp-v2.0-rc.2.en 
-cp -v floresp-v2.0-rc.2/devtest/devtest.eus_Latn $DATA_DIR/test/floresp-v2.0-rc.2.eu
+cp -v floresp-v2.0-rc.2/dev/dev.eng_Latn $DATA_DIR/valid/flores200.dev.en-eu.en
+cp -v floresp-v2.0-rc.2/dev/dev.eus_Latn $DATA_DIR/valid/flores200.dev.en-eu.eu 
+cp -v floresp-v2.0-rc.2/devtest/devtest.eng_Latn $DATA_DIR/test/flores200.devtest.en-eu.en 
+cp -v floresp-v2.0-rc.2/devtest/devtest.eus_Latn $DATA_DIR/test/flores200.devtest.en-eu.eu

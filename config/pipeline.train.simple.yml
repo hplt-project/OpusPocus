@@ -1,7 +1,7 @@
 global:
   seed: 42
   src_lang: en
-  tgt_lang: nn
+  tgt_lang: eu
 
   preprocess_pipeline_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example
 
