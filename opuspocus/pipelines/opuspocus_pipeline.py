@@ -172,9 +172,24 @@ class OpusPocusPipeline:
             v.traceback_step(level=0, full=full)
             print()  # noqa: T201
 
+    def _get_step(self, step_label: str) -> Optional[OpusPocusStep]:
+        output = [s for s in self.steps if s.step_label == step_label]
+        assert len(output) <= 1
+        if output:
+            return output[0]
+        return None
+
     def get_targets(self, targets: Optional[List[str]] = None) -> List[OpusPocusStep]:
         if targets is not None:
-            return targets
+            output_targets = []
+            for target in targets:
+                target_step = self._get_step(target)
+                if target_step is None:
+                    raise ValueError(
+                        f"Unknown pipeline step (label: {target}) requested as a target."
+                    )
+                output_targets.append(target_step)
+            return output_targets
         if self.default_targets is not None:
             logger.info("No target steps were specified. Using default targets.")
             return self.default_targets
