@@ -24,32 +24,32 @@ It uses [OpusCleaner](https://github.com/hplt-project/OpusCleaner/tree/main) for
 
 1. Install [MarianNMT](https://marian-nmt.github.io/docs/)
 ```
-./scripts/install_marian_gpu.sh PATH_TO_CUDA CUDNN_VERSION [NUM_THREADS]
+$ ./scripts/install_marian_gpu.sh PATH_TO_CUDA CUDNN_VERSION [NUM_THREADS]
 ```
 Alternatively, you can usel `scripts/install_marian_cpu.sh` for CPU version. Note that the scripts may require modification based on your system.
 
 2. (Optional) Setup the Python virtual environment (using virtualenv):
 ```
-/usr/bin/virtualenv -p /usr/bin/python3.10 python-venv
+$ /usr/bin/virtualenv -p /usr/bin/python3.10 python-venv
 ```
 
 3. Install the Python dependencies.
 ```
 (source python-venv/bin/activate  # if using virtual environment)
-pip install --upgrade pip setuptools
-pip install -r requirements.txt
+$ pip install --upgrade pip setuptools
+$ pip install -r requirements.txt
 ```
 
 4. Setup the Python virtual environment for Opuscleaner. (OpusCleaner is currently not supported by Python>=3.10.)
 ```
-/usr/bin/virtualenv -p /usr/bin/python3.9 opuscleaner-venv
+$ /usr/bin/virtualenv -p /usr/bin/python3.9 opuscleaner-venv
 ```
 
 5. Activate the OpusCleaner virtualenv and install OpusCleaner's dependencies
 ```
-source opuscleaner-venv/bin/activate
-pip install --upgrade pip setuptools
-pip install -r requirements-opuscleaner.txt
+$ source opuscleaner-venv/bin/activate
+$ pip install --upgrade pip setuptools
+$ pip install -r requirements-opuscleaner.txt
 ```
 
 
@@ -71,12 +71,12 @@ There are two main subcommands (init, run) which need to be executed separately.
 
 0. Download the data and setup the dataset directory structure.
 ```
-scripts/prepare_data.en-eu.sh
+$ scripts/prepare_data.en-eu.sh
 ```
 
 1. Initialize the (data preprocessing) pipeline.
 ```
-mkdir -p experiments/en-eu/preprocess.simple
+$ mkdir -p experiments/en-eu/preprocess.simple
 $ ./go.py init \
     --pipeline-config config/pipeline.preprocess.yml \
     --pipeline-dir experiments/en-eu/preprocess.simple
@@ -111,6 +111,7 @@ $ ./go.py status --pipeline-dir experiments/en-eu/preprocess.simple
 
 1. Initialize the training pipeline.
 ```
+$ mkdir -p experiments/en-eu/train.simple
 $ ./go.py init \
     --pipeline-config config/pipeline.train.simple.yml \
     --pipeline-dir experiments/en-eu/train.simple 
