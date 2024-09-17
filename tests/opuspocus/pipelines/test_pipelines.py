@@ -82,5 +82,5 @@ def test_get_pipeline_targets(pipeline_preprocess_tiny_config_file, pipeline_pre
 
 
 def test_get_unknown_pipeline_target_fail(pipeline_preprocess_tiny_inited):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         pipeline_preprocess_tiny_inited.get_targets("foo")

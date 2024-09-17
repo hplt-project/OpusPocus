@@ -37,14 +37,14 @@ def test_load_runner_method(foo_runner):
 
 
 def test_run_pipeline(foo_runner, foo_pipeline_inited):
-    foo_runner.run_pipeline(foo_pipeline_inited, foo_pipeline_inited.get_targets())
+    foo_runner.run_pipeline(foo_pipeline_inited)
     for step in foo_pipeline_inited.steps:
         if foo_runner.runner == "bash":
             assert step.state in (StepState.SUBMITTED, StepState.RUNNING)
 
 
 def test_stop_pipeline(foo_runner, foo_pipeline_inited):
-    foo_runner.run_pipeline(foo_pipeline_inited, foo_pipeline_inited.get_targets())
+    foo_runner.run_pipeline(foo_pipeline_inited)
     time.sleep(SLEEP_TIME)
 
     foo_runner.stop_pipeline(foo_pipeline_inited)
@@ -53,7 +53,7 @@ def test_stop_pipeline(foo_runner, foo_pipeline_inited):
 
 
 def test_stop_pipeline_with_nonmatching_runner_fail(foo_runner, foo_pipeline_inited):
-    foo_runner.run_pipeline(foo_pipeline_inited, foo_pipeline_inited.get_targets())
+    foo_runner.run_pipeline(foo_pipeline_inited)
     foo_runner.runner = "foobar"
     with pytest.raises(ValueError):  # noqa: PT011
         foo_runner.stop_pipeline(foo_pipeline_inited)

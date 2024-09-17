@@ -1,6 +1,6 @@
 import pytest
 
-from opuspocus.pipeline_steps import StepState
+from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.runners.debug import DebugRunner
 
 # TODO(varisd): test cpu vs gpu run (single vs multi)
@@ -32,7 +32,28 @@ def test_train_model_step_done(train_model_step_done):
     assert train_model_step_done.state == StepState.DONE
 
 
-@pytest.mark.xfail(reason="not implemented")
-def test_train_model_step_done_model(train_model_step_done):  # noqa: ARG001
-    """Check whether the train_step model was saved correctly."""
-    pass
+@pytest.mark.parametrize(
+    "params_invalid",
+    [
+        {"train_categories": ["clean"], "train_category_ratios": None},
+        {"train_category_ratios": [0.6, 0.4], "train_categories": None},
+        {"train_categories": ["clean"], "train_category_ratios": [0.1, 0.9]},
+        {"train_categories": ["clean"], "train_category_ratios": [0.9]},
+        {"train_categories": ["foo", "bar"], "train_category_ratios": [0.9, 0.1]},
+        {"train_categories": ["clean"], "train_category_ratios": [1.], "max_epochs": -1}
+    ],
+)
+def test_invalid_parameters_fail(params_invalid, train_data_parallel_tiny_model_step_inited):
+    param_dict = train_data_parallel_tiny_model_step_inited.get_parameters_dict()
+    for k, v in train_data_parallel_tiny_model_step_inited.dependencies.items():
+        param_dict[k] = v
+    for k, v in params_invalid.items():
+        param_dict[k] = v
+
+    pipeline_dir = param_dict["pipeline_dir"]
+    del param_dict["step"]
+    del param_dict["step_label"]
+    del param_dict["pipeline_dir"]
+    with pytest.raises(ValueError):  # noqa: PT011
+        step = build_step(step="train_model", step_label="train_model.fail", pipeline_dir=pipeline_dir, **param_dict)
+        step.init_step()
