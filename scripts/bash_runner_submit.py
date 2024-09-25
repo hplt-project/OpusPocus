@@ -17,7 +17,7 @@ def main(argv):  # noqa: ANN001, ANN201 fixit
     """Wrapper for executing Bash commands that have process dependencies."""
     cmd_path = argv[1]
     proc_ids = []
-    if argv[2]:
+    if len(argv) == 3 and argv[2]:
         proc_ids = [int(proc) for proc in argv[2].split(" ")]
 
     procs = []

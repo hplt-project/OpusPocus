@@ -185,9 +185,8 @@ class OpusPocusPipeline:
             for target in targets:
                 target_step = self._get_step(target)
                 if target_step is None:
-                    raise ValueError(
-                        f"Unknown pipeline step (label: {target}) requested as a target."
-                    )
+                    err_msg = f"Unknown pipeline step (label: {target}) requested as a target."
+                    raise ValueError(err_msg)
                 output_targets.append(target_step)
             return output_targets
         if self.default_targets is not None:
