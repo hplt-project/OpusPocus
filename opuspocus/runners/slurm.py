@@ -81,6 +81,11 @@ class SlurmRunner(OpusPocusRunner):
         if self.slurm_other_options is not None:
             cmd += [self.slurm_other_options.split(",")]
 
+        t_file_str = None
+        if target_file is not None:
+            t_file_str = str(target_file)
+
+        logger.info("Submitting sbatch command: %s %s", " ".join(cmd), t_file_str)
         if target_file is not None:
             cmd += [str(cmd_path), str(target_file)]
             proc = subprocess.Popen(
@@ -95,11 +100,8 @@ class SlurmRunner(OpusPocusRunner):
         cmd_out = proc.stdout.readline().decode().strip("\n")
         jid = int(cmd_out.split(" ")[-1])
 
-        t_file_str = None
-        if target_file is not None:
-            t_file_str = str(target_file)
         task_info = SlurmTaskInfo(file_path=t_file_str, id=jid)
-        logger.info("Submitted command: '%s %s', jobid: %i", " ".join(cmd), t_file_str, jid)
+        logger.info("Submitted sbatch command, jobid: %i", jid)
         logger.debug("sbatch output: '%s'", cmd_out)
 
         logger.debug("Job info:\n%s", "".join(self._get_sacct_info(task_info)))
@@ -147,18 +149,19 @@ class SlurmRunner(OpusPocusRunner):
 
     def wait_for_single_task(self, task_info: SlurmTaskInfo) -> None:
         """TODO"""
-        while self._is_task_running(task_info):
+        while self.is_task_running(task_info):
             time.sleep(SLEEP_TIME)
         status = self._get_job_status(task_info)
-        if status != "COMPLETED" and task_info["file_path"] is not None:
-            file_path = Path(task_info["file_path"])
-            if file_path.exists():
-                file_path.unlink()
+        if status != "COMPLETED":
+            if task_info["file_path"] is not None:
+                file_path = Path(task_info["file_path"])
+                if file_path.exists():
+                    file_path.unlink()
             jid = task_info["id"]
             err_msg = f"Slurm Job {jid} finished execution in state {status}."
             raise subprocess.SubprocessError(err_msg)
 
-    def _is_task_running(self, task_info: SlurmTaskInfo) -> bool:
+    def is_task_running(self, task_info: SlurmTaskInfo) -> bool:
         """TODO"""
         return self._get_job_status(task_info) in {"PENDING", "RUNNING"}
 

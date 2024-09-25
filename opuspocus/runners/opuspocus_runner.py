@@ -130,7 +130,7 @@ class OpusPocusRunner:
     def run_pipeline(
         self,
         pipeline: OpusPocusPipeline,
-        targets: List[str],
+        targets: Optional[List[OpusPocusStep]] = None,
         *,
         keep_finished: bool = False,
     ) -> None:
@@ -239,6 +239,9 @@ class OpusPocusRunner:
             self.wait_for_single_task(task_info)
 
     def wait_for_single_task(self, task_info: TaskInfo) -> None:
+        raise NotImplementedError()
+
+    def is_task_running(self, task_info: TaskInfo) -> bool:
         raise NotImplementedError()
 
     def save_submission_info(self, step: OpusPocusStep, sub_info: SubmissionInfo) -> None:

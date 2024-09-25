@@ -1,7 +1,7 @@
-import time
-from pathlib import Path
-
 import pytest
+import time
+import subprocess
+from pathlib import Path
 
 from opuspocus.pipeline_steps import StepState
 from opuspocus.runners import OpusPocusRunner, load_runner
@@ -83,7 +83,8 @@ def test_cancel_main_task(foo_runner_for_step_submit, foo_step_inited):
     time.sleep(SLEEP_TIME)
 
     foo_runner_for_step_submit.cancel_task(sub_info["main_task"])
-    time.sleep(SLEEP_TIME)
+    with pytest.raises(subprocess.SubprocessError):
+        foo_runner_for_step_submit.wait_for_single_task(sub_info["main_task"])
 
     assert foo_step_inited.state == StepState.FAILED
     for t_info in sub_info["subtasks"]:

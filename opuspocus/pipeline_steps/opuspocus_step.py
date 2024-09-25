@@ -353,31 +353,11 @@ class OpusPocusStep:
         self.command_preprocess()
 
         task_info_list = []
-        for target_file in self.get_command_targets():
-            if target_file.exists():
-                logger.info("[%s] File {target_file!s} already finished. Skipping...", self.step_label)
-                continue
-
-            cmd_path = Path(self.step_dir, self.command_file)
-            task_info = runner.submit_task(
-                cmd_path=cmd_path,
-                target_file=target_file,
-                dependencies=None,
-                step_resources=runner.get_resources(self),
-                stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.out"),
-                stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.err"),
-            )
-            task_info_list.append(task_info)
-            time.sleep(0.5)
-
-        # Update the submission info
         submission_info = runner.load_submission_info(self)
-        submission_info["subtasks"] = task_info_list
-        runner.save_submission_info(self, submission_info)
 
         def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
             logger.info("[%s] Received signal %s. Terminating subtasks...", self.step_label, signum)
-            logger.info("Current subtask list: %s", " ".join(task_info_list))
+            logger.info("Current subtask list: %s", task_info_list)
             for task_info in task_info_list:
                 runner.send_signal(task_info, signum)
             self.state = StepState.FAILED
@@ -406,6 +386,42 @@ class OpusPocusStep:
         signal.signal(signal.SIGUSR1, resubmit_signal_handler)
         signal.signal(signal.SIGUSR2, resubmit_signal_handler)
 
+        for target_file in self.get_command_targets():
+            t_infos = [
+                t_info for t_info in submission_info["subtasks"] if t_info["file_path"] == str(target_file)
+            ]
+            if len(t_infos) == 1 and runner.is_task_running(t_infos[0]):
+                logger.info(
+                    "[%s] File %s is already being processed by runner (%s), id %i. Skipping submission...",
+                    self.step_label,
+                    str(target_file),
+                    runner.runner,
+                    t_infos[0]["id"],
+                )
+                task_info_list.append(t_infos[0])
+                continue
+
+            if target_file.exists():
+                logger.info("[%s] File %s already finished. Skipping submission...", self.step_label, str(target_file))
+                continue
+
+            cmd_path = Path(self.step_dir, self.command_file)
+            task_info = runner.submit_task(
+                cmd_path=cmd_path,
+                target_file=target_file,
+                dependencies=None,
+                step_resources=runner.get_resources(self),
+                stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.out"),
+                stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.err"),
+            )
+            task_info_list.append(task_info)
+            time.sleep(0.5)
+
+        # Update the submission info
+        submission_info = runner.load_submission_info(self)
+        submission_info["subtasks"] = task_info_list
+        runner.save_submission_info(self, submission_info)
+
         runner.wait_for_tasks(task_info_list)
         self.command_postprocess()
 
@@ -418,7 +434,12 @@ class OpusPocusStep:
 
     def command_postprocess(self) -> None:
         """TODO"""
-        pass
+        for target_file in self.get_command_targets():
+            if not target_file.exists():
+                err_msg = (
+                    f"Target file {target_file} does not exists after the step finished {self.step_label} executing."
+                )
+                raise FileNotFoundError(err_msg)
 
     def run_subtask(self, target_file: Path) -> None:
         """TODO"""

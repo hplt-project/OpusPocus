@@ -58,6 +58,8 @@ def train_data_parallel_tiny_model_step_inited(
 ):
     """Create the mock train_model step."""
     marian_dir = train_data_parallel_tiny_vocab_step_inited.marian_dir
+    if "cpu" in str(marian_dir):
+        pytest.skip(reason=("Model training is not supported on CPU-only machines."))
     step = build_step(
         step="train_model",
         step_label=f"train_model.{marian_dir}.test",

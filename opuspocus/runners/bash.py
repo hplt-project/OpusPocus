@@ -129,6 +129,13 @@ class BashRunner(OpusPocusRunner):
                 err_msg = f"Process {pid} exited with non-zero value."
                 raise subprocess.SubprocessError(err_msg)
 
+    def is_task_running(self, task_info: TaskInfo) -> bool:
+        pid = task_info["id"]
+        proc = self._get_process(task_info)
+        if proc is None:
+            return False
+        return True
+
     def _get_process(self, task_info: BashTaskInfo) -> Optional[Process]:
         """TODO"""
         try:
