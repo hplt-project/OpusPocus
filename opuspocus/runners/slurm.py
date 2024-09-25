@@ -104,7 +104,6 @@ class SlurmRunner(OpusPocusRunner):
         logger.info("Submitted sbatch command, jobid: %i", jid)
         logger.debug("sbatch output: '%s'", cmd_out)
 
-        logger.debug("Job info:\n%s", "".join(self._get_sacct_info(task_info)))
         return task_info
 
     def _update_dependants(self, step: OpusPocusStep, task_info: SlurmTaskInfo) -> None:
@@ -149,6 +148,7 @@ class SlurmRunner(OpusPocusRunner):
 
     def wait_for_single_task(self, task_info: SlurmTaskInfo) -> None:
         """TODO"""
+        time.sleep(SLEEP_TIME)  # NOTE(varisd): workaround to give sbatch time to properly submit the job
         while self.is_task_running(task_info):
             time.sleep(SLEEP_TIME)
         status = self._get_job_status(task_info)
