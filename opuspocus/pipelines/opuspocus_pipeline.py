@@ -184,6 +184,9 @@ class OpusPocusPipeline:
         )
         raise ValueError(err_msg)
 
+    def get_dependants(self, step: OpusPocusStep) -> List[OpusPocusStep]:
+        return [s for s in self.steps if any(dep.step_label == step.step_label for dep in s.dependencies.values())]
+
     def __eq__(self, other: "OpusPocusPipeline") -> bool:
         """Object comparison logic."""
         if self.pipeline_graph != other.pipeline_graph:

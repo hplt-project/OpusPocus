@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 import hyperqueue
 
-from opuspocus.runners import OpusPocusRunner, TaskId, register_runner
+from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
 from opuspocus.utils import RunnerResources, file_path, subprocess_wait
 
 
@@ -84,11 +84,11 @@ class HyperqueueRunner(OpusPocusRunner):
         self,
         cmd_path: Path,
         target_file: Optional[Path] = None,
-        dependencies: Optional[List[TaskId]] = None,
+        dependencies: Optional[List[TaskInfo]] = None,
         step_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
-    ) -> TaskId:
+    ) -> TaskInfo:
         """TODO"""
         dep_tasks = []
         if dependencies:
@@ -126,20 +126,20 @@ class HyperqueueRunner(OpusPocusRunner):
                 deps=dep_tasks,
             )
 
-        return TaskId(filename=str(target_file), id=prog.task_id)
+        return TaskInfo(filename=str(target_file), id=prog.task_id)
 
-    def update_dependants(self, task_id: TaskId) -> None:
+    def update_dependants(self, task_id: TaskInfo) -> None:
         raise NotImplementedError()
 
-    def cancel_task(self, task_id: TaskId) -> None:
+    def cancel_task(self, task_id: TaskInfo) -> None:
         # TODO: Based on this implementation, we also need to adjust the
         # task_id saving/loading methods
         raise NotImplementedError()
 
-    def wait_for_single_task(self, task_id: TaskId) -> None:
+    def wait_for_single_task(self, task_id: TaskInfo) -> None:
         raise NotImplementedError()
 
-    def is_task_running(self, task_id: TaskId) -> bool:
+    def is_task_running(self, task_id: TaskInfo) -> bool:
         raise NotImplementedError()
 
     def run(self) -> None:

@@ -1,13 +1,19 @@
+from pathlib import Path
+
 import pytest
 
 from opuspocus.options import parse_run_args
-from opuspocus.runners import RUNNER_REGISTRY, build_runner
+from opuspocus.runners import build_runner
 
 
-#@pytest.fixture(params=RUNNER_REGISTRY.keys())
-@pytest.fixture(params=["bash"])
+# @pytest.fixture(params=RUNNER_REGISTRY.keys())
+@pytest.fixture(params=["bash", "slurm"])
+# @pytest.fixture(params=["slurm"])
 def parsed_runner_args(request, foo_step_inited):
     """Create default runner arguments."""
+    if request.param == "slurm" and not Path("/bin/sbatch").exists():
+        pytest.skip(reason="Requires SLURM to be available...")
+
     extra = []
     if request.param == "hyperqueue":
         hq_dir = request.getfixturevalue("hyperqueue_dir")
@@ -33,5 +39,4 @@ def parsed_runner_args(request, foo_step_inited):
 
 @pytest.fixture()
 def foo_runner(parsed_runner_args):
-    runner = build_runner(parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args)
-    return runner
+    return build_runner(parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args)

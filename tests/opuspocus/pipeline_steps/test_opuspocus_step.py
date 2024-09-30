@@ -1,11 +1,12 @@
-import pytest
-
 import importlib
 import py_compile
 from pathlib import Path
 
+import pytest
+
 from opuspocus import pipeline_steps
 from opuspocus.pipeline_steps import StepState, load_step
+from opuspocus.runners import SubmissionInfo
 from opuspocus.utils import open_file
 
 
@@ -22,17 +23,10 @@ def test_state_update_two_instances(foo_step_inited, monkeypatch):
 @pytest.fixture()
 def step_command_module(foo_step_inited, monkeypatch):
     monkeypatch.setattr(
-        pipeline_steps,
-        "STEP_REGISTRY",
-        {
-            k: v for k, v in pipeline_steps.STEP_REGISTRY.items()
-            if "foo" not in k
-        }
+        pipeline_steps, "STEP_REGISTRY", {k: v for k, v in pipeline_steps.STEP_REGISTRY.items() if "foo" not in k}
     )
     monkeypatch.setattr(
-        pipeline_steps,
-        "STEP_CLASS_NAMES",
-        set(v for v in pipeline_steps.STEP_CLASS_NAMES if "Foo" not in v)
+        pipeline_steps, "STEP_CLASS_NAMES", {v for v in pipeline_steps.STEP_CLASS_NAMES if "Foo" not in v}
     )
 
     cmd_file = Path(foo_step_inited.step_dir, foo_step_inited.command_file)
@@ -56,7 +50,7 @@ def test_cmd_file_syntax_valid(foo_step_inited):
 @pytest.mark.parametrize("partially_done", [False, True])
 def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner, partially_done):
     foo_runner.save_parameters()
-    foo_step_inited.SLEEP_TIME = 0
+    foo_step_inited.SLEEP_TIME = 1
 
     finished_target = None
     if partially_done:
@@ -64,6 +58,9 @@ def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner,
         finished_target_str = "PREVIOUSLY_FINISHED"
         print(finished_target_str, file=open_file(finished_target, "w"))
 
+    foo_runner.save_submission_info(
+        foo_step_inited, SubmissionInfo(runner=foo_runner.runner, main_task=None, subtasks=[])
+    )
     step_command_module.main(["foo_cmd"])
     assert foo_step_inited.state == StepState.DONE
     for i, target_file in enumerate(foo_step_inited.get_command_targets()):
@@ -76,7 +73,7 @@ def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner,
 
 
 def test_cmd_file_execute_sub(step_command_module, foo_step_inited):
-    foo_step_inited.SLEEP_TIME = 0
+    foo_step_inited.SLEEP_TIME = 1
 
     target_file = foo_step_inited.get_command_targets()[0]
     assert not target_file.exists()
@@ -84,8 +81,3 @@ def test_cmd_file_execute_sub(step_command_module, foo_step_inited):
     step_command_module.main(["foo_cmd", str(target_file)])
     assert target_file.exists()
     assert open_file(target_file, "r").readline().rstrip("\n") == foo_step_inited.get_output_str(target_file)
-
-
-def test_command_file_partial_done_execute(step_command_module, foo_step_inited, foo_runner):
-    foo_runner.save_parameters()
-    step_command_module.main(["foo_cmd"])

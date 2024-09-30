@@ -2,6 +2,7 @@
 import signal
 import subprocess
 import sys
+import time
 
 import psutil
 
@@ -40,19 +41,20 @@ def main(argv):  # noqa: ANN001, ANN201 fixit
     def propagate_signal(signum, _) -> None:  # noqa: ANN001
         print(f"{FILE} Received signal {signum}. Terminating child process...", file=sys.stderr)  # noqa: T201
         proc.send_signal(signum)
+        if signum == signal.SIGUSR1:
+            sys.exit(0)
         sys.exit(signum)
 
     # propagate caught signals and exit
-    for sig in set(signal.Signals):
-        try:
-            signal.signal(sig, propagate_signal)
-        except (ValueError, OSError, RuntimeError):  # noqa: PERF203
-            print(f"{FILE} Skipping signal {sig}", file=sys.stderr)  # noqa: T201
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGUSR1):
+        signal.signal(sig, propagate_signal)
 
-    rc = proc.wait()
-    if rc:
+    while proc.poll() is None:
+        time.sleep(0.5)
+    if proc.returncode:
         raise_nonzero_error(argv[1:], proc.pid)
 
 
 if __name__ == "__main__":
     main(sys.argv)
+    sys.exit(0)

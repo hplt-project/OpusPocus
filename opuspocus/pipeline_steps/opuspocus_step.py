@@ -4,6 +4,7 @@ import json
 import logging
 import signal
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, get_type_hints
 
@@ -114,7 +115,7 @@ class OpusPocusStep:
     ) -> Dict[str, Any]:
         """Load the previously initialized step instance parameters."""
         params_path = Path(pipeline_dir, step_label, cls.parameter_file)
-        logger.debug("Loading step variables from %s", params_path)
+        logger.debug("[%s] Loading step variables from %s", step_label, params_path)
 
         with params_path.open("r") as fh:
             # TODO(varisd): check for missing/unknown parameters
@@ -158,7 +159,7 @@ class OpusPocusStep:
         of the step dependencies.
         """
         type_hints = get_type_hints(self.__init__)
-        logger.debug("Class type hints: %s", type_hints)
+        logger.debug("[%s] Class type hints: %s", self.step_label, type_hints)
 
         self.dependencies = {}
         for param, val in kwargs.items():
@@ -261,21 +262,21 @@ class OpusPocusStep:
     def create_directories(self) -> None:
         """Create the internal step directory structure."""
         # create step dir
-        logger.debug("Creating step dir.")
         if self.step_dir.is_dir():
             err_msg = f"Cannot create {self.step_dir}. Directory already exists."
             raise FileExistsError(err_msg)
         for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
+        logger.debug("[%s] Finished creating step directory.", self.step_label)
 
     def clean_directories(self, *, keep_finished: bool = False) -> None:
         """TODO"""
-        logger.debug("Cleaning step subdirectory contents.")
         for d in [self.log_dir, self.tmp_dir]:
             clean_dir(d, exclude="categories.json")
 
         if not keep_finished:
             clean_dir(self.output_dir, exclude="categories.json")
+        logger.debug("[%s] Finished cleaning subdirectory contents (keep_finished=%s)", self.step_label, keep_finished)
 
     def create_command(self) -> None:
         """Save the string composed using into the compose_command method.
@@ -288,10 +289,10 @@ class OpusPocusStep:
             err_msg = f"File {cmd_path} already exists."
             raise FileExistsError(err_msg)
 
-        logger.debug("Creating step command.")
         with cmd_path.open("w") as fh:
             print(self.compose_command(), file=fh)
         cmd_path.chmod(0o755)
+        logger.debug("[%s] Finished creating step.command.", self.step_label)
 
     def traceback_step(self, level: int = 0, *, full: bool = False) -> None:
         """Print the information about the step state and variables.
@@ -325,14 +326,15 @@ class OpusPocusStep:
     def state(self, state: StepState) -> None:
         """Change the state of a step and save it into step.state file."""
         assert state in StepState
-        if state == self.state:
-            logger.warning("The new step state is identical to the old one.")
+        old_state = self.state
+        if state == old_state:
+            logger.warning("[%s] The new step state is identical to the old one.", self.step_label)
             return
 
-        logger.debug("Old state: %s -> New state: %s", self.state, state)
         state_path = Path(self.step_dir, self.state_file)
         with state_path.open("w") as fh:
             json.dump(state, fp=fh)
+        logger.debug("[%s] Changed step state (old: %s -> new: %s).", self.step_label, old_state, state)
 
     def has_state(self, state: StepState) -> bool:
         """Check whether the step is in a specific state."""
@@ -346,27 +348,18 @@ class OpusPocusStep:
         raise NotImplementedError()
 
     def run_main_task(self, runner: "OpusPocusRunner") -> None:  # noqa: F821
+        logging.basicConfig(level=logging.INFO)
         self.state = StepState.RUNNING
         self.command_preprocess()
 
-        def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
-            # logger.info(f"Received signal {signum}. Terminating subtasks...")
-            for task_id in task_ids:
-                runner.cancel_task(task_id)
-            self.state = StepState.FAILED
-            sys.exit(signum)
-
-        signal.signal(signal.SIGTERM, cancel_signal_hander)
-        signal.signal(signal.SIGINT, cancel_signal_hander)
-
-        task_ids = []
+        task_info_list = []
         for target_file in self.get_command_targets():
             if target_file.exists():
-                logger.info("File {target_file!s} already finished. Skipping...")
+                logger.info("[%s] File {target_file!s} already finished. Skipping...", self.step_label)
                 continue
 
             cmd_path = Path(self.step_dir, self.command_file)
-            task_id = runner.submit_task(
+            task_info = runner.submit_task(
                 cmd_path=cmd_path,
                 target_file=target_file,
                 dependencies=None,
@@ -374,24 +367,46 @@ class OpusPocusStep:
                 stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.out"),
                 stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.err"),
             )
-            task_ids.append(task_id)
-            import time
+            task_info_list.append(task_info)
+            time.sleep(0.5)
 
-            time.sleep(1)
+        # Update the submission info
+        submission_info = runner.load_submission_info(self)
+        submission_info["subtasks"] = task_info_list
+        runner.save_submission_info(self, submission_info)
+
+        def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
+            logger.info("[%s] Received signal %s. Terminating subtasks...", self.step_label, signum)
+            logger.info("Current subtask list: %s", " ".join(task_info_list))
+            for task_info in task_info_list:
+                runner.send_signal(task_info, signum)
+            self.state = StepState.FAILED
+            sys.exit(signum)
+
+        signal.signal(signal.SIGTERM, cancel_signal_hander)
+        signal.signal(signal.SIGINT, cancel_signal_hander)
 
         def resubmit_signal_handler(signum, _) -> None:  # noqa: ANN001
-            # If the main task receives SIGUSR1, terminate all subtasks,
+            # If the main task receives SIGUSR1 or SIGUSR2, terminate all subtasks,
             # FAIL and resubmit it
-            logger.info("Received signal %i. Terminating subtasks...", signum)
-            for task_id in task_ids:
-                runner.cancel_task(task_id)
-            self.state = StepState.FAILED
-            logger.info("Resubmitting step...")
-            runner.resubmit_step(self)
+            logger.info("[%s] Received signal %i. Terminating subtasks...", self.step_label, signum)
+            for task_info in task_info_list:
+                runner.send_signal(task_info, signum)
+            self.state = StepState.FAILED  # change the state to enable .submit_step
+            sub_info = runner.submit_step(self, keep_finished=(signum == signal.SIGUSR1))
+            logger.info(
+                "[%s] Resubmitted step with the following main_task task_info: %s",
+                self.step_label,
+                sub_info["main_task"],
+            )
+            runner.update_dependants(self)
+            runner.run()
+            sys.exit(0)
 
         signal.signal(signal.SIGUSR1, resubmit_signal_handler)
+        signal.signal(signal.SIGUSR2, resubmit_signal_handler)
 
-        runner.wait_for_tasks(task_ids)
+        runner.wait_for_tasks(task_info_list)
         self.command_postprocess()
 
         clean_dir(self.tmp_dir)
@@ -458,6 +473,7 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv)
+    sys.exit(0)
 """
 
     @property

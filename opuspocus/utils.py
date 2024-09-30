@@ -3,6 +3,7 @@ import inspect
 import logging
 import os
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Dict, List, TextIO
 
@@ -138,9 +139,11 @@ def count_lines(file_path: Path) -> int:
 
 def subprocess_wait(proc: subprocess.Popen) -> None:
     """Wait until the subprocess finishes execution."""
-    rc = proc.wait()
-    if rc:
-        raise subprocess.SubprocessError(f"Process {proc.pid} exited with non-zero value.")  # noqa: EM102, TRY003
+    while proc.poll() is None:
+        time.sleep(0.5)
+    if proc.returncode:
+        err_msg = f"Process {proc.pid} exited with non-zero value ({proc.returncode})."
+        raise subprocess.SubprocessError(err_msg)
 
 
 def print_indented(text, level=0):  # noqa: ANN001, ANN201

@@ -1,9 +1,9 @@
 global:
   seed: 42
   src_lang: en
-  tgt_lang: nn
+  tgt_lang: eu
 
-  preprocess_pipeline_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.example
+  preprocess_pipeline_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.simple
 
   # We set the "raw" data dir to the output of the preprocess pipeline
   raw_data_dir: ${.preprocess_pipeline_dir}/gather.${.src_lang}-${.tgt_lang}/output

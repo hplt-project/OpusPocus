@@ -4,11 +4,11 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Callable
 
-from .opuspocus_runner import OpusPocusRunner, TaskId, TaskInfo
+from .opuspocus_runner import OpusPocusRunner, SubmissionInfo, TaskInfo
 
 __all__ = [
     "OpusPocusRunner",
-    "TaskId",
+    "SubmissionInfo",
     "TaskInfo",
 ]
 
@@ -24,7 +24,7 @@ def build_runner(runner: str, pipeline_dir: Path, args: Namespace) -> OpusPocusR
 
     kwargs = {}
     for param in RUNNER_REGISTRY[runner].list_parameters():
-        if param in set(["runner", "pipeline_dir"]):
+        if param in {"runner", "pipeline_dir"}:
             continue
         kwargs[param] = getattr(args, param)
 

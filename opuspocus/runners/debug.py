@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from opuspocus.pipeline_steps import StepState, load_step
-from opuspocus.runners import OpusPocusRunner, TaskId
+from opuspocus.runners import OpusPocusRunner, TaskInfo
 from opuspocus.utils import RunnerResources, clean_dir
 
 logger = logging.getLogger(__name__)
@@ -37,11 +37,11 @@ class DebugRunner(OpusPocusRunner):
         self,
         cmd_path: Path,
         target_file: Optional[Path] = None,
-        dependencies: Optional[List[TaskId]] = None,  # noqa: ARG002
+        dependencies: Optional[List[TaskInfo]] = None,  # noqa: ARG002
         step_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,  # noqa: ARG002
         stderr_file: Optional[Path] = None,  # noqa: ARG002
-    ) -> TaskId:
+    ) -> TaskInfo:
         """TODO"""
         step_label = cmd_path.parts[-2]
 
@@ -52,7 +52,7 @@ class DebugRunner(OpusPocusRunner):
         if target_file is not None:
             os.environ = step_resources.get_env_dict()  # noqa: B003
             step.command(target_file)
-            return TaskId(file_path=target_file, id=-1)
+            return TaskInfo(file_path=target_file, id=-1)
 
         step.state = StepState.RUNNING
         step.command_preprocess()
@@ -71,4 +71,4 @@ class DebugRunner(OpusPocusRunner):
         clean_dir(step.tmp_dir)
         step.state = StepState.DONE
 
-        return TaskId(file_path=target_file, id=-1)
+        return TaskInfo(file_path=target_file, id=-1)

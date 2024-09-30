@@ -1,7 +1,7 @@
 global:
   seed: 42
   src_lang: en
-  tgt_lang: nn
+  tgt_lang: eu
 
   raw_para_dir: data/${.src_lang}-${.tgt_lang}/raw
   # TODO: Replace the mono dirs with proper directories
@@ -16,7 +16,7 @@ global:
   decontaminate_min_length: 25
 
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess.example
+  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess.simple
   steps:
     # Load Datasets
     - step: raw
