@@ -1,6 +1,7 @@
 import inspect
 import logging
 import signal
+import time
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, get_type_hints
@@ -13,6 +14,8 @@ from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.utils import RunnerResources
 
 logger = logging.getLogger(__name__)
+
+SLEEP_TIME = 0.5
 
 
 class TaskInfo(TypedDict):
@@ -130,7 +133,7 @@ class OpusPocusRunner:
     def run_pipeline(
         self,
         pipeline: OpusPocusPipeline,
-        targets: List[str],
+        targets: Optional[List[OpusPocusStep]] = None,
         *,
         keep_finished: bool = False,
     ) -> None:
@@ -188,31 +191,43 @@ class OpusPocusRunner:
         # NOTE(varisd): we set the state to SUBMITTED before actual submission to avoid possible race conditions
         step.state = StepState.SUBMITTED
         try:
+            timestamp = time.time()
             task_info = self.submit_task(
                 cmd_path=cmd_path,
                 target_file=None,
                 dependencies=[dep["main_task"] for dep in dep_sub_info_list],
                 step_resources=self.get_resources(step),
-                stdout_file=Path(step.log_dir, f"{self.runner}.main.out"),
-                stderr_file=Path(step.log_dir, f"{self.runner}.main.err"),
+                stdout_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.out"),
+                stderr_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.err"),
             )
-        except Exception:
+        except Exception as err:
             step.state = StepState.FAILED
+            logger.exception("Task submission in runner.submit_step raised the following error:\n%s", err.message)
             raise
 
         sub_info = SubmissionInfo(runner=self.runner, main_task=task_info, subtasks=[])
         self.save_submission_info(step, sub_info)
         return sub_info
 
-    def resubmit_step(self, step: OpusPocusStep, *, keep_finished: bool = False) -> None:
+    def resubmit_step(self, step: OpusPocusStep, *, keep_finished: bool = False) -> SubmissionInfo:
         """TODO"""
         sub_info = self.load_submission_info(step)
         if keep_finished:
             self.send_signal(sub_info["main_task"], signal.SIGUSR1)
         else:
             self.send_signal(sub_info["main_task"], signal.SIGUSR2)
-        self.wait_for_single_task(sub_info["main_task"])  # wait until the original task resubmits and finishes
+        while step.state != StepState.RUNNING:
+            time.sleep(SLEEP_TIME)
         return self.load_submission_info(step)
+
+    def update_dependants(
+        self,
+        step: OpusPocusStep,
+        remove_task_list: Optional[List[TaskInfo]] = None,
+        add_task_list: Optional[List[TaskInfo]] = None,
+    ) -> None:
+        """TODO"""
+        raise NotImplementedError()
 
     def submit_task(
         self,
@@ -234,11 +249,16 @@ class OpusPocusRunner:
         """TODO"""
         self.send_signal(task_info, signal.SIGTERM)
 
-    def wait_for_tasks(self, task_info_list: Optional[List[TaskInfo]] = None) -> None:
+    def wait_for_tasks(
+        self, task_info_list: Optional[List[TaskInfo]] = None, *, ignore_returncode: bool = False
+    ) -> None:
         for task_info in task_info_list:
-            self.wait_for_single_task(task_info)
+            self.wait_for_single_task(task_info, ignore_returncode=ignore_returncode)
 
-    def wait_for_single_task(self, task_info: TaskInfo) -> None:
+    def wait_for_single_task(self, task_info: TaskInfo, *, ignore_returncode: bool = False) -> None:
+        raise NotImplementedError()
+
+    def is_task_running(self, task_info: TaskInfo) -> bool:
         raise NotImplementedError()
 
     def save_submission_info(self, step: OpusPocusStep, sub_info: SubmissionInfo) -> None:

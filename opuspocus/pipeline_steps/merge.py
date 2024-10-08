@@ -5,10 +5,6 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 
 
-def extend_dataset_name(dset_name, label):  # noqa: ANN001, ANN201
-    return f"{label}.{dset_name}"
-
-
 @register_step("merge")
 class MergeCorpusStep(CorpusStep):
     """Merge two corpus steps into a single one.
@@ -31,6 +27,8 @@ class MergeCorpusStep(CorpusStep):
         src_lang: str,
         tgt_lang: str = None,  # noqa: RUF013
         shard_size: Optional[int] = None,
+        *,
+        merge_categories: bool = False,
     ) -> None:
         super().__init__(
             step=step,
@@ -43,6 +41,7 @@ class MergeCorpusStep(CorpusStep):
             src_lang=src_lang,
             tgt_lang=tgt_lang,
             shard_size=shard_size,
+            merge_categories=merge_categories,
         )
 
     @property
@@ -50,24 +49,38 @@ class MergeCorpusStep(CorpusStep):
         return self.dependencies["other_corpus_step"]
 
     def register_categories(self) -> None:
-        categories_dict = {}
-        categories_dict["categories"] = [{"name": cat} for cat in self.prev_corpus_step.categories]
+        categories_dict = {"categories": [], "mapping": {}}
 
-        # Merge the category lists
+        # Register categories
+        for cat in self.prev_corpus_step.categories:
+            cat_val = cat
+            if not self.merge_categories:
+                cat_val = f"{self.previous_corpus_label}.{cat}"
+            categories_dict["categories"].append({"name": cat_val})
         for cat in self.other_corpus_step.categories:
-            if cat not in self.prev_corpus_step.categories:
-                categories_dict["categories"].append({"name": cat})
+            cat_val = cat
+            if not self.merge_categories:
+                cat_val = f"{self.other_corpus_label}.{cat}"
+            if cat_val not in categories_dict["categories"]:
+                categories_dict["categories"].append({"name": cat_val})
 
-        categories_dict["mapping"] = {}
+        # Register mapping
         for cat, dset_list in self.prev_corpus_step.category_mapping.items():
-            categories_dict["mapping"][cat] = [
-                extend_dataset_name(dset_name, self.previous_corpus_label) for dset_name in dset_list
+            cat_val = cat
+            if not self.merge_categories:
+                cat_val = f"{self.previous_corpus_label}.{cat}"
+            categories_dict["mapping"][cat_val] = [
+                f"{self.previous_corpus_label}.{dset_name}" for dset_name in dset_list
             ]
         for cat, dset_list in self.other_corpus_step.category_mapping.items():
-            if cat not in categories_dict["mapping"]:
-                categories_dict["mapping"][cat] = []
+            cat_val = cat
+            if not self.merge_categories:
+                cat_val = f"{self.other_corpus_label}.{cat}"
+            if cat_val not in categories_dict["mapping"]:
+                categories_dict["mapping"][cat_val] = []
             for dset_name in dset_list:
-                categories_dict["mapping"][cat].append(extend_dataset_name(dset_name, self.other_corpus_label))
+                categories_dict["mapping"][cat_val].append(f"{self.other_corpus_label}.{dset_name}")
+
         self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:

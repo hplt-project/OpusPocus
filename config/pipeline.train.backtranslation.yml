@@ -75,6 +75,10 @@ pipeline:
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
       valid_dataset: ${global.valid_dataset}
+      train_categories:
+        - "clean"
+      train_category_ratios:
+        - 1.0
     - step: train_model
       step_label: train_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
@@ -86,6 +90,10 @@ pipeline:
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
       valid_dataset: ${global.valid_dataset}
+      train_categories:
+        - "clean"
+      train_category_ratios:
+        - 1.0
 
     # Translate "mono" data
     - step: translate
@@ -131,6 +139,12 @@ pipeline:
       train_corpus_step: merge.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
       valid_dataset: ${global.valid_dataset}
+      train_categories:
+        - "synthetic.clean"
+        - "organic.clean"
+      train_category_ratios:
+        - 0.5
+        - 0.5
     - step: train_model
       step_label: tune_bt_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
@@ -142,6 +156,12 @@ pipeline:
       train_corpus_step: merge.${global.tgt_lang}-${global.src_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
       valid_dataset: ${global.valid_dataset}
+      train_categories:
+        - "synthetic.clean"
+        - "organic.clean"
+      train_category_ratios:
+        - 0.5
+        - 0.5
 
     # Eval (iter 2)
     - step: translate

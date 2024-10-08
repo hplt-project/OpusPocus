@@ -10,7 +10,7 @@ from opuspocus.pipeline_steps import OpusPocusStep, build_step, register_step
 
 @register_step("foo")
 class FooStep(OpusPocusStep):
-    SLEEP_TIME = 15
+    SLEEP_TIME = 10
 
     def __init__(
         self, step: str, step_label: str, pipeline_dir: Path, dependency_step: Optional["FooStep"] = None

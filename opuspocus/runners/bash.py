@@ -114,12 +114,14 @@ class BashRunner(OpusPocusRunner):
         if proc is not None:
             proc.send_signal(signal)
 
-    def wait_for_single_task(self, task_info: BashTaskInfo) -> None:
+    def wait_for_single_task(self, task_info: BashTaskInfo, *, ignore_returncode: bool = False) -> None:
         pid = task_info["id"]
         proc = self._get_process(task_info)
         if proc is None:
             return
         gone, _ = wait_procs([proc])
+        if ignore_returncode:
+            return
         for p in gone:
             if p.returncode:
                 if task_info["file_path"] is not None:
@@ -128,6 +130,9 @@ class BashRunner(OpusPocusRunner):
                         file_path.unlink()
                 err_msg = f"Process {pid} exited with non-zero value."
                 raise subprocess.SubprocessError(err_msg)
+
+    def is_task_running(self, task_info: TaskInfo) -> bool:
+        return self._get_process(task_info) is not None
 
     def _get_process(self, task_info: BashTaskInfo) -> Optional[Process]:
         """TODO"""

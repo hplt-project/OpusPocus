@@ -61,6 +61,10 @@ pipeline:
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
       valid_dataset: ${global.valid_dataset}
+      train_categories:
+        - "clean"
+      train_category_ratios:
+        - 1.0
     - step: train_model
       step_label: train_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
@@ -72,6 +76,10 @@ pipeline:
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
       valid_dataset: ${global.valid_dataset}
+      train_categories:
+        - "clean"
+      train_category_ratios:
+        - 1.0
 
     # Eval
     - step: translate

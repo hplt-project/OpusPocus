@@ -69,14 +69,18 @@ class GenerateVocabStep(OpusPocusStep):
         return self.corpus_step.output_dir
 
     @property
+    def vocab_path(self) -> Path:
+        return Path(self.output_dir, f"model.{self.src_lang}-{self.tgt_lang}.spm")
+
+    @property
     def languages(self) -> List[str]:
         return [self.src_lang, self.tgt_lang]
 
     def get_command_targets(self) -> List[Path]:
-        return [Path(self.output_dir, f"model.{self.src_lang}-{self.tgt_lang}.spm")]
+        return [self.vocab_path]
 
     def command(self, target_file: Path) -> None:
-        spm_train_path = Path(self.marian_dir, "bin", "spm_train")
+        spm_train_path = Path(self.marian_dir, "build", "spm_train")
         model_prefix = f"{self.output_dir}/{target_file.stem}"
         n_cpus = int(os.environ[RunnerResources.get_env_name("cpus")])
 

@@ -157,6 +157,8 @@ class CorpusStep(OpusPocusStep):
         """By default merges all output dataset shards (if shard_size is not
         None) into the single dataset file.
         """
+        super().command_postprocess()
+
         # By default, all dataset files must be available after a successful
         # step command execution. If not, there must be sharded output that can
         # be concatenated into the target file

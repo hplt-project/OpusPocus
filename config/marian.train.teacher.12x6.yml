@@ -131,8 +131,8 @@ devices:
   - 7
 num-devices: 0
 no-nccl: false
-sharding: local
-sync-freq: 200u
+#sharding: local
+#sync-freq: 200u
 cpu-threads: 0
 mini-batch: 64
 mini-batch-words: 0
