@@ -40,7 +40,7 @@ def test_train_model_step_done(train_model_step_done):
         {"train_categories": ["clean"], "train_category_ratios": [0.1, 0.9]},
         {"train_categories": ["clean"], "train_category_ratios": [0.9]},
         {"train_categories": ["foo", "bar"], "train_category_ratios": [0.9, 0.1]},
-        {"train_categories": ["clean"], "train_category_ratios": [1.], "max_epochs": -1}
+        {"train_categories": ["clean"], "train_category_ratios": [1.0], "max_epochs": -1},
     ],
 )
 def test_invalid_parameters_fail(params_invalid, train_data_parallel_tiny_model_step_inited):
@@ -54,6 +54,6 @@ def test_invalid_parameters_fail(params_invalid, train_data_parallel_tiny_model_
     del param_dict["step"]
     del param_dict["step_label"]
     del param_dict["pipeline_dir"]
-    with pytest.raises(ValueError):  # noqa: PT011
+    with pytest.raises(ValueError):  # noqa: PT011, PT012
         step = build_step(step="train_model", step_label="train_model.fail", pipeline_dir=pipeline_dir, **param_dict)
         step.init_step()

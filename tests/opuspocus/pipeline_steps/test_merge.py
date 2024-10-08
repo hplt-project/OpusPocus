@@ -1,8 +1,8 @@
-import pytest
 from pathlib import Path
 
+import pytest
+
 from opuspocus.pipeline_steps import StepState, build_step
-from opuspocus.pipeline_steps.merge import MergeCorpusStep
 from opuspocus.runners.debug import DebugRunner
 
 
@@ -48,8 +48,8 @@ def test_merge_step_done(merge_step_done):
 def test_datasets_merged(merge_step_done):
     dset_set = set(merge_step_done.prev_corpus_step.dataset_list + merge_step_done.other_corpus_step.dataset_list)
     for dataset in merge_step_done.dataset_list:
-        dataset = ".".join(dataset.split(".")[1:])
-        assert dataset in dset_set
+        dataset_orig = ".".join(dataset.split(".")[1:])
+        assert dataset_orig in dset_set
 
 
 def test_dataset_files_merged(merge_step_done):

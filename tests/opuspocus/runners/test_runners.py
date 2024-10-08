@@ -1,7 +1,8 @@
-import pytest
-import time
 import subprocess
+import time
 from pathlib import Path
+
+import pytest
 
 from opuspocus.pipeline_steps import StepState
 from opuspocus.runners import OpusPocusRunner, load_runner
@@ -63,6 +64,15 @@ def test_submit_step(foo_runner_for_step_submit, foo_step_inited):
     foo_runner_for_step_submit.submit_step(foo_step_inited)
     time.sleep(SLEEP_TIME)
     assert foo_step_inited.state in (StepState.SUBMITTED, StepState.RUNNING)
+
+
+def test_submitted_step_running(foo_runner_for_step_submit, foo_step_inited):
+    foo_runner_for_step_submit.submit_step(foo_step_inited)
+    while foo_step_inited.state == StepState.SUBMITTED:
+        time.sleep(SLEEP_TIME)
+    sub_info = foo_runner_for_step_submit.load_submission_info(foo_step_inited)
+    for target_path in foo_step_inited.get_command_targets():
+        assert str(target_path) in [subtask["file_path"] for subtask in sub_info["subtasks"]]
 
 
 def test_submit_step_submission_info_structure(foo_runner_for_step_submit, foo_step_inited):
@@ -129,18 +139,23 @@ def test_submit_step_with_dependency(foo_runner_for_step_submit, bar_step_inited
 
 
 @pytest.mark.parametrize("keep_finished", [True, False])
-def test_resubmit_step(foo_runner_for_step_submit, bar_step_inited, keep_finished):
+def test_resubmit_step(foo_runner_for_step_submit, foo_pipeline_inited, keep_finished):
     if foo_runner_for_step_submit.runner == "bash":
         pytest.skip(reason="Not supported by Bash runner.")
 
-    foo_sub_info = foo_runner_for_step_submit.submit_step(bar_step_inited.dep_step)
-    bar_sub_info = foo_runner_for_step_submit.submit_step(bar_step_inited)
-    time.sleep(SLEEP_TIME)
+    bar_step_inited = foo_pipeline_inited.default_targets[0]
+    foo_step_inited = bar_step_inited.dep_step
 
-    new_foo_sub_info = foo_runner_for_step_submit.resubmit_step(bar_step_inited.dep_step, keep_finished=keep_finished)
-    time.sleep(SLEEP_TIME)
+    foo_sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
+    bar_sub_info = foo_runner_for_step_submit.submit_step(bar_step_inited)
+    while foo_step_inited.state == StepState.SUBMITTED:
+        time.sleep(SLEEP_TIME)
+
+    new_foo_sub_info = foo_runner_for_step_submit.resubmit_step(foo_step_inited, keep_finished=keep_finished)
+    while foo_step_inited.state == StepState.SUBMITTED:
+        time.sleep(SLEEP_TIME)
     assert foo_sub_info["main_task"]["id"] != new_foo_sub_info["main_task"]["id"]
 
     foo_runner_for_step_submit.wait_for_tasks([bar_sub_info["main_task"]])
-    for step in [bar_step_inited, bar_step_inited.dep_step]:
+    for step in [foo_step_inited, bar_step_inited]:
         assert step.state == StepState.DONE
