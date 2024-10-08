@@ -85,7 +85,6 @@ class SlurmRunner(OpusPocusRunner):
         if target_file is not None:
             t_file_str = str(target_file)
 
-        logger.info("Submitting sbatch command: %s %s", " ".join(cmd), t_file_str)
         if target_file is not None:
             cmd += [str(cmd_path), str(target_file)]
             proc = subprocess.Popen(
@@ -96,27 +95,45 @@ class SlurmRunner(OpusPocusRunner):
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=step_resources.get_env_dict()
             )
+        logger.info("Submitted sbatch command: %s", " ".join(cmd))
+
         subprocess_wait(proc)
         cmd_out = proc.stdout.readline().decode().strip("\n")
         jid = int(cmd_out.split(" ")[-1])
 
         task_info = SlurmTaskInfo(file_path=t_file_str, id=jid)
-        logger.info("Submitted sbatch command, jobid: %i", jid)
+        logger.info("sbatch command jobid: %i", jid)
         logger.debug("sbatch output: '%s'", cmd_out)
 
         return task_info
 
-    def _update_dependants(self, step: OpusPocusStep, task_info: SlurmTaskInfo) -> None:
+    def update_dependants(
+        self,
+        step: OpusPocusStep,
+        remove_task_list: Optional[List[SlurmTaskInfo]] = None,
+        add_task_list: Optional[List[SlurmTaskInfo]] = None,
+    ) -> None:
+        if remove_task_list is None:
+            remove_task_list = []
+        if add_task_list is None:
+            add_task_list = []
         pipeline = OpusPocusPipeline.load_pipeline(self.pipeline_dir)
         dependant_list = pipeline.get_dependants(step)
         dependant_sub_info_list = [self.load_submission_info(dep) for dep in dependant_list]
 
-        jid = task_info["id"]
         for sub_info in dependant_sub_info_list:
-            dependency_list = self._get_slurm_dependencies(sub_info["main_task"])
-            dependency_list_str = ",".join([*dependency_list, "afterok:{jid}"])
+            jid = sub_info["main_task"]["id"]
+            dependency_list = self._get_slurm_dependencies(
+                sub_info["main_task"], exclude_ids=[t_info["id"] for t_info in remove_task_list]
+            )
+            dependency_list_str = ",".join([f"afterok:{t_info['id']}" for t_info in add_task_list])
+            if dependency_list:
+                dependency_list_str += "," + ",".join(dependency_list)
+            time.sleep(SLEEP_TIME)
+            cmd = ["scontrol", "update", f"jobid={jid}", f"Dependency={dependency_list_str}"]
+            logger.info("Executing command: '%s'", " ".join(cmd))
             proc = subprocess.Popen(
-                ["scontrol", "update", f"jobid={jid}", f"Dependency={dependency_list_str}"],
+                cmd,
                 stdout=sys.stdout,
                 stderr=sys.stderr,
                 shell=False,
@@ -125,6 +142,7 @@ class SlurmRunner(OpusPocusRunner):
 
     def send_signal(self, task_info: SlurmTaskInfo, signal: int = signal.SIGTERM) -> None:
         """TODO"""
+        time.sleep(SLEEP_TIME)
         status = self._get_job_status(task_info)
         logger.debug("Sending signal to job %s with '%s' status...", task_info["id"], status)
         if status == "FAILED":
@@ -146,11 +164,13 @@ class SlurmRunner(OpusPocusRunner):
             )
         subprocess_wait(proc)
 
-    def wait_for_single_task(self, task_info: SlurmTaskInfo) -> None:
+    def wait_for_single_task(self, task_info: SlurmTaskInfo, *, ignore_returncode: bool = False) -> None:
         """TODO"""
         time.sleep(SLEEP_TIME)  # NOTE(varisd): workaround to give sbatch time to properly submit the job
         while self.is_task_running(task_info):
             time.sleep(SLEEP_TIME)
+        if ignore_returncode:
+            return
         status = self._get_job_status(task_info)
         if status != "COMPLETED":
             if task_info["file_path"] is not None:
@@ -176,7 +196,9 @@ class SlurmRunner(OpusPocusRunner):
         subprocess_wait(proc)
         return [line.decode() for line in proc.stdout.readlines()]
 
-    def _get_slurm_depencendies(self, task_info: SlurmTaskInfo) -> List[int]:
+    def _get_slurm_dependencies(self, task_info: SlurmTaskInfo, exclude_ids: Optional[List[int]] = None) -> List[int]:
+        if exclude_ids is None:
+            exclude_ids = []
         jid = task_info["id"]
         proc = subprocess.Popen(
             ["squeue", "-j", f"{jid}", "--format", "%E"],
@@ -186,8 +208,8 @@ class SlurmRunner(OpusPocusRunner):
         )
         subprocess_wait(proc)
         cmd_out = [line.decode() for line in proc.stdout.readlines()][-1]
-        re.sub("(failed)", "", cmd_out)
-        return cmd_out.split(",")
+        re.sub("([^(]*)", "", cmd_out)
+        return [dep_id for dep_id in cmd_out.split(",") if dep_id not in exclude_ids]
 
     def _get_job_status(self, task_info: SlurmTaskInfo) -> str:
         cmd_out = self._get_sacct_info(task_info)
@@ -196,7 +218,7 @@ class SlurmRunner(OpusPocusRunner):
             line_list = line.split("|")
             if line_list[0] == jid:
                 return line_list[1]
-        err_msg = f"Sacct could not retrieve job {jid}. Command output:\n{cmd_out}"
+        err_msg = f"[{self.runner}._get_job_status] Sacct could not retrieve job {jid}. Command output:\n{cmd_out}"
         raise subprocess.SubprocessError(err_msg)
 
     def _convert_resources(self, resources: RunnerResources) -> List[str]:

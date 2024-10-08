@@ -271,8 +271,7 @@ class OpusPocusStep:
 
     def clean_directories(self, *, keep_finished: bool = False) -> None:
         """TODO"""
-        for d in [self.log_dir, self.tmp_dir]:
-            clean_dir(d, exclude="categories.json")
+        clean_dir(self.tmp_dir)
 
         if not keep_finished:
             clean_dir(self.output_dir, exclude="categories.json")
@@ -349,7 +348,6 @@ class OpusPocusStep:
 
     def run_main_task(self, runner: "OpusPocusRunner") -> None:  # noqa: F821
         logging.basicConfig(level=logging.INFO)
-        self.state = StepState.RUNNING
         self.command_preprocess()
 
         task_info_list = []
@@ -357,39 +355,38 @@ class OpusPocusStep:
 
         def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
             logger.info("[%s] Received signal %s. Terminating subtasks...", self.step_label, signum)
-            logger.info("Current subtask list: %s", task_info_list)
+            self.state = StepState.FAILED
             for task_info in task_info_list:
                 runner.send_signal(task_info, signum)
-            self.state = StepState.FAILED
             sys.exit(signum)
 
-        signal.signal(signal.SIGTERM, cancel_signal_hander)
-        signal.signal(signal.SIGINT, cancel_signal_hander)
+        for sig in [signal.SIGTERM, signal.SIGINT]:
+            signal.signal(sig, cancel_signal_hander)
 
         def resubmit_signal_handler(signum, _) -> None:  # noqa: ANN001
             # If the main task receives SIGUSR1 or SIGUSR2, terminate all subtasks,
             # FAIL and resubmit it
             logger.info("[%s] Received signal %i. Terminating subtasks...", self.step_label, signum)
+            self.state = StepState.FAILED  # change the state to enable .submit_step method
             for task_info in task_info_list:
-                runner.send_signal(task_info, signum)
-            self.state = StepState.FAILED  # change the state to enable .submit_step
-            sub_info = runner.submit_step(self, keep_finished=(signum == signal.SIGUSR1))
-            logger.info(
-                "[%s] Resubmitted step with the following main_task task_info: %s",
-                self.step_label,
-                sub_info["main_task"],
+                logger.info("[%s] Sending SIGTERM to task %i", self.step_label, task_info["id"])
+                runner.send_signal(task_info, signal.SIGTERM)
+            runner.wait_for_tasks(task_info_list, ignore_returncode=True)
+            old_sub_info = runner.load_submission_info(self)
+            new_sub_info = runner.submit_step(self, keep_finished=(signum == signal.SIGUSR1))
+
+            logger.info("[%s] Updating task dependants...")
+            runner.update_dependants(
+                self, remove_task_list=[old_sub_info["main_task"]], add_task_list=[new_sub_info["main_task"]]
             )
-            runner.update_dependants(self)
             runner.run()
             sys.exit(0)
 
-        signal.signal(signal.SIGUSR1, resubmit_signal_handler)
-        signal.signal(signal.SIGUSR2, resubmit_signal_handler)
+        for sig in [signal.SIGUSR1, signal.SIGUSR2]:
+            signal.signal(sig, resubmit_signal_handler)
 
         for target_file in self.get_command_targets():
-            t_infos = [
-                t_info for t_info in submission_info["subtasks"] if t_info["file_path"] == str(target_file)
-            ]
+            t_infos = [t_info for t_info in submission_info["subtasks"] if t_info["file_path"] == str(target_file)]
             if len(t_infos) == 1 and runner.is_task_running(t_infos[0]):
                 logger.info(
                     "[%s] File %s is already being processed by runner (%s), id %i. Skipping submission...",
@@ -406,22 +403,25 @@ class OpusPocusStep:
                 continue
 
             cmd_path = Path(self.step_dir, self.command_file)
+            timestamp = time.time()
             task_info = runner.submit_task(
                 cmd_path=cmd_path,
                 target_file=target_file,
                 dependencies=None,
                 step_resources=runner.get_resources(self),
-                stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.out"),
-                stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.err"),
+                stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.{timestamp}.out"),
+                stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.{timestamp}.err"),
             )
             task_info_list.append(task_info)
+
+            # Update the submission info
+            submission_info = runner.load_submission_info(self)
+            submission_info["subtasks"] = task_info_list
+            runner.save_submission_info(self, submission_info)
+
             time.sleep(0.5)
 
-        # Update the submission info
-        submission_info = runner.load_submission_info(self)
-        submission_info["subtasks"] = task_info_list
-        runner.save_submission_info(self, submission_info)
-
+        self.state = StepState.RUNNING
         runner.wait_for_tasks(task_info_list)
         self.command_postprocess()
 
@@ -486,10 +486,10 @@ def main(argv):
             step.run_main_task(runner)
         else:
             ValueError("Wrong number of arguments.")
-    except Exception as e:
+    except Exception as err:
         if len(argv) == 1:
             step.state = StepState.FAILED
-        raise e
+        raise err
 
 
 if __name__ == "__main__":
