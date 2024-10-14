@@ -25,7 +25,7 @@ def evaluate_step_inited(request, train_data_parallel_tiny_raw_step_inited):
     return step
 
 
-def test_evaluate_step_unknown_metric(train_data_parallel_tiny_raw_step_inited):
+def test_evaluate_step_unknown_metric_fail(train_data_parallel_tiny_raw_step_inited):
     """Step construction fails when presented with unknown metric."""
     with pytest.raises(ValueError):  # noqa: PT011
         build_step(

@@ -58,6 +58,8 @@ def train_data_parallel_tiny_model_step_inited(
 ):
     """Create the mock train_model step."""
     marian_dir = train_data_parallel_tiny_vocab_step_inited.marian_dir
+    if "cpu" in str(marian_dir):
+        pytest.skip(reason=("Model training is not supported on CPU-only machines."))
     step = build_step(
         step="train_model",
         step_label=f"train_model.{marian_dir}.test",
@@ -71,8 +73,10 @@ def train_data_parallel_tiny_model_step_inited(
             "opustrainer_config": opustrainer_tiny_config_file,
             "train_corpus_step": train_data_parallel_tiny_raw_step_inited,
             "valid_corpus_step": train_data_parallel_tiny_raw_step_inited,
-            "train_category": train_data_parallel_tiny_raw_step_inited.categories[0],
+            "train_categories": [train_data_parallel_tiny_raw_step_inited.categories[0]],
+            "train_category_ratios": [1.0],
             "valid_dataset": train_data_parallel_tiny_raw_step_inited.dataset_list[0],
+            "max_epochs": 1,
         },
     )
     step.init_step()

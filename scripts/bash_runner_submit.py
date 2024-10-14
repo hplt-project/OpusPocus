@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import signal
 import subprocess
 import sys
@@ -7,6 +8,7 @@ import time
 import psutil
 
 FILE = __file__.split("/")[-1]
+MAX_ARGS = 3
 
 
 def raise_nonzero_error(arguments, pid):  # noqa: ANN001, ANN201 fixit
@@ -15,9 +17,12 @@ def raise_nonzero_error(arguments, pid):  # noqa: ANN001, ANN201 fixit
 
 def main(argv):  # noqa: ANN001, ANN201 fixit
     """Wrapper for executing Bash commands that have process dependencies."""
+    print(  # noqa: T201
+        f"bash_runner_submit.py: Script pid: {os.getpid()}", file=sys.stderr
+    )
     cmd_path = argv[1]
     proc_ids = []
-    if argv[2]:
+    if len(argv) == MAX_ARGS and argv[2]:
         proc_ids = [int(proc) for proc in argv[2].split(" ")]
 
     procs = []

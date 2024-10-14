@@ -115,7 +115,7 @@ class TranslateCorpusStep(CorpusStep):
         input_file = self.infer_input(target_file)
 
         # Prepare the command
-        marian_path = Path(self.marian_dir, "bin", "marian-decoder")
+        marian_path = Path(self.marian_dir, "build", "marian-decoder")
         cmd = [
             str(marian_path),
             "-c",
