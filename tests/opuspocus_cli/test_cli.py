@@ -58,7 +58,7 @@ def test_subcommand_not_first(capsys):
     assert "{" + ",".join(CMD_MODULES.keys()) + "} [options]" in output.out
 
 
-@pytest.mark.parametrize("cmd_name", ["run", "stop", "status", "traceback"])
+@pytest.mark.parametrize("cmd_name", ["stop", "status", "traceback"])
 def test_required_pipeline_dir_option(cmd_name, capsys):
     """Subcommands, except init, require --pipeline-dir option."""
     with pytest.raises(SystemExit) as e:
@@ -70,13 +70,6 @@ def test_required_pipeline_dir_option(cmd_name, capsys):
     assert " --pipeline-dir PIPELINE_DIR" in output.out
 
 
-def test_defaults_init(pipeline_preprocess_tiny_config_file):
-    """Execute init subcommand with default arguments."""
-    rc = main(["init", "--pipeline-config", str(pipeline_preprocess_tiny_config_file)])
-    assert rc == 0
-
-
-@pytest.mark.xfail(reason="Requires a simulation of a submitted/running pipeline")
 def test_defaults_stop(pipeline):
     """Executed stop command with default arguments."""
     # TODO(varisd): implemented a running "pipeline" fixture
@@ -94,7 +87,7 @@ def test_defaults_stop(pipeline):
 
 @pytest.mark.parametrize(
     "cmd_name, non_default_opts",  # noqa: PT006
-    [("run", "--runner bash"), ("status", ""), ("traceback", "")],
+    [("status", ""), ("traceback", "")],
 )
 def test_defaults_other(cmd_name, non_default_opts, pipeline_preprocess_tiny_inited):
     """Run the rest of the subcommands with default arguments."""

@@ -4,8 +4,9 @@ from pathlib import Path
 import pytest
 
 from opuspocus import pipeline_steps
-from opuspocus.pipeline_steps import OpusPocusStep
+from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline, PipelineConfig, build_pipeline
+from opuspocus.runners import build_runner, RUNNER_REGISTRY
 from opuspocus.runners.debug import DebugRunner
 
 # NOTE(varisd): module-level (and lower) pipeline fixtures need to reset
@@ -28,10 +29,64 @@ class FooPipeline(OpusPocusPipeline):
 
 
 @pytest.fixture()
-def foo_pipeline_inited(bar_step_inited):
-    pipeline = FooPipeline(bar_step_inited)
-    pipeline.init()
-    return pipeline
+def foo_pipeline(bar_step):
+    return FooPipeline(bar_step)
+
+
+@pytest.fixture()
+def foo_pipeline_config_file(foo_pipeline, config_dir, tmp_path_factory):
+    config_file = Path(tmp_path_factory.mktemp("foo_config"), "config.yaml")
+    PipelineConfig.save(foo_pipeline.pipeline_config, config_file)
+    return config_file
+
+
+@pytest.fixture()
+def foo_pipeline_inited(foo_pipeline):
+    foo_pipeline.init()
+    return foo_pipeline
+
+
+@pytest.fixture()
+def foo_pipeline_partially_inited(foo_pipeline_inited):
+    foo_pipeline_inited.steps[0].state = StepState.INIT_INCOMPLETE
+    return foo_pipeline_inited
+
+
+@pytest.fixture()
+def foo_pipeline_running(foo_pipeline_inited):
+    for s in foo_pipeline_inited.steps:
+        s.SLEEP_TIME = 180
+    pipeline_dir = foo_pipeline_inited.pipeline_dir
+    runner = build_runner(
+        "bash",
+        pipeline_dir,
+        Namespace(**{"runner": "bash", "pipeline_dir": str(pipeline_dir), "run_tasks_in_parallel": False})
+    )
+    runner.run_pipeline(foo_pipeline_inited, foo_pipeline_inited.get_targets())
+    return foo_pipeline_inited
+
+
+@pytest.fixture()
+def foo_pipeline_done(foo_pipeline_inited):
+    for s in foo_pipeline_inited.steps:
+        s.SLEEP_TIME = 5
+    pipeline_dir = foo_pipeline_inited.pipeline_dir
+    runner = build_runner(
+        "bash",
+        pipeline_dir,
+        Namespace(**{"runner": "bash", "pipeline_dir": str(pipeline_dir), "run_tasks_in_parallel": False})
+    )
+    runner.run_pipeline(foo_pipeline_inited, foo_pipeline_inited.get_targets())
+    tasks = [runner.load_submission_info(s)["main_task"] for s in foo_pipeline_inited.steps]
+    runner.wait_for_tasks(tasks)
+    return foo_pipeline_inited
+
+
+@pytest.fixture()
+def foo_pipeline_failed(foo_pipeline_done):
+    for s in foo_pipeline_done.steps:
+        s.state = StepState.FAILED
+    return foo_pipeline_done
 
 
 @pytest.fixture(scope="module")

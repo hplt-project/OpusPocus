@@ -45,22 +45,29 @@ class FooStep(OpusPocusStep):
 
 
 @pytest.fixture()
-def foo_step_inited(tmp_path_factory):
+def foo_step(tmp_path_factory):
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = tmp_path_factory.mktemp("foo.mock")
-
-    step = build_step(step="foo", step_label="foo.test", pipeline_dir=pipeline_dir)
-    step.init_step()
-    return step
+    return build_step(step="foo", step_label="foo.test", pipeline_dir=pipeline_dir)
 
 
 @pytest.fixture()
-def bar_step_inited(foo_step_inited):
-    step = build_step(
+def foo_step_inited(foo_step):
+    foo_step.init_step()
+    return foo_step
+
+
+@pytest.fixture()
+def bar_step(foo_step):
+    return build_step(
         step="foo",
         step_label="bar.test",
-        pipeline_dir=foo_step_inited.pipeline_dir,
-        **{"dependency_step": foo_step_inited},
+        pipeline_dir=foo_step.pipeline_dir,
+        **{"dependency_step": foo_step},
     )
-    step.init_step()
-    return step
+
+
+@pytest.fixture()
+def bar_step_inited(bar_step):
+    bar_step.init_step()
+    return bar_step
