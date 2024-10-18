@@ -32,8 +32,8 @@ class BashRunner(OpusPocusRunner):
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
             "--run-tasks-in-parallel",
-            action="store_true",
             default=False,
+            action="store_true",
             help="TODO",
         )
 

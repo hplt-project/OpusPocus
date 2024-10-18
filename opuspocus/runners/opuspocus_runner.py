@@ -135,12 +135,12 @@ class OpusPocusRunner:
         pipeline: OpusPocusPipeline,
         targets: Optional[List[OpusPocusStep]] = None,
         *,
-        keep_finished: bool = False,
+        rerun_completed: bool = False,
     ) -> None:
         """TODO"""
         self.save_parameters()
         for step in pipeline.get_targets(targets):
-            self.submit_step(step, keep_finished=keep_finished)
+            self.submit_step(step, keep_finished=(not rerun_completed))
         self.run()
         logger.info("[%s] Pipeline tasks submitted successfully.", self.runner)
 

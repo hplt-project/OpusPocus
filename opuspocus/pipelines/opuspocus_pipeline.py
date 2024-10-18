@@ -5,10 +5,14 @@ from typing import Dict, List, Optional, Tuple
 
 from omegaconf import OmegaConf
 
-from opuspocus.pipeline_steps import OpusPocusStep, build_step
+from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step
+from opuspocus.pipelines.exceptions import PipelineInitError
 from opuspocus.utils import file_path
 
 logger = logging.getLogger(__name__)
+
+# We use the same set of states, we distinguish PipelineState and StepState for code clarity
+PipelineState = StepState
 
 
 class OpusPocusPipeline:
@@ -53,11 +57,11 @@ class OpusPocusPipeline:
 
     @property
     def pipeline_dir(self) -> Path:
-        return self.pipeline_config.pipeline.pipeline_dir
+        return Path(self.pipeline_config.pipeline.pipeline_dir)
 
     @property
     def steps(self) -> List[OpusPocusStep]:
-        return self.pipeline_graph.values()
+        return list(self.pipeline_graph.values())
 
     @classmethod
     def build_pipeline(
@@ -154,6 +158,10 @@ class OpusPocusPipeline:
     def init(self) -> None:
         """Initialize the pipeline."""
         logger.info("Initializing pipeline (%s)", self.pipeline_dir)
+        if self.pipeline_dir.exists() and len(list(self.pipeline_dir.iterdir())) != 0:
+            err_msg = f"{self.pipeline_dir} must be an empty or non-existing directory."
+            raise PipelineInitError(err_msg)
+
         for v in self.pipeline_graph.values():
             v.init_step()
 

@@ -5,10 +5,11 @@ from typing import Optional, Sequence
 
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runners import RUNNER_REGISTRY
+from opuspocus.utils import file_path
 
 logger = logging.getLogger(__name__)
 
-GEN_DESCRIPTION = "OpusPocus NLP Pipeline Manager"
+GENERAL_DESCRIPTION = "OpusPocus NLP Pipeline Manager"
 
 
 class OpusPocusParser(argparse.ArgumentParser):
@@ -48,7 +49,28 @@ def _add_general_arguments(
     OpusPocusPipeline.add_args(parser, pipeline_dir_required=pipeline_dir_required)
 
 
-def _add_runner_arguments(parser: argparse.ArgumentParser) -> None:
+def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
+    parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Execution")
+
+    _add_general_arguments(parser, pipeline_dir_required=False)
+    parser.add_argument(
+        "--reinit",
+        default=False,
+        action="store_true",
+        help="Re-initialize an existing pipeline."
+    )
+    parser.add_argument(
+        "--rerun-completed",
+        default=False,
+        action="store_true",
+        help="Re-run finished steps."
+    )
+    parser.add_argument(
+        "--pipeline-config",
+        type=file_path,
+        default=None,
+        help="Pipeline configuration YAML file."
+    )
     parser.add_argument(
         "--runner",
         type=str,
@@ -65,27 +87,6 @@ def _add_runner_arguments(parser: argparse.ArgumentParser) -> None:
         help="List of steps to be executed together with their dependencies.",
     )
 
-
-def parse_init_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Initialization")
-
-    _add_general_arguments(parser, pipeline_dir_required=False)
-    parser.add_argument(
-        "--pipeline-config",
-        type=str,
-        default=None,
-        help="Pipeline configuration YAML file.",
-    )
-
-    return parser.parse_args(argv)
-
-
-def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Execution")
-
-    _add_general_arguments(parser, pipeline_dir_required=True)
-    _add_runner_arguments(parser)
-
     args, unparsed = parser.parse_known_args(argv)
     RUNNER_REGISTRY[args.runner].add_args(parser)
 
@@ -93,16 +94,31 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def parse_stop_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Termination")
+    parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Termination")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
-    _add_runner_arguments(parser)
+    # TODO(varisd): Can we make so that the correct runner loads from the runner.* files?
+    parser.add_argument(
+        "--runner",
+        type=str,
+        metavar="RUNNER",
+        required=True,
+        choices=RUNNER_REGISTRY.keys(),
+        help="Runner used for pipeline execution manipulation.",
+    )
+    parser.add_argument(
+        "--targets",
+        type=str,
+        nargs="+",
+        default=None,
+        help="List of steps to be executed together with their dependencies.",
+    )
 
     return parser.parse_args(argv)
 
 
 def parse_status_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Step Status")
+    parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Step Status")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
 
@@ -110,10 +126,9 @@ def parse_status_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def parse_traceback_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = OpusPocusParser(description=f"{GEN_DESCRIPTION}: Pipeline Graph Traceback")
+    parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Graph Traceback")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
-
     parser.add_argument(
         "--targets",
         type=str,
@@ -123,6 +138,7 @@ def parse_traceback_args(argv: Sequence[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--verbose",
+        default=False,
         action="store_true",
         help="Include additional step parameter information.",
     )
