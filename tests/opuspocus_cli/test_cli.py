@@ -70,14 +70,14 @@ def test_required_pipeline_dir_option(cmd_name, capsys):
     assert " --pipeline-dir PIPELINE_DIR" in output.out
 
 
-def test_defaults_stop(pipeline):
+def test_defaults_stop(foo_pipeline_running):
     """Executed stop command with default arguments."""
     # TODO(varisd): implemented a running "pipeline" fixture
     rc = main(
         [
             "stop",
             "--pipeline-dir",
-            pipeline.pipeline_dir,
+            str(foo_pipeline_running.pipeline_dir),
             "--runner",
             "bash",
         ]
@@ -91,7 +91,7 @@ def test_defaults_stop(pipeline):
 )
 def test_defaults_other(cmd_name, non_default_opts, pipeline_preprocess_tiny_inited):
     """Run the rest of the subcommands with default arguments."""
-    argv = [cmd_name, "--pipeline-dir", pipeline_preprocess_tiny_inited.pipeline_dir]
+    argv = [cmd_name, "--pipeline-dir", str(pipeline_preprocess_tiny_inited.pipeline_dir)]
     if non_default_opts:
         argv += non_default_opts.split(" ")
     rc = main(argv)

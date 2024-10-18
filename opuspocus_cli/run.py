@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import sys
 import logging
+import sys
 from argparse import Namespace
 from pathlib import Path
 from typing import Sequence
@@ -39,13 +39,14 @@ def main(args: Namespace) -> int:
     # By default, we use the pipeline directory defined in the config file
     if args.pipeline_dir is None:
         config_file = PipelineConfig.load(args.pipeline_config)
+        setattr(args, config_file["pipeline"]["pipeline_dir"])
 
     # First, we try to load a pipeline if it was previously saved
     try:
         pipeline = load_pipeline(args)
         logger.info("An existing pipeline located at %s was loaded.")
         # TODO(varisd): existing pipeline overwrite logic
-    except:
+    except Exception:  # noqa: BLE001
         pipeline = None
 
     # Initialization phase

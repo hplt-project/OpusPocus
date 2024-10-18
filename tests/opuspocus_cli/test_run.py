@@ -1,5 +1,6 @@
-import pytest
 from pathlib import Path
+
+import pytest
 
 from opuspocus.pipelines import PipelineInitError
 from opuspocus_cli import main
@@ -33,37 +34,28 @@ def test_run_nonempty_directory_exists_fail(foo_pipeline_inited):
     pipeline_config = Path(foo_pipeline_inited.pipeline_dir, foo_pipeline_inited.config_file)
 
     with pytest.raises(PipelineInitError):
-        main([
-            "run",
-            "--pipeline-dir",
-            str(pipeline_dir),
-            "--pipeline-config",
-            str(pipeline_config),
-            "--runner",
-            "bash"
-        ])
+        main(
+            ["run", "--pipeline-dir", str(pipeline_dir), "--pipeline-config", str(pipeline_config), "--runner", "bash"]
+        )
 
 
 @pytest.mark.parametrize(
-    "pipeline_in_state",
-    [
-        "foo_pipeline_partially_inited",
-        "foo_pipeline_inited",
-        "foo_pipeline_failed"
-    ]
+    "pipeline_in_state", ["foo_pipeline_partially_inited", "foo_pipeline_inited", "foo_pipeline_failed"]
 )
 def test_run_pipeline_in_state(pipeline_in_state, request):
     pipeline = request.getfixturevalue(pipeline_in_state)
     pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
-    rc = main([
-        "run",
-        "--pipeline-dir",
-        str(pipeline.pipeline_dir),
-        "--pipeline-config",
-        str(pipeline_config),
-        "--runner",
-        "bash"
-    ])
+    rc = main(
+        [
+            "run",
+            "--pipeline-dir",
+            str(pipeline.pipeline_dir),
+            "--pipeline-config",
+            str(pipeline_config),
+            "--runner",
+            "bash",
+        ]
+    )
     assert rc == 0
 
 
@@ -72,21 +64,23 @@ def test_run_pipeline_in_state(pipeline_in_state, request):
     [
         "foo_pipeline_running",
         "foo_pipeline_done",
-    ]
+    ],
 )
 def test_run_pipeline_in_state_fail(pipeline_in_state, request):
     pipeline = request.getfixturevalue(pipeline_in_state)
     pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
-    with pytest.raises(ValueError):
-        main([
-            "run",
-            "--pipeline-dir",
-            str(pipeline.pipeline_dir),
-            "--pipeline-config",
-            str(pipeline_config),
-            "--runner",
-            "bash"
-        ])
+    with pytest.raises(ValueError):  # noqa: PT011
+        main(
+            [
+                "run",
+                "--pipeline-dir",
+                str(pipeline.pipeline_dir),
+                "--pipeline-config",
+                str(pipeline_config),
+                "--runner",
+                "bash",
+            ]
+        )
 
 
 @pytest.mark.parametrize(
@@ -96,45 +90,43 @@ def test_run_pipeline_in_state_fail(pipeline_in_state, request):
         "foo_pipeline_inited",
         "foo_pipeline_failed",
         "foo_pipeline_running",
-        "foo_pipeline_done"
-    ]
+        "foo_pipeline_done",
+    ],
 )
 def test_run_pipeline_in_state_reinit(pipeline_in_state, request):
     pipeline = request.getfixturevalue(pipeline_in_state)
     pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
-    rc = main([
-        "run",
-        "--pipeline-dir",
-        str(pipeline.pipeline_dir),
-        "--pipeline-config",
-        str(pipeline_config),
-        "--runner",
-        "bash",
-        "--reinit"
-    ])
+    rc = main(
+        [
+            "run",
+            "--pipeline-dir",
+            str(pipeline.pipeline_dir),
+            "--pipeline-config",
+            str(pipeline_config),
+            "--runner",
+            "bash",
+            "--reinit",
+        ]
+    )
     assert rc == 0
 
 
 @pytest.mark.parametrize(
-    "pipeline_in_state",
-    [
-        "foo_pipeline_inited",
-        "foo_pipeline_failed",
-        "foo_pipeline_running",
-        "foo_pipeline_done"
-    ]
+    "pipeline_in_state", ["foo_pipeline_inited", "foo_pipeline_failed", "foo_pipeline_running", "foo_pipeline_done"]
 )
-def test_run_pipeline_in_state_reinit(pipeline_in_state, request):
+def test_run_pipeline_in_state_rerun(pipeline_in_state, request):
     pipeline = request.getfixturevalue(pipeline_in_state)
     pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
-    rc = main([
-        "run",
-        "--pipeline-dir",
-        str(pipeline.pipeline_dir),
-        "--pipeline-config",
-        str(pipeline_config),
-        "--runner",
-        "bash",
-        "--rerun"
-    ])
+    rc = main(
+        [
+            "run",
+            "--pipeline-dir",
+            str(pipeline.pipeline_dir),
+            "--pipeline-config",
+            str(pipeline_config),
+            "--runner",
+            "bash",
+            "--rerun",
+        ]
+    )
     assert rc == 0

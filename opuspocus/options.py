@@ -53,24 +53,9 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Execution")
 
     _add_general_arguments(parser, pipeline_dir_required=False)
-    parser.add_argument(
-        "--reinit",
-        default=False,
-        action="store_true",
-        help="Re-initialize an existing pipeline."
-    )
-    parser.add_argument(
-        "--rerun-completed",
-        default=False,
-        action="store_true",
-        help="Re-run finished steps."
-    )
-    parser.add_argument(
-        "--pipeline-config",
-        type=file_path,
-        default=None,
-        help="Pipeline configuration YAML file."
-    )
+    parser.add_argument("--reinit", default=False, action="store_true", help="Re-initialize an existing pipeline.")
+    parser.add_argument("--rerun-completed", default=False, action="store_true", help="Re-run finished steps.")
+    parser.add_argument("--pipeline-config", type=file_path, default=None, help="Pipeline configuration YAML file.")
     parser.add_argument(
         "--runner",
         type=str,

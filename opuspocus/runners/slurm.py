@@ -30,11 +30,7 @@ class SlurmRunner(OpusPocusRunner):
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
-            "--slurm-other-options",
-            type=str,
-            metavar="RUNNER",
-            default=None,
-            help="Additional Slurm CLI options."
+            "--slurm-other-options", type=str, metavar="RUNNER", default=None, help="Additional Slurm CLI options."
         )
 
     def __init__(
