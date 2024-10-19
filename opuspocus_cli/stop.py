@@ -22,7 +22,7 @@ def main(args: Namespace) -> int:
     to execute the pipeline.
     """
     pipeline = load_pipeline(args)
-    runner = load_runner(args.pipeline_dir)
+    runner = load_runner(pipeline.pipeline_dir)
     runner.stop_pipeline(pipeline)
     return 0
 

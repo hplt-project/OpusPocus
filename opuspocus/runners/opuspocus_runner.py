@@ -1,7 +1,7 @@
 import inspect
 import logging
 import signal
-import time
+import warnings
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, get_type_hints
@@ -10,7 +10,7 @@ import yaml
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
-from opuspocus.pipelines import OpusPocusPipeline
+from opuspocus.pipelines import OpusPocusPipeline, PipelineState
 from opuspocus.utils import RunnerResources
 
 logger = logging.getLogger(__name__)
@@ -109,6 +109,11 @@ class OpusPocusRunner:
 
     def stop_pipeline(self, pipeline: OpusPocusPipeline) -> None:
         """TODO"""
+        if pipeline.state != PipelineState.RUNNING:
+            # We want to catch a specific warning during testing so we use warnings module instead of logging
+            warnings.warn(
+                f"Trying to stop a pipeline in other state than RUNNING ({pipeline.state})", UserWarning, stacklevel=1
+            )
         for step in pipeline.steps:
             if not step.is_running_or_submitted:
                 continue

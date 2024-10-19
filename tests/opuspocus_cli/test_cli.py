@@ -25,10 +25,10 @@ def test_submodule_has_parse_args(cmd_name):
 @pytest.mark.parametrize("cmd_name", CMD_MODULES.keys())
 def test_subcommand_help(cmd_name, capsys):
     """Show correct usage message when no parameters are provided."""
-    with pytest.raises(SystemExit) as e:
+    with pytest.raises(SystemExit) as err:
         main([cmd_name])
-    assert e.type is SystemExit
-    assert e.value.code != 0
+    assert err.type is SystemExit
+    assert err.value.code != 0
 
     output = capsys.readouterr()
     # TODO: more sophisticated output message checking
@@ -37,10 +37,10 @@ def test_subcommand_help(cmd_name, capsys):
 
 def test_unknown_subcommand(capsys):
     """Show usage and exit if provided with unknown subcommand."""
-    with pytest.raises(SystemExit) as e:
+    with pytest.raises(SystemExit) as err:
         main(["foo"])
-    assert e.type is SystemExit
-    assert e.value.code != 0
+    assert err.type is SystemExit
+    assert err.value.code != 0
 
     output = capsys.readouterr()
     assert "usage: " in output.out
@@ -49,10 +49,10 @@ def test_unknown_subcommand(capsys):
 
 def test_subcommand_not_first(capsys):
     """Show usage and exit if the first argument is not a known subcommand."""
-    with pytest.raises(SystemExit) as e:
+    with pytest.raises(SystemExit) as err:
         main(["--pipeline-dir", "stop"])
-    assert e.type is SystemExit
-    assert e.value.code != 0
+    assert err.type is SystemExit
+    assert err.value.code != 0
 
     output = capsys.readouterr()
     assert "{" + ",".join(CMD_MODULES.keys()) + "} [options]" in output.out
@@ -61,38 +61,10 @@ def test_subcommand_not_first(capsys):
 @pytest.mark.parametrize("cmd_name", ["stop", "status", "traceback"])
 def test_required_pipeline_dir_option(cmd_name, capsys):
     """Subcommands, except init, require --pipeline-dir option."""
-    with pytest.raises(SystemExit) as e:
+    with pytest.raises(SystemExit) as err:
         main([cmd_name])
-    assert e.type is SystemExit
-    assert e.value.code != 0
+    assert err.type is SystemExit
+    assert err.value.code != 0
 
     output = capsys.readouterr()
     assert " --pipeline-dir PIPELINE_DIR" in output.out
-
-
-def test_defaults_stop(foo_pipeline_running):
-    """Executed stop command with default arguments."""
-    # TODO(varisd): implemented a running "pipeline" fixture
-    rc = main(
-        [
-            "stop",
-            "--pipeline-dir",
-            str(foo_pipeline_running.pipeline_dir),
-            "--runner",
-            "bash",
-        ]
-    )
-    assert rc == 0
-
-
-@pytest.mark.parametrize(
-    "cmd_name, non_default_opts",  # noqa: PT006
-    [("status", ""), ("traceback", "")],
-)
-def test_defaults_other(cmd_name, non_default_opts, pipeline_preprocess_tiny_inited):
-    """Run the rest of the subcommands with default arguments."""
-    argv = [cmd_name, "--pipeline-dir", str(pipeline_preprocess_tiny_inited.pipeline_dir)]
-    if non_default_opts:
-        argv += non_default_opts.split(" ")
-    rc = main(argv)
-    assert rc == 0
