@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from opuspocus.pipelines import PipelineInitError
+from opuspocus.pipelines import PipelineConfig, PipelineInitError
 from opuspocus_cli import main
 
 
@@ -25,22 +25,30 @@ def test_run_missing_required_values_fail(values, foo_pipeline_config_file):
         main(cmd)
 
 
-def test_run_nonempty_directory_exists_fail(foo_pipeline_inited):
+def test_run_nonempty_directory_exists_fail(foo_pipeline):
     """Fail execution when pipeline exists and is not in the INITED state."""
-    pipeline_dir = Path(foo_pipeline_inited.pipeline_dir.parent, "mock_dir")
-    pipeline_dir.mkdir()
-    with Path(pipeline_dir, "mock_file.txt").open("w") as fh:
+    with Path(foo_pipeline.pipeline_dir, "mock_file.txt").open("w") as fh:
         print("Some text.", file=fh)
-    pipeline_config = Path(foo_pipeline_inited.pipeline_dir, foo_pipeline_inited.config_file)
+    config_path = Path(foo_pipeline.pipeline_dir.parent, foo_pipeline.config_file)
+    PipelineConfig.save(foo_pipeline.pipeline_config, config_path)
 
     with pytest.raises(PipelineInitError):
         main(
-            ["run", "--pipeline-dir", str(pipeline_dir), "--pipeline-config", str(pipeline_config), "--runner", "bash"]
+            [
+                "run",
+                "--pipeline-dir",
+                str(foo_pipeline.pipeline_dir),
+                "--pipeline-config",
+                str(config_path),
+                "--runner",
+                "bash",
+            ]
         )
 
 
 @pytest.mark.parametrize(
-    "pipeline_in_state", ["foo_pipeline_partially_inited", "foo_pipeline_inited", "foo_pipeline_failed"]
+    "pipeline_in_state",
+    ["foo_pipeline_partially_inited", "foo_pipeline_inited", "foo_pipeline_failed", "foo_pipeline_done"],
 )
 def test_run_pipeline_in_state(pipeline_in_state, request):
     """Run a pipeline in the initialized or failed state."""
@@ -62,16 +70,13 @@ def test_run_pipeline_in_state(pipeline_in_state, request):
 
 @pytest.mark.parametrize(
     "pipeline_in_state",
-    [
-        "foo_pipeline_running",
-        "foo_pipeline_done",
-    ],
+    ["foo_pipeline_running"],
 )
 def test_run_pipeline_in_state_fail(pipeline_in_state, request):
     """Fail running a pipeline in running or done states without the rerun flag."""
     pipeline = request.getfixturevalue(pipeline_in_state)
     pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
-    with pytest.raises(ValueError):  # noqa: PT011
+    with pytest.raises(SystemExit):
         main(
             [
                 "run",
@@ -119,17 +124,17 @@ def test_run_pipeline_in_state_reinit(pipeline_in_state, request):
     [
         ("foo_pipeline_partially_inited", True),
         ("foo_pipeline_inited", True),
-        ("foo_pipeline_failed", False),
+        ("foo_pipeline_failed", True),
         ("foo_pipeline_running", False),
-        ("foo_pipeline_done", False),
+        ("foo_pipeline_done", True),
     ],
 )
-def test_run_pipeline_in_state_rerun(pipeline_in_state, warn, request):
+def test_run_pipeline_in_state_stop(pipeline_in_state, warn, request):
     """Rerun a pipeline in a specific state, canceling the previous run."""
     pipeline = request.getfixturevalue(pipeline_in_state)
     pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
 
-    rc = main([
+    cmd = [
         "run",
         "--pipeline-dir",
         str(pipeline.pipeline_dir),
@@ -137,6 +142,11 @@ def test_run_pipeline_in_state_rerun(pipeline_in_state, warn, request):
         str(pipeline_config),
         "--runner",
         "bash",
-        "--rerun",
-    ])
+        "--stop-previous-run",
+    ]
+    if warn:
+        with pytest.warns(UserWarning):
+            rc = main(cmd)
+    else:
+        rc = main(cmd)
     assert rc == 0

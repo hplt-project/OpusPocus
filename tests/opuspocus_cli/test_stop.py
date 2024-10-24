@@ -1,6 +1,6 @@
 import pytest
 
-from opuspocus_cli.stop import main
+from opuspocus_cli import main
 
 
 @pytest.mark.parametrize(
@@ -11,8 +11,8 @@ from opuspocus_cli.stop import main
         ("foo_pipeline_inited", True),
         ("foo_pipeline_failed", True),
         ("foo_pipeline_done", True),
-        ("foo_pipeline_running", False)
-    ]
+        ("foo_pipeline_running", False),
+    ],
 )
 def test_stop_default_values(pipeline_in_state, warn, request):
     """Stop pipeline in a specific state using default CLI option values."""

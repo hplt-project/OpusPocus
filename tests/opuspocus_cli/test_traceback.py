@@ -1,6 +1,6 @@
 import pytest
 
-from opuspocus_cli.traceback import main
+from opuspocus_cli import main
 
 
 @pytest.mark.parametrize(
@@ -11,7 +11,7 @@ from opuspocus_cli.traceback import main
         "foo_pipeline_failed",
         "foo_pipeline_done",
         "foo_pipeline_running",
-    ]
+    ],
 )
 def test_stop_default_values(pipeline_in_state, request):
     """Print traceback - depencency graph of the pipelien with step states and (optional) step parameters."""

@@ -68,8 +68,6 @@ def foo_pipeline_running(foo_pipeline_inited):
 
 @pytest.fixture()
 def foo_pipeline_done(foo_pipeline_inited):
-    for s in foo_pipeline_inited.steps:
-        s.SLEEP_TIME = 5
     pipeline_dir = foo_pipeline_inited.pipeline_dir
     runner = build_runner(
         "bash",

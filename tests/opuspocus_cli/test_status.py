@@ -1,7 +1,10 @@
 import pytest
 
+from opuspocus.pipeline_steps import StepState
 from opuspocus.pipelines import PipelineState
-from opuspocus_cli.status import main
+from opuspocus_cli import main
+
+STATUS_OUT_N_COLS = 3
 
 
 @pytest.mark.parametrize(
@@ -11,8 +14,8 @@ from opuspocus_cli.status import main
         ("foo_pipeline_inited", PipelineState.INITED),
         ("foo_pipeline_failed", PipelineState.FAILED),
         ("foo_pipeline_done", PipelineState.DONE),
-        ("foo_pipeline_running", PipelineState.RUNNING)
-    ]
+        ("foo_pipeline_running", PipelineState.RUNNING),
+    ],
 )
 def test_status_default_values(pipeline_in_state, state, capsys, request):
     """Print the pipeline state and the states of its individual steps in a parsable format."""
@@ -23,17 +26,16 @@ def test_status_default_values(pipeline_in_state, state, capsys, request):
     assert rc == 0
 
     out_has_status = False
-    for line in capsys.readout:
-        if '---' in line:
+    for line in capsys.readouterr().out.split("\n")[:-1]:
+        if "---" in line:
             continue  # skip toprule
-
-        line_arr = line.split('|')
-        assert len(line_arr) == 3
+        line_arr = line.split("|")
+        assert len(line_arr) == STATUS_OUT_N_COLS
 
         assert "Step" in line_arr[1] or "Pipeline" in line_arr[1]
-        assert line_arr[2] in StepState.__members__
+        assert line_arr[2] in StepState.list()
 
         if "OpusPocusPipeline" in line_arr[1]:
             out_has_status = True
-            assert str(state) in line
+            assert state.value in line
     assert out_has_status
