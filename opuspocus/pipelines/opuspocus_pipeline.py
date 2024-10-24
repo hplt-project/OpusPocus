@@ -6,8 +6,8 @@ from typing import Dict, List, Optional, Tuple
 from omegaconf import OmegaConf
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step
-from opuspocus.pipelines.exceptions import PipelineInitError
-from opuspocus.utils import file_path
+from opuspocus.pipelines.exceptions import PipelineInitError, PipelineStateError
+from opuspocus.utils import clean_dir, file_path
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,24 @@ class OpusPocusPipeline:
     def steps(self) -> List[OpusPocusStep]:
         return list(self.pipeline_graph.values())
 
+    @property
+    def state(self) -> Optional[PipelineState]:  # noqa: PLR0911
+        """Return the current state of the pipeline."""
+        step_states = [s.state for s in self.steps]
+        if all(state == StepState.DONE for state in step_states):
+            return PipelineState.DONE
+        if StepState.RUNNING in step_states:
+            return PipelineState.RUNNING
+        if StepState.SUBMITTED in step_states:
+            return PipelineState.SUBMITTED
+        if StepState.FAILED in step_states:
+            return PipelineState.FAILED
+        if all(state == StepState.INITED for state in step_states):
+            return PipelineState.INITED
+        if StepState.INIT_INCOMPLETE in step_states:
+            return PipelineState.INIT_INCOMPLETE
+        return None
+
     @classmethod
     def build_pipeline(
         cls: "OpusPocusPipeline",
@@ -85,7 +103,7 @@ class OpusPocusPipeline:
         cls: "OpusPocusPipeline",
         pipeline_dir: Path,
     ) -> "OpusPocusPipeline":
-        """TODO"""
+        """Load the existing pipeline."""
         if not pipeline_dir.exists():
             err_msg = f"Pipeline directory ({pipeline_dir}) does not exist."
             raise FileNotFoundError(err_msg)
@@ -158,9 +176,12 @@ class OpusPocusPipeline:
     def init(self) -> None:
         """Initialize the pipeline."""
         logger.info("Initializing pipeline (%s)", self.pipeline_dir)
-        if self.pipeline_dir.exists() and len(list(self.pipeline_dir.iterdir())) != 0:
+        if self.state is None and (self.pipeline_dir.exists() and len(list(self.pipeline_dir.iterdir())) != 0):
             err_msg = f"{self.pipeline_dir} must be an empty or non-existing directory."
             raise PipelineInitError(err_msg)
+        if self.state in [PipelineState.SUBMITTED, PipelineState.RUNNING, PipelineState.FAILED, PipelineState.DONE]:
+            err_msg = f"Trying to initialize pipeline in a {self.state} state."
+            raise PipelineStateError(err_msg)
 
         for v in self.pipeline_graph.values():
             v.init_step()
@@ -168,9 +189,20 @@ class OpusPocusPipeline:
         self.save_pipeline()
         logger.info("Pipeline (%s) initialized successfully.", self.pipeline_dir)
 
+    def reinit(self) -> None:
+        """Reinitialize the pipeline."""
+        if self.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
+            err_msg = f"Trying to re-initialize a pipeline in {self.state} state. Stop the pipeline execution first."
+            raise ValueError(err_msg)
+        clean_dir(self.pipeline_dir)
+        self.init()
+
     def status(self, steps: List[OpusPocusStep]) -> None:
+        header = f"{self.pipeline_dir.stem}{self.pipeline_dir.suffix}|{self.__class__.__name__}|{self.state.value!s}"
+        print(header)  # noqa: T201
+        print("-" * len(header))  # noqa: T201
         for s in steps:
-            print(f"{s.step_label}: {s.state!s}")  # noqa: T201
+            print(f"{s.step_label}|{s.__class__.__name__}|{s.state.value!s}")  # noqa: T201
 
     def traceback(self, targets: Optional[List[str]] = None, *, full: bool = False) -> None:
         """Print the pipeline structure and status of the individual steps."""
