@@ -6,7 +6,7 @@ from opuspocus.pipeline_steps import StepState, build_step
 from opuspocus.runners.debug import DebugRunner
 
 
-@pytest.fixture(scope="function", params=[True, False])  # noqa: PT003
+@pytest.fixture(params=[True, False])
 def merge_step_inited(request, train_data_parallel_tiny_raw_step_inited):
     """Create and initialize the merge step."""
     step = build_step(
@@ -32,7 +32,7 @@ def test_merge_step_inited(merge_step_inited):
     assert merge_step_inited.state == StepState.INITED
 
 
-@pytest.fixture(scope="function")  # noqa: PT003
+@pytest.fixture()
 def merge_step_done(merge_step_inited):
     """Execute the merge step."""
     runner = DebugRunner("debug", merge_step_inited.pipeline_dir)
@@ -46,6 +46,7 @@ def test_merge_step_done(merge_step_done):
 
 
 def test_datasets_merged(merge_step_done):
+    """All datasets from the original steps are listable in the merged step (with new dataset names)."""
     dset_set = set(merge_step_done.prev_corpus_step.dataset_list + merge_step_done.other_corpus_step.dataset_list)
     for dataset in merge_step_done.dataset_list:
         dataset_orig = ".".join(dataset.split(".")[1:])
@@ -53,6 +54,7 @@ def test_datasets_merged(merge_step_done):
 
 
 def test_dataset_files_merged(merge_step_done):
+    """All dataset files from the original steps are present in the merged step output dir."""
     for dataset in merge_step_done.dataset_list:
         for lang in merge_step_done.languages:
             dset_path = Path(merge_step_done.output_dir, f"{dataset}.{lang}.gz")
@@ -60,6 +62,7 @@ def test_dataset_files_merged(merge_step_done):
 
 
 def test_categories_merged(merge_step_done):
+    """All the categories from the original files are in the merged step categories."""
     categories_set = set(merge_step_done.prev_corpus_step.categories + merge_step_done.other_corpus_step.categories)
     for cat in merge_step_done.categories:
         if merge_step_done.merge_categories:

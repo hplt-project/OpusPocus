@@ -61,6 +61,8 @@ def test_translate_step_done(translate_step_done):
 
 @pytest.mark.parametrize("lang", ["src_lang", "tgt_lang"])
 def test_translate_step_done_output(translate_step_done, lang):
+    """Translation output has the same number of lines."""
+    # TODO(varisd): More robust output testing (?)
     for dset in translate_step_done.dataset_list:
         f_name = f"{dset}.{getattr(translate_step_done, lang)}.gz"
         src_lines = count_lines(Path(translate_step_done.input_dir, f_name))

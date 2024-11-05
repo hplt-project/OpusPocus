@@ -11,6 +11,7 @@ from opuspocus.utils import open_file
 
 
 def test_state_update_two_instances(foo_step_inited, monkeypatch):
+    """Step state updates for all instances of a step (even the already loaded ones)."""
     foo_step_inited.state = StepState.FAILED
 
     monkeypatch.setattr(pipeline_steps, "STEP_INSTANCE_REGISTRY", {})
@@ -22,6 +23,7 @@ def test_state_update_two_instances(foo_step_inited, monkeypatch):
 
 @pytest.fixture()
 def step_command_module(foo_step_inited, monkeypatch):
+    """Reset the step registry and classes before each unit test run."""
     monkeypatch.setattr(
         pipeline_steps, "STEP_REGISTRY", {k: v for k, v in pipeline_steps.STEP_REGISTRY.items() if "foo" not in k}
     )
@@ -38,10 +40,12 @@ def step_command_module(foo_step_inited, monkeypatch):
 
 
 def test_cmd_file_exists(foo_step_inited):
+    """Command file exists after init_step() call."""
     assert Path(foo_step_inited.step_dir, foo_step_inited.command_file).exists()
 
 
 def test_cmd_file_syntax_valid(foo_step_inited):
+    """Command file does not have syntax errors."""
     cmd_file = Path(foo_step_inited.step_dir, foo_step_inited.command_file)
     py_compile.compile(cmd_file)
     assert True
@@ -49,6 +53,7 @@ def test_cmd_file_syntax_valid(foo_step_inited):
 
 @pytest.mark.parametrize("partially_done", [False, True])
 def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner, partially_done):
+    """Command file's main task method executes correctly without issues (standalone, no runner)."""
     foo_runner.save_parameters()
     foo_step_inited.SLEEP_TIME = 1
 
@@ -73,6 +78,7 @@ def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner,
 
 
 def test_cmd_file_execute_sub(step_command_module, foo_step_inited):
+    """Command file's subtask method executes correctly without issues (standalone, no runner)."""
     foo_step_inited.SLEEP_TIME = 1
 
     target_file = foo_step_inited.get_command_targets()[0]
