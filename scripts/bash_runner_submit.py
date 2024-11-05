@@ -34,7 +34,7 @@ def main(argv):  # noqa: ANN001, ANN201 fixit
 
     gone, alive = psutil.wait_procs(procs)
     print(  # noqa: T201
-        "bash_runner_submit.py: Running command: {}".format(" ".join(argv)),
+        "bash_runner_submit.py: Running command: {}".format(" ".join(argv[1:])),
         file=sys.stderr,
     )
     for proc in gone:
@@ -46,6 +46,7 @@ def main(argv):  # noqa: ANN001, ANN201 fixit
     def propagate_signal(signum, _) -> None:  # noqa: ANN001
         print(f"{FILE} Received signal {signum}. Terminating child process...", file=sys.stderr)  # noqa: T201
         proc.send_signal(signum)
+        proc.wait()
         if signum == signal.SIGUSR1:
             sys.exit(0)
         sys.exit(signum)

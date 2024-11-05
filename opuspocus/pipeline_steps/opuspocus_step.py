@@ -233,7 +233,7 @@ class OpusPocusStep:
             if self.has_state(StepState.INITED):
                 logger.info("[%s] Step already initialized. Skipping...", self.step_label)
                 return
-            err_msg = f"Trying to initialize step in a {self.state} state."
+            err_msg = f"Trying to initialize step ({self.step_label}) in a {self.state} state."
             raise ValueError(err_msg)
         # Set state to incomplete until finished initializing.
         self.create_directories()

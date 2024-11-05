@@ -2,11 +2,12 @@ import pytest
 
 from opuspocus import pipeline_steps
 from opuspocus.pipeline_steps import build_step
+from tests.utils import teardown_step
 
 
 @pytest.fixture()
-def train_data_parallel_tiny_raw_step_inited(tmp_path_factory, train_data_parallel_tiny_decompressed):
-    """Load the mock tiny dataset."""
+def train_data_parallel_tiny_raw_step(tmp_path_factory, train_data_parallel_tiny_decompressed):
+    """Mock step that loads the mock tiny dataset."""
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = tmp_path_factory.mktemp("test_pipeline_steps")
 
@@ -23,13 +24,21 @@ def train_data_parallel_tiny_raw_step_inited(tmp_path_factory, train_data_parall
             "compressed": False,
         },
     )
-    step.init_step()
-    return step
+    yield step
+
+    teardown_step(step)
 
 
 @pytest.fixture()
-def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_raw_step_inited, marian_dir):
-    """Create the mock vocabulary from the tiny dataset."""
+def train_data_parallel_tiny_raw_step_inited(train_data_parallel_tiny_raw_step):
+    """Mock step that loads the mock tiny dataset (INITED)."""
+    train_data_parallel_tiny_raw_step.init_step()
+    return train_data_parallel_tiny_raw_step
+
+
+@pytest.fixture()
+def train_data_parallel_tiny_vocab_step(train_data_parallel_tiny_raw_step_inited, marian_dir):
+    """Mock Vocabulary step from the tiny dataset."""
     src_lang = train_data_parallel_tiny_raw_step_inited.src_lang
     tgt_lang = train_data_parallel_tiny_raw_step_inited.tgt_lang
     step = build_step(
@@ -45,39 +54,51 @@ def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_raw_step
             "vocab_size": 300,
         },
     )
-    step.init_step()
-    return step
+    yield step
+
+    teardown_step(step)
 
 
 @pytest.fixture()
-def train_data_parallel_tiny_model_step_inited(
-    train_data_parallel_tiny_raw_step_inited,
-    train_data_parallel_tiny_vocab_step_inited,
+def train_data_parallel_tiny_vocab_step_inited(train_data_parallel_tiny_vocab_step):
+    """Mock Vocabulary step from the tiny dataset (INITED)."""
+    train_data_parallel_tiny_vocab_step.init_step()
+    return train_data_parallel_tiny_vocab_step
+
+
+@pytest.fixture()
+def train_data_parallel_tiny_train_model_step(
+    train_data_parallel_tiny_raw_step,
+    train_data_parallel_tiny_vocab_step,
     marian_tiny_config_file,
-    opustrainer_tiny_config_file,
 ):
-    """Create the mock train_model step."""
-    marian_dir = train_data_parallel_tiny_vocab_step_inited.marian_dir
-    if "cpu" in str(marian_dir):
-        pytest.skip(reason=("Model training is not supported on CPU-only machines."))
+    """Mock Train Model step."""
+    marian_dir = train_data_parallel_tiny_vocab_step.marian_dir
     step = build_step(
         step="train_model",
         step_label=f"train_model.{marian_dir}.test",
-        pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
+        pipeline_dir=train_data_parallel_tiny_raw_step.pipeline_dir,
         **{
             "marian_dir": marian_dir,
-            "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
-            "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
+            "src_lang": train_data_parallel_tiny_raw_step.src_lang,
+            "tgt_lang": train_data_parallel_tiny_raw_step.tgt_lang,
             "marian_config": marian_tiny_config_file,
-            "vocab_step": train_data_parallel_tiny_vocab_step_inited,
-            "opustrainer_config": opustrainer_tiny_config_file,
-            "train_corpus_step": train_data_parallel_tiny_raw_step_inited,
-            "valid_corpus_step": train_data_parallel_tiny_raw_step_inited,
-            "train_categories": [train_data_parallel_tiny_raw_step_inited.categories[0]],
+            "vocab_step": train_data_parallel_tiny_vocab_step,
+            "max_epochs": 10,
+            "train_corpus_step": train_data_parallel_tiny_raw_step,
+            "valid_corpus_step": train_data_parallel_tiny_raw_step,
+            "train_categories": [train_data_parallel_tiny_raw_step.categories[0]],
             "train_category_ratios": [1.0],
-            "valid_dataset": train_data_parallel_tiny_raw_step_inited.dataset_list[0],
-            "max_epochs": 1,
+            "valid_dataset": train_data_parallel_tiny_raw_step.dataset_list[0],
         },
     )
-    step.init_step()
-    return step
+    yield step
+
+    teardown_step(step)
+
+
+@pytest.fixture()
+def train_data_parallel_tiny_model_step_inited(train_data_parallel_tiny_train_model_step):
+    """Mock Train Model step (INITED)."""
+    train_data_parallel_tiny_train_model_step.init_step()
+    return train_data_parallel_tiny_train_model_step

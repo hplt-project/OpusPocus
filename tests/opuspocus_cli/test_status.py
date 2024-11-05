@@ -1,9 +1,12 @@
+import time
+
 import pytest
 
 from opuspocus.pipeline_steps import StepState
 from opuspocus.pipelines import PipelineState
 from opuspocus_cli import main
 
+SLEEP_TIME = 2
 STATUS_OUT_N_COLS = 3
 
 
@@ -21,6 +24,10 @@ def test_status_default_values(pipeline_in_state, state, capsys, request):
     """Print the pipeline state and the states of its individual steps in a parsable format."""
     pipeline = request.getfixturevalue(pipeline_in_state)
     pipeline_dir = pipeline.pipeline_dir
+
+    if pipeline_in_state == "foo_pipeline_running":
+        while pipeline.state == PipelineState.SUBMITTED:
+            time.sleep(SLEEP_TIME)
 
     rc = main(["status", "--pipeline-dir", str(pipeline_dir)])
     assert rc == 0

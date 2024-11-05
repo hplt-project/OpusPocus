@@ -15,6 +15,7 @@ from opuspocus.utils import RunnerResources, subprocess_wait
 logger = logging.getLogger(__name__)
 
 SLEEP_TIME = 2
+TIMEOUT_ITERATIONS = 15
 
 
 class SlurmTaskInfo(TaskInfo):
@@ -187,14 +188,24 @@ class SlurmRunner(OpusPocusRunner):
 
     def _get_sacct_info(self, task_info: SlurmTaskInfo) -> List[str]:
         jid = task_info["id"]
-        proc = subprocess.Popen(
-            ["sacct", "-j", f"{jid}", "--brief", "-p"],
-            stdout=subprocess.PIPE,
-            stderr=sys.stderr,
-            shell=False,
-        )
-        subprocess_wait(proc)
-        return [line.decode() for line in proc.stdout.readlines()]
+        cmd_out = []
+
+        timeout = TIMEOUT_ITERATIONS
+        # We try calling sacct multiple times in case we ask for job status too early after submission
+        while timeout > 0:
+            proc = subprocess.Popen(
+                ["sacct", "-j", f"{jid}", "--brief", "-p"],
+                stdout=subprocess.PIPE,
+                stderr=sys.stderr,
+                shell=False,
+            )
+            subprocess_wait(proc)
+            cmd_out = [line.decode() for line in proc.stdout.readlines()]
+            if len(cmd_out) > 1:
+                break
+            timeout -= 1
+            time.sleep(SLEEP_TIME)
+        return cmd_out
 
     def _get_slurm_dependencies(self, task_info: SlurmTaskInfo, exclude_ids: Optional[List[int]] = None) -> List[int]:
         if exclude_ids is None:

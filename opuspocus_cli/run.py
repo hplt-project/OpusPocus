@@ -105,7 +105,7 @@ def main(args: Namespace) -> int:
         )
         sys.exit(2)
 
-    runner.run_pipeline(pipeline, targets=pipeline.get_targets(args.targets), resubmit_done=args.resubmit_done)
+    runner.run_pipeline(pipeline, target_labels=args.targets, resubmit_done=args.resubmit_done)
     return 0
 
 

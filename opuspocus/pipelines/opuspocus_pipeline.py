@@ -180,7 +180,7 @@ class OpusPocusPipeline:
             err_msg = f"{self.pipeline_dir} must be an empty or non-existing directory."
             raise PipelineInitError(err_msg)
         if self.state in [PipelineState.SUBMITTED, PipelineState.RUNNING, PipelineState.FAILED, PipelineState.DONE]:
-            err_msg = f"Trying to initialize pipeline in a {self.state} state."
+            err_msg = f"Trying to initialize pipeline (self.pipeline_dir) in a {self.state} state."
             raise PipelineStateError(err_msg)
 
         for v in self.pipeline_graph.values():
@@ -204,9 +204,9 @@ class OpusPocusPipeline:
         for s in steps:
             print(f"{s.step_label}|{s.__class__.__name__}|{s.state.value!s}")  # noqa: T201
 
-    def traceback(self, targets: Optional[List[str]] = None, *, full: bool = False) -> None:
+    def traceback(self, target_labels: Optional[List[str]] = None, *, full: bool = False) -> None:
         """Print the pipeline structure and status of the individual steps."""
-        targets = self.get_targets(targets)
+        targets = self.get_targets(target_labels)
         for i, v in enumerate(targets):
             print(f"Target {i}: {v.step_label}")  # noqa: T201
             v.traceback_step(level=0, full=full)
@@ -219,16 +219,16 @@ class OpusPocusPipeline:
             return output[0]
         return None
 
-    def get_targets(self, targets: Optional[List[str]] = None) -> List[OpusPocusStep]:
-        if targets is not None:
-            output_targets = []
-            for target in targets:
-                target_step = self._get_step(target)
-                if target_step is None:
-                    err_msg = f"Unknown pipeline step (label: {target}) requested as a target."
+    def get_targets(self, target_labels: Optional[List[str]] = None) -> List[OpusPocusStep]:
+        if target_labels is not None:
+            targets = []
+            for t_label in target_labels:
+                t_step = self._get_step(t_label)
+                if t_step is None:
+                    err_msg = f"Unknown pipeline step (label: {t_label}) requested as a target."
                     raise ValueError(err_msg)
-                output_targets.append(target_step)
-            return output_targets
+                targets.append(t_step)
+            return targets
         if self.default_targets is not None:
             logger.info("No target steps were specified. Using default targets.")
             return self.default_targets

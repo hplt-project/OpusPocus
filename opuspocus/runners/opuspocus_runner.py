@@ -1,6 +1,7 @@
 import inspect
 import logging
 import signal
+import time
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, get_type_hints
@@ -132,13 +133,13 @@ class OpusPocusRunner:
     def run_pipeline(
         self,
         pipeline: OpusPocusPipeline,
-        targets: Optional[List[OpusPocusStep]] = None,
+        target_labels: Optional[List[str]] = None,
         *,
         resubmit_done: bool = False,
     ) -> None:
         """TODO"""
         self.save_parameters()
-        for step in pipeline.get_targets(targets):
+        for step in pipeline.get_targets(target_labels):
             self.submit_step(step, keep_finished=(not resubmit_done))
         self.run()
         logger.info("[%s] Pipeline tasks submitted successfully.", self.runner)
@@ -199,9 +200,9 @@ class OpusPocusRunner:
                 stdout_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.out"),
                 stderr_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.err"),
             )
-        except Exception as err:
+        except Exception:
             step.state = StepState.FAILED
-            logger.exception("Task submission in runner.submit_step raised the following error:\n%s", err.message)
+            logger.exception("Task submission in runner.submit_step raised an Exception.")
             raise
 
         sub_info = SubmissionInfo(runner=self.runner, main_task=task_info, subtasks=[])

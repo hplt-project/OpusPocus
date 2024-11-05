@@ -18,7 +18,8 @@ def marian_tiny_config_file(config_dir):
     # TODO(varisd): parametrize the fixture to test other (tiny)
     #   configurations?
 
-    config = yaml.safe_load(open(Path("config", "marian.train.teacher.base.yml")))  # noqa: PTH123, SIM115
+    with Path("config", "marian.train.teacher.base.yml").open("r") as fh:
+        config = yaml.safe_load(fh)
 
     config["workspace"] = 500
 
@@ -38,15 +39,9 @@ def marian_tiny_config_file(config_dir):
     config["valid-max-length"] = 100
 
     config_file = Path(config_dir, "marian.train.teacher.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115
+    with config_file.open("w") as fh:
+        yaml.dump(config, fh)
     return config_file
-
-
-@pytest.fixture(scope="session")
-def opustrainer_tiny_config_file(config_dir):  # noqa: ARG001, PT004
-    """Prepares small-data config for opustrainer training."""
-    # TODO(varisd): implement this for testing scenarios where OpusTrainer config is provided
-    pass
 
 
 @pytest.fixture(scope="module")
@@ -79,10 +74,11 @@ def pipeline_preprocess_tiny_config_file(
     return config_file
 
 
-@pytest.fixture(scope="module", params=PIPELINE_TRAIN_CONFIGS)
+@pytest.fixture(params=PIPELINE_TRAIN_CONFIGS)
 def pipeline_train_tiny_config_file(
     request,
     config_dir,
+    marian_dir,
     marian_tiny_config_file,
     pipeline_preprocess_tiny_done,
     languages,
@@ -99,6 +95,8 @@ def pipeline_train_tiny_config_file(
 
     config["global"]["preprocess_pipeline_dir"] = str(pipeline_preprocess_tiny_done.pipeline_dir)
     config["global"]["marian_config"] = str(marian_tiny_config_file)
+    config["global"]["marian_dir"] = str(marian_dir)
+    config["global"]["max_epochs"] = 2
 
     # NOTE(varisd): value chosen to satisfy generate_vocab training
     config["global"]["vocab_size"] = 275

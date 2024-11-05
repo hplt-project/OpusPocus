@@ -9,7 +9,7 @@ from opuspocus.runners import build_runner
 # @pytest.fixture(params=RUNNER_REGISTRY.keys())
 @pytest.fixture(params=["bash", "slurm"])
 # @pytest.fixture(params=["slurm"])
-def parsed_runner_args(request, foo_step_inited):
+def parsed_runner_args(request, foo_step):
     """Create default runner arguments."""
     if request.param == "slurm" and not Path("/bin/sbatch").exists():
         pytest.skip(reason="Requires SLURM to be available...")
@@ -28,7 +28,7 @@ def parsed_runner_args(request, foo_step_inited):
     args = parse_run_args(
         [  # noqa: RUF005
             "--pipeline-dir",
-            str(foo_step_inited.pipeline_dir),
+            str(foo_step.pipeline_dir),
             "--runner",
             request.param,
         ]
