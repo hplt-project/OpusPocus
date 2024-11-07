@@ -8,7 +8,6 @@ from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
 from opuspocus.utils import RunnerResources, file_path, subprocess_wait
 
 
-@register_runner("hyperqueue")
 class HyperqueueRunner(OpusPocusRunner):
     """TODO"""
 

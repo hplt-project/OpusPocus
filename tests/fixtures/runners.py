@@ -13,16 +13,6 @@ def parsed_runner_args(request, foo_step):
         pytest.skip(reason="Requires SLURM to be available...")
 
     extra = []
-    if request.param == "hyperqueue":
-        hq_dir = request.getfixturevalue("hyperqueue_dir")
-        hq_server_dir = request.getfixturevalue("opuspocus_hq_server_dir")
-        extra = [
-            "--hq-server-dir",
-            str(hq_server_dir),
-            "--hq-path",
-            f"{hq_dir!s}/bin/hq",
-        ]
-
     args = parse_run_args(
         [  # noqa: RUF005
             "--pipeline-dir",
