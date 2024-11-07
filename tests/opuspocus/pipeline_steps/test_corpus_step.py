@@ -16,6 +16,9 @@ from opuspocus.utils import count_lines, open_file, read_shard
 #   categories.json, etc) should be generalized to be tested with each
 #   CorpusStep implementation
 
+N_LANGUAGES_MONO = 1
+N_LANGUAGES_BI = 2
+
 
 @register_step("foo_corpus")
 class FooCorpusStep(CorpusStep):
@@ -24,7 +27,7 @@ class FooCorpusStep(CorpusStep):
 
     """
 
-    CATEGORIES = ["foo", "bar"]  # noqa: RUF012
+    CATEGORIES: frozenset[str] = ("foo", "bar")
 
     def __init__(
         self,
@@ -154,7 +157,7 @@ def foo_corpus_step_inited(foo_corpus_languages, train_data_parallel_tiny, tmp_p
 
     src_lang = foo_corpus_languages[0]
     tgt_lang = None
-    if len(foo_corpus_languages) == 2:  # noqa: PLR2004
+    if len(foo_corpus_languages) == N_LANGUAGES_BI:
         tgt_lang = foo_corpus_languages[1]
     step = build_step(
         step="foo_corpus",
@@ -291,9 +294,9 @@ def test_foo_corpus_step_inited_shard_list_fail(foo_corpus_step_inited):
 def test_languages(corpus_step_inited):
     """Test whether the corpus languages were set correctly."""
     languages = corpus_step_inited.languages
-    if len(languages) == 1:
+    if len(languages) == N_LANGUAGES_MONO:
         assert corpus_step_inited.tgt_lang is None
-    elif len(languages) == 2:  # noqa: PLR2004
+    elif len(languages) == N_LANGUAGES_BI:
         assert corpus_step_inited.tgt_lang == languages[1]
     else:
         pytest.fail("Unexpected number of languages")

@@ -23,6 +23,10 @@ class StepState(str, enum.Enum):
     RUNNING = "RUNNING"
     DONE = "DONE"
 
+    @staticmethod
+    def list() -> List[str]:
+        return [s.value for s in StepState]
+
 
 class OpusPocusStep:
     """Base class for OpusPocus pipeline steps."""
@@ -177,7 +181,7 @@ class OpusPocusStep:
     def load_dependencies(cls: "OpusPocusStep", step_label: str, pipeline_dir: Path) -> Dict[str, str]:
         """Load step dependecies based on their unique step_label values."""
         deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
-        logger.debug("Loading dependencies from %s", deps_path)
+        logger.debug("[OpusPocusStep] Loading dependencies from %s", deps_path)
         with deps_path.open("r") as fh:
             return yaml.safe_load(fh)
 
@@ -222,11 +226,14 @@ class OpusPocusStep:
         4. create the step command
         5. set set.state to INITED
         """
-        if self.state is not None:
+        if self.state is StepState.INIT_INCOMPLETE:
+            logger.warning("[%s] Step is in %s state. Re-initializing...", self.step_label, self.state)
+            clean_dir(self.step_dir)
+        elif self.state is not None:
             if self.has_state(StepState.INITED):
-                logger.info("Step already initialized. Skipping...")
+                logger.info("[%s] Step already initialized. Skipping...", self.step_label)
                 return
-            err_msg = f"Trying to initialize step in a {self.state} state."
+            err_msg = f"Trying to initialize step ({self.step_label}) in a {self.state} state."
             raise ValueError(err_msg)
         # Set state to incomplete until finished initializing.
         self.create_directories()
@@ -262,10 +269,10 @@ class OpusPocusStep:
     def create_directories(self) -> None:
         """Create the internal step directory structure."""
         # create step dir
-        if self.step_dir.is_dir():
-            err_msg = f"Cannot create {self.step_dir}. Directory already exists."
+        if self.step_dir.is_dir() and len(list(self.step_dir.iterdir())) != 0:
+            err_msg = f"Cannot create {self.step_dir}. Directory already exists and is not empty."
             raise FileExistsError(err_msg)
-        for d in [self.step_dir, self.log_dir, self.output_dir, self.tmp_dir]:
+        for d in [self.log_dir, self.output_dir, self.tmp_dir]:
             d.mkdir(parents=True)
         logger.debug("[%s] Finished creating step directory.", self.step_label)
 
@@ -356,6 +363,7 @@ class OpusPocusStep:
         def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
             logger.info("[%s] Received signal %s. Terminating subtasks...", self.step_label, signum)
             self.state = StepState.FAILED
+            logger.info("[%s] Current subtask list: %s", self.step_label, " ".join(task_info_list))
             for task_info in task_info_list:
                 runner.send_signal(task_info, signum)
             sys.exit(signum)

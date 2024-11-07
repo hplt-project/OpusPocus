@@ -11,6 +11,7 @@ from opuspocus.runners.debug import DebugRunner
 
 @pytest.fixture()
 def train_model_step_inited(train_data_parallel_tiny_model_step_inited):
+    """Inited TrainModelStep instance."""
     return train_data_parallel_tiny_model_step_inited
 
 
@@ -44,6 +45,7 @@ def test_train_model_step_done(train_model_step_done):
     ],
 )
 def test_invalid_parameters_fail(params_invalid, train_data_parallel_tiny_model_step_inited):
+    """Fail building with invalid build parameters."""
     param_dict = train_data_parallel_tiny_model_step_inited.get_parameters_dict()
     for k, v in train_data_parallel_tiny_model_step_inited.dependencies.items():
         param_dict[k] = v

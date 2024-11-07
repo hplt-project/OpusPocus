@@ -126,9 +126,10 @@ def clean_dir(directory: Path, exclude: str = None) -> None:  # noqa: RUF013
             if file_path.is_file() or file_path.is_symlink():
                 file_path.unlink()
             elif file_path.is_dir():
+                clean_dir(file_path, exclude=exclude)
                 file_path.rmdir()
-        except Exception as e:  # noqa: BLE001
-            logger.error("Failed to delete %s. Reason: %s", file_path, e.message)  # noqa: TRY400
+        except Exception as err:  # noqa: BLE001
+            logger.error("Failed to delete %s. Reason: %s", file_path, err)  # noqa: TRY400
 
 
 def count_lines(file_path: Path) -> int:

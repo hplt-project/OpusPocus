@@ -1,5 +1,3 @@
-import pytest
-
 from opuspocus.pipeline_steps import StepState
 
 ## DATA PREPROCESSING ##
@@ -26,13 +24,6 @@ def test_pipeline_train_tiny_inited(pipeline_train_tiny_inited):
         assert step.state == StepState.INITED
 
 
-@pytest.mark.skip(
-    reason=(
-        "currently fails due to vocabulary settings (simple) and the corpus "
-        "sharding not being properly tested (backtranslation), possibly "
-        "having bugs"
-    )
-)
 def test_pipeline_train_tiny_done(pipeline_train_tiny_done):
     """Test whether all mock training pipeline steps finished successfully."""
     for step in pipeline_train_tiny_done.steps:

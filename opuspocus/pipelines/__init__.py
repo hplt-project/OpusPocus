@@ -1,9 +1,10 @@
 import argparse
 import logging
 
-from .opuspocus_pipeline import OpusPocusPipeline, PipelineConfig
+from .exceptions import PipelineInitError
+from .opuspocus_pipeline import OpusPocusPipeline, PipelineConfig, PipelineState, PipelineStateError
 
-__all__ = ["OpusPocusPipeline", "PipelineConfig"]
+__all__ = ["OpusPocusPipeline", "PipelineConfig", "PipelineInitError", "PipelineState", "PipelineStateError"]
 logger = logging.getLogger(__name__)
 
 

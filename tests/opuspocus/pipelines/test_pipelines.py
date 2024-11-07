@@ -7,7 +7,6 @@ from opuspocus.pipelines import PipelineConfig, build_pipeline, load_pipeline
 
 # TODO(varisd): add more tests:
 #   - test pipeline graph (building, structure comparison, cycle check, etc.)
-#   - test status/traceback
 
 
 def test_build_pipeline_method(
@@ -75,12 +74,14 @@ def test_pipeline_class_init_default_targets(pipeline_preprocess_tiny_config_fil
 
 
 def test_get_pipeline_targets(pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited):
+    """Pipeline returns target steps (step: OpusPocusStep) given the step labels (step_label: str)."""
     config = PipelineConfig.load(pipeline_preprocess_tiny_config_file)
     config_targets = config["pipeline"]["default_targets"]
     for target in pipeline_preprocess_tiny_inited.get_targets(config_targets):
         assert target in pipeline_preprocess_tiny_inited.default_targets
 
 
-def test_get_unknown_pipeline_target_fail(pipeline_preprocess_tiny_inited):
+def test_get_unknown_pipeline_target_step_fail(pipeline_preprocess_tiny_inited):
+    """Fail if a target step with unknown step_label was requested."""
     with pytest.raises(ValueError):  # noqa: PT011
         pipeline_preprocess_tiny_inited.get_targets("foo")

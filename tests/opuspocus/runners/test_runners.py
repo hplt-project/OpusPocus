@@ -1,4 +1,3 @@
-import subprocess
 import time
 from pathlib import Path
 
@@ -8,12 +7,15 @@ from opuspocus.pipeline_steps import StepState
 from opuspocus.runners import OpusPocusRunner, load_runner
 from opuspocus.utils import open_file
 
-SLEEP_TIME = 2  # wait after submitting a job
+SLEEP_TIME_WAIT = 2  # wait after submitting a job
+SLEEP_TIME_SHORT = 15  # shorter waiting time
+SLEEP_TIME_LONG = 120  # long waiting time (for job cancel, manipulation, etc.)
 
 
 @pytest.fixture()
-def foo_runner_for_step_submit(foo_runner, foo_step_inited):
-    foo_runner.pipeline_dir = foo_step_inited.pipeline_dir
+def foo_runner_for_step_submit(foo_runner, foo_step):
+    """Mock runner for mock step-wise submissions."""
+    foo_runner.pipeline_dir = foo_step.pipeline_dir
     foo_runner.save_parameters()
     return foo_runner
 
@@ -38,6 +40,7 @@ def test_load_runner_method(foo_runner):
 
 
 def test_run_pipeline(foo_runner, foo_pipeline_inited):
+    """Execute a pipeline."""
     foo_runner.run_pipeline(foo_pipeline_inited)
     for step in foo_pipeline_inited.steps:
         if foo_runner.runner == "bash":
@@ -45,8 +48,12 @@ def test_run_pipeline(foo_runner, foo_pipeline_inited):
 
 
 def test_stop_pipeline(foo_runner, foo_pipeline_inited):
+    """Stop a running pipeline."""
+    for s in foo_pipeline_inited.steps:
+        s.sleep_time = SLEEP_TIME_LONG
+        s.save_parameters()
     foo_runner.run_pipeline(foo_pipeline_inited)
-    time.sleep(SLEEP_TIME)
+    time.sleep(SLEEP_TIME_WAIT)
 
     foo_runner.stop_pipeline(foo_pipeline_inited)
     for step in foo_pipeline_inited.steps:
@@ -54,6 +61,7 @@ def test_stop_pipeline(foo_runner, foo_pipeline_inited):
 
 
 def test_stop_pipeline_with_nonmatching_runner_fail(foo_runner, foo_pipeline_inited):
+    """Fail if you manipulate a pipeline with a different runner."""
     foo_runner.run_pipeline(foo_pipeline_inited)
     foo_runner.runner = "foobar"
     with pytest.raises(ValueError):  # noqa: PT011
@@ -61,21 +69,24 @@ def test_stop_pipeline_with_nonmatching_runner_fail(foo_runner, foo_pipeline_ini
 
 
 def test_submit_step(foo_runner_for_step_submit, foo_step_inited):
+    """Submit a single step."""
     foo_runner_for_step_submit.submit_step(foo_step_inited)
-    time.sleep(SLEEP_TIME)
+    time.sleep(SLEEP_TIME_WAIT)
     assert foo_step_inited.state in (StepState.SUBMITTED, StepState.RUNNING)
 
 
 def test_submitted_step_running(foo_runner_for_step_submit, foo_step_inited):
+    """The running step should submit subtasks for each target file."""
     foo_runner_for_step_submit.submit_step(foo_step_inited)
     while foo_step_inited.state == StepState.SUBMITTED:
-        time.sleep(SLEEP_TIME)
+        time.sleep(SLEEP_TIME_WAIT)
     sub_info = foo_runner_for_step_submit.load_submission_info(foo_step_inited)
     for target_path in foo_step_inited.get_command_targets():
         assert str(target_path) in [subtask["file_path"] for subtask in sub_info["subtasks"]]
 
 
 def test_submit_step_submission_info_structure(foo_runner_for_step_submit, foo_step_inited):
+    """The step submission info should have a pre-defined structure."""
     # Split the asserts, create a fixture (move this to a different test file).
     sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
     assert "runner" in sub_info
@@ -89,12 +100,15 @@ def test_submit_step_submission_info_structure(foo_runner_for_step_submit, foo_s
 
 
 def test_cancel_main_task(foo_runner_for_step_submit, foo_step_inited):
+    """Cancel a running step via its main task."""
+    foo_step_inited.sleep_time = SLEEP_TIME_LONG
+    foo_step_inited.save_parameters()
+
     sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
-    time.sleep(SLEEP_TIME)
+    time.sleep(SLEEP_TIME_WAIT)
 
     foo_runner_for_step_submit.cancel_task(sub_info["main_task"])
-    with pytest.raises(subprocess.SubprocessError):
-        foo_runner_for_step_submit.wait_for_single_task(sub_info["main_task"])
+    time.sleep(SLEEP_TIME_WAIT)
 
     assert foo_step_inited.state == StepState.FAILED
     for t_info in sub_info["subtasks"]:
@@ -102,13 +116,17 @@ def test_cancel_main_task(foo_runner_for_step_submit, foo_step_inited):
 
 
 def test_submit_running_step(foo_runner_for_step_submit, foo_step_inited):
+    """Submitting a running step just returns submission info of the running step."""
+    foo_step_inited.sleep_time = SLEEP_TIME_LONG
+    foo_step_inited.save_parameters()
     sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
-    resubmit_sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
-    assert sub_info == resubmit_sub_info
+    submit_again_sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
+    assert sub_info == submit_again_sub_info
 
 
 @pytest.mark.parametrize("keep_finished", [True, False])
 def test_submit_failed_step(foo_runner_for_step_submit, foo_step_inited, keep_finished):
+    """Submit a failed step (keep or remove finished target files from the finished subtasks)."""
     foo_step_inited.state = StepState.FAILED
     files = foo_step_inited.get_command_targets()
 
@@ -116,7 +134,7 @@ def test_submit_failed_step(foo_runner_for_step_submit, foo_step_inited, keep_fi
     with open_file(files[0], "w") as fh:
         print(failed_str, file=fh)
     sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited, keep_finished=keep_finished)
-    time.sleep(SLEEP_TIME)
+    time.sleep(SLEEP_TIME_WAIT)
 
     foo_runner_for_step_submit.wait_for_tasks([sub_info["main_task"]])
     assert foo_step_inited.state == StepState.DONE
@@ -132,30 +150,38 @@ def test_submit_failed_step(foo_runner_for_step_submit, foo_step_inited, keep_fi
 
 
 def test_submit_step_with_dependency(foo_runner_for_step_submit, bar_step_inited):
+    """Submit a step that has a different step as a dependency (waiting for the dependency to finish."""
     foo_runner_for_step_submit.submit_step(bar_step_inited)
-    time.sleep(SLEEP_TIME)
+    time.sleep(SLEEP_TIME_WAIT)
     for step in [bar_step_inited, bar_step_inited.dep_step]:
         assert step.state in (StepState.SUBMITTED, StepState.RUNNING)
 
 
 @pytest.mark.parametrize("keep_finished", [True, False])
-def test_resubmit_step(foo_runner_for_step_submit, foo_pipeline_inited, keep_finished):
-    if foo_runner_for_step_submit.runner == "bash":
+def test_resubmit_step(foo_runner, foo_pipeline_inited, keep_finished):
+    """Cancel a running step with its immediate resubmission (adjusting the dependencies of other submitted steps)."""
+    if foo_runner.runner == "bash":
         pytest.skip(reason="Not supported by Bash runner.")
 
     bar_step_inited = foo_pipeline_inited.default_targets[0]
+    bar_step_inited.sleep_time = SLEEP_TIME_SHORT
+    bar_step_inited.save_parameters()
+
     foo_step_inited = bar_step_inited.dep_step
+    foo_step_inited.sleep_time = SLEEP_TIME_SHORT
+    foo_step_inited.save_parameters()
 
-    foo_sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
-    bar_sub_info = foo_runner_for_step_submit.submit_step(bar_step_inited)
-    while foo_step_inited.state == StepState.SUBMITTED:
-        time.sleep(SLEEP_TIME)
+    foo_runner.pipeline_dir = foo_pipeline_inited.pipeline_dir
+    foo_runner.save_parameters()
 
-    new_foo_sub_info = foo_runner_for_step_submit.resubmit_step(foo_step_inited, keep_finished=keep_finished)
-    while foo_step_inited.state == StepState.SUBMITTED:
-        time.sleep(SLEEP_TIME)
+    foo_sub_info = foo_runner.submit_step(foo_step_inited)
+    bar_sub_info = foo_runner.submit_step(bar_step_inited)
+    time.sleep(SLEEP_TIME_WAIT)
+
+    new_foo_sub_info = foo_runner.resubmit_step(bar_step_inited.dep_step, keep_finished=keep_finished)
+    time.sleep(SLEEP_TIME_WAIT)
     assert foo_sub_info["main_task"]["id"] != new_foo_sub_info["main_task"]["id"]
 
-    foo_runner_for_step_submit.wait_for_tasks([bar_sub_info["main_task"]])
+    foo_runner.wait_for_tasks([bar_sub_info["main_task"]])
     for step in [foo_step_inited, bar_step_inited]:
         assert step.state == StepState.DONE

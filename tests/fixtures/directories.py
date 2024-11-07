@@ -19,15 +19,6 @@ def marian_dir(request):
 
 
 @pytest.fixture(scope="session")
-def hyperqueue_dir():
-    """Location of the HyperQueue program binary."""
-    hq_dir = Path("hyperqueue")
-    if not hq_dir.exists():
-        pytest.skip(reason=("Hyperqueue binary must be located at " f"{hq_dir}/bin/hq."))  # noqa: ISC001
-    return hq_dir
-
-
-@pytest.fixture(scope="session")
 def opuspocus_hq_server_dir(tmp_path_factory):
     """Temporary directory to store HQ server information during tests."""
     return Path(tmp_path_factory.mktemp("opuspocus_hq_server"))

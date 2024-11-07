@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
-from opuspocus.utils import concat_files, file_line_index, read_shard
+from opuspocus.utils import clean_dir, concat_files, file_line_index, read_shard
 
 logger = logging.getLogger(__name__)
 
@@ -225,13 +225,15 @@ class CorpusStep(OpusPocusStep):
         categories.json initialization.
         """
         # TODO: refactor opuscleaner_step.init_step to reduce code duplication
+        if self.state is StepState.INIT_INCOMPLETE:
+            logger.warning("[%s] Step is in %s state. Re-initializing...", self.step_label, self.state)
+            clean_dir(self.step_dir)
         if self.state is not None:
             if self.has_state(StepState.INITED):
-                logger.info("Step already initialized. Skipping...")
+                logger.info("[%s] Step already initialized. Skipping...", self.step_label)
                 return
-            else:  # noqa: RET505
-                err_msg = f"Trying to initialize step in a {self.state} state."
-                raise ValueError(err_msg)
+            err_msg = f"Trying to initialize step ({self.step_label}) in a {self.state} state."
+            raise ValueError(err_msg)
         # Set state to incomplete until finished initializing.
         self.create_directories()
         self.state = StepState.INIT_INCOMPLETE

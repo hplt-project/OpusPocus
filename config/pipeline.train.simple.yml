@@ -18,6 +18,7 @@ global:
   marian_dir: marian_dir 
   marian_config: config/marian.train.teacher.base.yml
 
+  max_epochs: null
   vocab_size: 64000
 
 pipeline:
@@ -57,6 +58,7 @@ pipeline:
       marian_dir: ${global.marian_dir}
       marian_config: ${global.marian_config}
       opustrainer_config: null
+      max_epochs: ${global.max_epochs}
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
@@ -72,6 +74,7 @@ pipeline:
       marian_dir: ${global.marian_dir}
       marian_config: ${global.marian_config}
       opustrainer_config: null
+      max_epochs: ${global.max_epochs}
       vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
       train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
