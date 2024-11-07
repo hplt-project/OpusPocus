@@ -59,13 +59,42 @@ Either run the main script `go.py` or the subcommand scripts from `opuspocus_cli
 Run the scripts directly from the root directory for this repository.
 (You may need to add the path to the local OpusPocus repository directory to your PYTHONPATH.)
 
+You can execute `./go.py --help` for general description or `./go.py <subcommand> --help` to list the available subcommand options.
+
 # Pipeline execution
 
-There are two main subcommands (init, run) which need to be executed separately.
-`./go.py init` prepares the pipeline directory structure and infers basic information about the datasets used in the pipeline.
-`./go.py run` executes the pipeline graph, running the code from each of the pipeline step in the order defined by the pipeline graph.
+Run `./go.py run` (or `opuspocus_cli/run`) while providing a pipeline configuration file to execute a new pipeline:
+```
+$ ./go.py --pipeline-dir <pipeline_destination> --pipeline-donfig <config_file> --runner <runner>
+```
 
-(See the ``examples/`` directory for example execution)
+Alternatively, run `./go.py run` while providing an existing pipeline directory to rerun a failed pipeline execution:
+```
+$ ./go.py run --pipeline-dir <pipeline_dir> --runner <runner>
+```
+
+You can use `--reinit` to reinitialize the exitisting pipeline before running.
+You can use `--resubmit-done` to also execute pipeline steps in the DONE state.
+
+Lastly, you can also stop and resubmit a running pipeline using `--stop-previous-run`
+```
+$ ./go.py run --pipeline-dir <pipeline_dir> --stop-previous-run
+```
+
+This is simialr to:
+```
+$ ./go.py stop --pipeline-dir <pipeline_dir>
+$ ./go.py run --pipeline-dir <pipeline_dir>
+```
+
+# Other subcommands
+
+- `stop` - stops the execution of a running pipeline
+- `status`- prints the status of a pipeline its steps
+- `traceback` - prints the dependency structure of a pipeline
+
+
+## Examples
 
 # I. Data preprocessing example
 
@@ -74,23 +103,16 @@ There are two main subcommands (init, run) which need to be executed separately.
 $ scripts/prepare_data.en-eu.sh
 ```
 
-1. Initialize the (data preprocessing) pipeline.
+1. Initialize and execute the (data preprocessing) pipeline.
 ```
 $ mkdir -p experiments/en-eu/preprocess.simple
-$ ./go.py init \
+$ ./go.py run \
     --pipeline-config config/pipeline.preprocess.yml \
-    --pipeline-dir experiments/en-eu/preprocess.simple
+    --pipeline-dir experiments/en-eu/preprocess.simple \
+	--runner bash
 ```
 - `--pipeline-config` (required) provides the details about the pipeline steps and their dependencies
 - `--pipeline-dir` (optional) overrides the `pipeline.pipeline_dir` value from the pipeline-config
-
-2. Execute the (data preprocessing) pipeline.
-```
-$ ./go.py run \
-    --pipeline-dir experiments/en-eu/preprocess.simple \
-    --runner bash 
-```
-- `--pipeline-dir` (required) path to the initialized pipeline directory.
 - `--runner` (required) runner to be used for pipeline execution. Use --runner slurm for more effective HPC execution (if Slurm is available)
 
 3. Check the pipeline status.
@@ -109,19 +131,13 @@ $ ./go.py status --pipeline-dir experiments/en-eu/preprocess.simple
 $ ./go.py status --pipeline-dir experiments/en-eu/preprocess.simple
 ```
 
-1. Initialize the training pipeline.
+1. Initialize and execute the training pipeline.
 ```
 $ mkdir -p experiments/en-eu/train.simple
-$ ./go.py init \
-    --pipeline-config config/pipeline.train.simple.yml \
-    --pipeline-dir experiments/en-eu/train.simple 
-```
-
-2. Execute the (data preprocessing) pipeline.
-```
 $ ./go.py run \
+    --pipeline-config config/pipeline.train.simple.yml \
     --pipeline-dir experiments/en-eu/train.simple \
-    --runner bash 
+	--runner bash
 ```
 
 # (Advanced) Config modification examples
