@@ -65,14 +65,14 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
         metavar="RUNNER",
         required=True,
         choices=RUNNER_REGISTRY.keys(),
-        help="Runner used for pipeline execution manipulation.",
+        help="Runner used for pipeline execution manipulation {" + ",".join(RUNNER_REGISTRY.keys()) + "}",
     )
     parser.add_argument(
         "--targets",
         type=str,
         nargs="+",
         default=None,
-        help="List of steps to be executed together with their dependencies.",
+        help="List of step labels to be executed together with their dependencies.",
     )
 
     args, unparsed = parser.parse_known_args(argv)
@@ -85,13 +85,14 @@ def parse_stop_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Termination")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
-    parser.add_argument(
-        "--targets",
-        type=str,
-        nargs="+",
-        default=None,
-        help="List of steps to be executed together with their dependencies.",
-    )
+    # TODO(varisd): add option to stop only the selected steps
+    #parser.add_argument(
+    #    "--targets",
+    #    type=str,
+    #    nargs="+",
+    #    default=None,
+    #    help="List of steps to be executed together with their dependencies.",
+    #)
 
     return parser.parse_args(argv)
 
