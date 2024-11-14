@@ -1,14 +1,14 @@
 import enum
-import inspect
 import json
 import logging
 import signal
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, get_type_hints
+from typing import Any, Dict, List, Optional
 
 import yaml
+from attrs import asdict, define, field, fields
 
 from opuspocus.utils import RunnerResources, clean_dir, print_indented
 
@@ -28,42 +28,18 @@ class StepState(str, enum.Enum):
         return [s.value for s in StepState]
 
 
+@define(kw_only=True)
 class OpusPocusStep:
     """Base class for OpusPocus pipeline steps."""
 
-    command_file = "step.command"
-    dependency_file = "step.dependencies"
-    state_file = "step.state"
-    parameter_file = "step.parameters"
+    step: str = field(converter=str)
+    step_label: str = field(converter=str)
+    pipeline_dir: Path = field(converter=Path)
 
-    def __init__(self, step: str, step_label: str, pipeline_dir: Path, **kwargs) -> None:  # noqa: ANN003
-        """Set the step parameters based on the parameters passed during
-        step object initialization.
-
-        Each step contains a set of step parameters and step dependencies
-        that define a unique step instance.
-
-        Any class inheriting from this class is required to avoid setting
-        class instance attributes. If needed, the shortcuts to additional
-        derived object attributes should be defined via @property class
-        methods.
-
-        TODO: implement strict restriction on setting object attributes
-        the derived classes
-        """
-        self.step = step
-        self.step_label = step_label
-        self.pipeline_dir = pipeline_dir
-
-        if pipeline_dir is None:
-            err_msg = (
-                f"{step_label}.pipeline_dir was not specified. Use --pipeline-dir "
-                "option to set global pipeline_dir or set the pipeline_dir "
-                "for the step using the config file."
-            )
-            raise ValueError(err_msg)
-
-        self.register_parameters(**kwargs)
+    _cmd_filename = "step.command"
+    _dependency_filename = "step.dependencies"
+    _state_filename = "step.state"
+    _parameter_filename = "step.parameters"
 
     @classmethod
     def build_step(cls: "OpusPocusStep", step: str, step_label: str, pipeline_dir: Path, **kwargs) -> "OpusPocusStep":  # noqa: ANN003
@@ -71,44 +47,33 @@ class OpusPocusStep:
 
         Args:
             step (str): step class name in the step class registry
+            step_label (str): unique step instance label
             pipeline_dir (Path): path to the pipeline directory
-            **kwargs: additional parameters for the derivedclass
+            **kwargs: additional parameters for the derived class
 
         Returns:
             An instance of the specified pipeline class.
         """
-        try:
-            cls_inst = cls(step, step_label, pipeline_dir, **kwargs)
-        except TypeError:
-            sig = inspect.signature(cls.__init__)
-            logger.exception(
-                "Error occured while building step %s (%s).\nStep Signature:\n%s\n",
-                step_label,
-                step,
-                "\n".join([f"\t{sig.parameters[x]}" for x in sig.parameters]),
-            )
-            raise
-        return cls_inst
+        return cls(step=step, step_label=step_label, pipeline_dir=pipeline_dir, **kwargs)
 
     @classmethod
     def list_parameters(cls: "OpusPocusStep", *, exclude_dependencies: bool = True) -> List[str]:
         """Return a list of arguments/required for initialization
 
         Args:
-            exclude_dependencies (bool): exlude the step dependencies
-            parameters
+            exclude_dependencies (bool): exlude the step dependencies parameters
 
-        These parameter lists are used during step instance saving/loading.
-        Step dependencies are handled differently (by saving/loading
-        their respective dep.step_label properties).
+        Returns
+        These parameter lists are used during step instance saving/loading. Step dependencies are handled differently
+        (by saving/loading their respective dep.step_label properties).
         """
         param_list = []
-        for param in inspect.signature(cls.__init__).parameters:
-            if param == "self":
+        for p in fields(cls):
+            if p.name.startswith("_"):
                 continue
-            if "_step" in param and exclude_dependencies:
+            if exclude_dependencies and "_step" in p.name:
                 continue
-            param_list.append(param)
+            param_list.append(p.name)
         return param_list
 
     @classmethod
@@ -117,79 +82,82 @@ class OpusPocusStep:
         step_label: str,
         pipeline_dir: Path,
     ) -> Dict[str, Any]:
-        """Load the previously initialized step instance parameters."""
-        params_path = Path(pipeline_dir, step_label, cls.parameter_file)
+        """Load the previously initialized step instance parameters.
+
+        Args:
+            step_label (str): unique step instance label
+            pipeline_dir (Path): path to the pipeline directory
+
+        Returns:
+            Dict containing key-value pairs for the step instance initialization. Step dependencies are represented
+            by their unique step labels.
+        """
+        params_path = Path(pipeline_dir, step_label, cls._parameter_filename)
         logger.debug("[%s] Loading step variables from %s", step_label, params_path)
 
         with params_path.open("r") as fh:
-            # TODO(varisd): check for missing/unknown parameters
             return yaml.safe_load(fh)
-
-    def get_parameters_dict(self, *, exclude_dependencies: bool = True) -> Dict[str, Any]:
-        """Serialize the step parameters"""
-        param_dict = {}
-        for param in self.list_parameters(exclude_dependencies=exclude_dependencies):
-            if "_step" in param:
-                if param in self.dependencies and self.dependencies[param] is not None:
-                    p = self.dependencies[param].step_label
-                else:
-                    p = None
-            else:
-                p = getattr(self, param)
-                if isinstance(p, Path):
-                    p = str(p)
-                if isinstance(p, (list, tuple)) and isinstance(p[0], Path):
-                    p = [str(v) for v in p]
-            param_dict[param] = p
-        return param_dict
-
-    def save_parameters(self) -> None:
-        """Save the step instance parameters."""
-        with Path(self.step_dir, self.parameter_file).open("w") as fh:
-            yaml.dump(self.get_parameters_dict(), fh)
-
-    def register_parameters(self, **kwargs) -> None:  # noqa: ANN003
-        """Class agnostic registration of the step instance parameters.
-
-        Each step inheriting from the abstract class has a set of attributes
-        and dependencies reflected by the parameters of its respective
-        __init__ method.
-
-        We make a distinction between the standard attributes and the step
-        dependencies (indicated by the '_step' suffix).
-
-        Use the @property method decorator to define object attributes that
-        are not direct step parameters, i.e. direct access to the attributes
-        of the step dependencies.
-        """
-        type_hints = get_type_hints(self.__init__)
-        logger.debug("[%s] Class type hints: %s", self.step_label, type_hints)
-
-        self.dependencies = {}
-        for param, val in kwargs.items():
-            if "_step" in param:
-                self.dependencies[param] = val
-            else:
-                v = val
-                if type_hints[param] == Path and val is not None:
-                    v = Path(val)
-                if type_hints[param] == List[Path]:
-                    v = [Path(v) for v in val]
-                setattr(self, param, v)
 
     @classmethod
     def load_dependencies(cls: "OpusPocusStep", step_label: str, pipeline_dir: Path) -> Dict[str, str]:
-        """Load step dependecies based on their unique step_label values."""
-        deps_path = Path(pipeline_dir, step_label, cls.dependency_file)
+        """Load step dependecies based on their unique step_label values.
+
+        Args:
+            step_label (str): step label of the step whose dependencies should be loaded
+            pipeline_dir (Path): path to the pipeline directory
+
+        Returns:
+            Dict containing attribute-to-step-label mapping of the invidual step dependencies.
+        """
+        deps_path = Path(pipeline_dir, step_label, cls._dependency_filename)
         logger.debug("[OpusPocusStep] Loading dependencies from %s", deps_path)
         with deps_path.open("r") as fh:
             return yaml.safe_load(fh)
 
+    def get_parameters_dict(self, *, exclude_dependencies: bool = True) -> Dict[str, Any]:
+        """Serialize the step parameters.
+
+        Args:
+            exclude_dependencies (bool): exlude the step dependencies parameters
+
+        Returns:
+            Dict containing key-value paris for the step instance initialization. Step dependencies are represented
+            by their unique step labels.
+        """
+        param_dict = {}
+        filter_list = [lambda attr, _: not attr.name.startswith("_")]
+        if exclude_dependencies:
+            filter_list.append(lambda attr, _: "_step" not in attr.name)
+        attr_dict = asdict(self, filter=lambda attr, val: all(fn(attr, val) for fn in filter_list))
+        for attr, value in attr_dict.items():
+            if "_step" in attr:
+                # Extract step_label from the dependencies
+                param_dict[attr] = None
+                if value is not None:
+                    param_dict[attr] = value.step_label
+            elif isinstance(value, Path):
+                param_dict[attr] = str(value)
+            elif isinstance(value, (list, tuple)) and isinstance(value[0], Path):
+                param_dict[attr] = [str(v) for v in value]
+            else:
+                param_dict[attr] = value
+        return param_dict
+
+    def save_parameters(self) -> None:
+        """Save the step instance parameters."""
+        with Path(self.step_dir, self._parameter_filename).open("w") as fh:
+            yaml.dump(self.get_parameters_dict(), fh)
+
     def save_dependencies(self) -> None:
         """Save the step dependencies using their unique step_label values."""
         deps_dict = {k: v.step_label for k, v in self.dependencies.items() if v is not None}
-        with Path(self.step_dir, self.dependency_file).open("w") as fh:
+        with Path(self.step_dir, self._dependency_filename).open("w") as fh:
             yaml.dump(deps_dict, fh)
+
+    @property
+    def dependencies(self) -> Dict[str, "OpusPocusStep"]:
+        """Shortcut that returns step-dependency attributes (denoted by a '_step' substring)."""
+        return asdict(self, filter=lambda attr, _: "_step" in attr.name)
 
     @property
     def step_dir(self) -> Path:
@@ -214,6 +182,16 @@ class OpusPocusStep:
         completuion.
         """
         return Path(self.step_dir, "temp")
+
+    @property
+    def state_path(self) -> Path:
+        """Location of the state file."""
+        return Path(self.step_dir, self._state_filename)
+
+    @property
+    def cmd_path(self) -> Path:
+        """Location of the parameterized step executable."""
+        return Path(self.step_dir, self._cmd_filename)
 
     def init_step(self) -> None:
         """Step initialization method.
@@ -244,7 +222,7 @@ class OpusPocusStep:
         self.init_dependencies()
         self.save_parameters()
         self.save_dependencies()
-        self.create_command()
+        self.create_cmd_file()
 
         # initialize state
         logger.info("[%s] Step Initialized.", self.step_label)
@@ -262,10 +240,6 @@ class OpusPocusStep:
             if not dep.has_state(StepState.INITED):
                 dep.init_step()
 
-    def get_file_list(self) -> Optional[List[Path]]:
-        """TODO"""
-        return None
-
     def create_directories(self) -> None:
         """Create the internal step directory structure."""
         # create step dir
@@ -277,52 +251,32 @@ class OpusPocusStep:
         logger.debug("[%s] Finished creating step directory.", self.step_label)
 
     def clean_directories(self, *, keep_finished: bool = False) -> None:
-        """TODO"""
-        clean_dir(self.tmp_dir)
+        """Remove the contents of the output and tmp directories.
 
+        In certain execution scenarios (e.g. execution restart/resubmit) we need to remove files created during
+        the previous execution to avoid undesired behavior.
+
+        Args:
+            keep_finished (bool): keep the previously finished target_files
+        """
+        clean_dir(self.tmp_dir)
         if not keep_finished:
+            # TODO(varisd): this should not be hard-wired in case we change naming in the derived
+            #   (e.g. CorpusStep class)
             clean_dir(self.output_dir, exclude="categories.json")
         logger.debug("[%s] Finished cleaning subdirectory contents (keep_finished=%s)", self.step_label, keep_finished)
 
-    def create_command(self) -> None:
-        """Save the string composed using into the compose_command method.
-
-        This method only handles writing command into a file. Command creation
-        is currently handled by the compose_command() method.
-        """
-        cmd_path = Path(self.step_dir, self.command_file)
-        if cmd_path.exists():
-            err_msg = f"File {cmd_path} already exists."
-            raise FileExistsError(err_msg)
-
-        with cmd_path.open("w") as fh:
-            print(self.compose_command(), file=fh)
-        cmd_path.chmod(0o755)
-        logger.debug("[%s] Finished creating step.command.", self.step_label)
-
-    def traceback_step(self, level: int = 0, *, full: bool = False) -> None:
-        """Print the information about the step state and variables.
-
-        If the step has any dependencies, call their respective traceback_step
-        methods.
-        """
-        assert level >= 0
-        print_indented(f"+ {self.step_label}: {self.state}", level)
-        if full:
-            for param in self.list_parameters():
-                print_indented(f"|-- {param} = {getattr(self, param)}", level)
-        for name, dep in self.dependencies.items():
-            print_indented(f"└-+ {name}", level)
-            if dep is None:
-                print_indented("+ None", level + 1)
-                continue
-            dep.traceback_step(level + 1, full=full)
-
     @property
     def state(self) -> Optional[StepState]:
-        state_path = Path(self.step_dir, self.state_file)
-        if state_path.exists():
-            with state_path.open("r") as fh:
+        """Current step state.
+
+        In practice, we might run multiple instances of a single step during execution, therefore, we use a state file
+        to synchronize the state between these instances.
+
+        TODO(varisd): better handling of the state file race conditions
+        """
+        if self.state_path.exists():
+            with self.state_path.open("r") as fh:
                 state = StepState(json.load(fh))
             assert state in StepState
             return state
@@ -337,8 +291,7 @@ class OpusPocusStep:
             logger.warning("[%s] The new step state is identical to the old one.", self.step_label)
             return
 
-        state_path = Path(self.step_dir, self.state_file)
-        with state_path.open("w") as fh:
+        with self.state_path.open("w") as fh:
             json.dump(state, fp=fh)
         logger.debug("[%s] Changed step state (old: %s -> new: %s).", self.step_label, old_state, state)
 
@@ -348,19 +301,35 @@ class OpusPocusStep:
 
     @property
     def is_running_or_submitted(self) -> bool:
+        """Shortcut for checking whether a step is in RUNNING or SUBMITTED state."""
         return any(self.has_state(state) for state in [StepState.RUNNING, StepState.SUBMITTED])
 
     def get_command_targets(self) -> List[Path]:
+        """List of the step execution targets.
+
+        Every OpusPocusStep implementation is required to define a list of execution targets (target files)
+        which are generated during step execution. All files are expected to be present (and containing the expected
+        results) at the end of the successful step execution.
+        """
         raise NotImplementedError()
 
     def run_main_task(self, runner: "OpusPocusRunner") -> None:  # noqa: F821
-        logging.basicConfig(level=logging.INFO)
-        self.command_preprocess()
+        """Executes the main part of the step executable.
 
+        This method handles preprocessing (optional), subtask submission (for each target_file) and postprocessing
+        after all subtasks successfully finished execution.
+        Additionally it handles termination signals (SIGTERM, SIGINT) and resubmission signals (SIGUSR1, SIGUSR2)
+        that can be received during execution.
+        """
+        logging.basicConfig(level=logging.INFO)
+        self.main_task_preprocess()
+
+        # we keep track of the submitted subtasks
         task_info_list = []
         submission_info = runner.load_submission_info(self)
 
         def cancel_signal_hander(signum, _) -> None:  # noqa: ANN001
+            """Handler for task cancellation signals."""
             logger.info("[%s] Received signal %s. Terminating subtasks...", self.step_label, signum)
             self.state = StepState.FAILED
             logger.info("[%s] Current subtask list: %s", self.step_label, " ".join(task_info_list))
@@ -372,6 +341,13 @@ class OpusPocusStep:
             signal.signal(sig, cancel_signal_hander)
 
         def resubmit_signal_handler(signum, _) -> None:  # noqa: ANN001
+            """Handler for task resubmission signals.
+
+            We use SIGUSR1 and SIGUSR2 to signal resubmission. All subtasks are terminated using SIGTERM and the main
+            task is resubmitted afterwards.
+            SIGUSR1 indicates skipping of the finished target files during resubmission.
+            SIGUSR2 indicates resubmission of all target files.
+            """
             # If the main task receives SIGUSR1 or SIGUSR2, terminate all subtasks,
             # FAIL and resubmit it
             logger.info("[%s] Received signal %i. Terminating subtasks...", self.step_label, signum)
@@ -394,6 +370,7 @@ class OpusPocusStep:
             signal.signal(sig, resubmit_signal_handler)
 
         for target_file in self.get_command_targets():
+            # skip target files that are already being processed
             t_infos = [t_info for t_info in submission_info["subtasks"] if t_info["file_path"] == str(target_file)]
             if len(t_infos) == 1 and runner.is_task_running(t_infos[0]):
                 logger.info(
@@ -406,14 +383,14 @@ class OpusPocusStep:
                 task_info_list.append(t_infos[0])
                 continue
 
+            # skip finished target files
             if target_file.exists():
                 logger.info("[%s] File %s already finished. Skipping submission...", self.step_label, str(target_file))
                 continue
 
-            cmd_path = Path(self.step_dir, self.command_file)
             timestamp = time.time()
             task_info = runner.submit_task(
-                cmd_path=cmd_path,
+                cmd_path=self.cmd_path,
                 target_file=target_file,
                 dependencies=None,
                 step_resources=runner.get_resources(self),
@@ -422,7 +399,7 @@ class OpusPocusStep:
             )
             task_info_list.append(task_info)
 
-            # Update the submission info
+            # update the submission info
             submission_info = runner.load_submission_info(self)
             submission_info["subtasks"] = task_info_list
             runner.save_submission_info(self, submission_info)
@@ -431,17 +408,30 @@ class OpusPocusStep:
 
         self.state = StepState.RUNNING
         runner.wait_for_tasks(task_info_list)
-        self.command_postprocess()
+        self.main_task_postprocess()
 
-        clean_dir(self.tmp_dir)
+        clean_dir(self.tmp_dir)  # cleanup
         self.state = StepState.DONE
 
-    def command_preprocess(self) -> None:
-        """TODO"""
+    def command(self, target_file: Path) -> None:
+        """A step-specific definition of execution steps required to create a give target_file.
+
+        This method should contain the implementation a given step's algorithm. At the end of the command execution
+        the target file must be created by the method's implementation.
+        """
+        raise NotImplementedError()
+
+    def main_task_preprocess(self) -> None:
+        """(Optional) preprocessing called before subtask execution."""
         pass
 
-    def command_postprocess(self) -> None:
-        """TODO"""
+    def main_task_postprocess(self) -> None:
+        """Postprocessing called after all subtasks successfully finished.
+
+        By default, we do a sanity check (all target files exist).
+        In practice, we use this method after parallel execution of step code, e.g. translating smaller parts of a
+        large corpus. After the execution the sharded output can be merged into a single output corpus.
+        """
         for target_file in self.get_command_targets():
             if not target_file.exists():
                 err_msg = (
@@ -450,7 +440,10 @@ class OpusPocusStep:
                 raise FileNotFoundError(err_msg)
 
     def run_subtask(self, target_file: Path) -> None:
-        """TODO"""
+        """A wrapper for the self.command() implementation.
+
+        Calls the self.command(target_file) with the give target_file and handles runtime exceptions.
+        """
         try:
             self.command(target_file)
         except Exception:
@@ -458,20 +451,8 @@ class OpusPocusStep:
                 target_file.unlink()
             raise
 
-    def command(self, target_file: Path) -> None:
-        """TODO"""
-        raise NotImplementedError()
-
-    def compose_command(self) -> str:
-        """Compose the step command.
-
-        We define a general step.command structure here to reduce code
-        duplication. The respective parts can be overwritten/reused if
-        necessary.
-
-        More fine-grained structure should be defined through cmd_body_str
-        method.
-        """
+    def _generate_cmd_file_contents(self) -> None:
+        """Create the contents of the step's executable file."""
         return f"""#!/usr/bin/env python3
 import sys
 from pathlib import Path
@@ -505,14 +486,44 @@ if __name__ == "__main__":
     sys.exit(0)
 """
 
+    def create_cmd_file(self) -> None:
+        """Create the executable that can be submitted by runners or as a standalone.
+
+        The executable has two modes based on whether it is provided with a target_file:
+            1. Without target file - self.run_main_task() method is executed which takes care of the submission
+                and management of subtasks for each of its predefined target files.
+            2. With target file - self.run_subtask() method is executed which in turn runs the
+                self.command(target_file) method
+        """
+        if self.cmd_path.exists():
+            err_msg = f"File {self.cmd_path} already exists."
+            raise FileExistsError(err_msg)
+
+        with self.cmd_path.open("w") as fh:
+            print(self._generate_cmd_file_contents(), file=fh)
+        self.cmd_path.chmod(0o755)
+        logger.debug("[%s] Finished creating %s.", self.step_label, self._cmd_filename)
+
+    def print_traceback(self, level: int = 0, *, full: bool = False) -> None:
+        """Recursively print the information about the step state, parameters and dependencies.
+
+        Args:
+            level (int): indentation level for nicer output
+            full (bool): print the full traceback, including step parameters
+        """
+        assert level >= 0
+        print_indented(f"+ {self.step_label}: {self.state}", level)
+        if full:
+            for param in self.list_parameters():
+                print_indented(f"|-- {param} = {getattr(self, param)}", level)
+        for name, dep in self.dependencies.items():
+            print_indented(f"└-+ {name}", level)
+            if dep is None:
+                print_indented("+ None", level + 1)
+                continue
+            dep.print_traceback(level + 1, full=full)
+
     @property
     def default_resources(self) -> RunnerResources:
-        """Definition of defeault runner resources for a specific step."""
+        """Definition of default runner resources for a specific step."""
         return RunnerResources()
-
-    def __eq__(self, other: "OpusPocusStep") -> bool:
-        """Object comparison logic."""
-        for param in self.list_parameters(exclude_dependencies=False):
-            if getattr(self, param, None) != getattr(other, param, None):
-                return False
-        return True

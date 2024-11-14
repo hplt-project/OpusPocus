@@ -85,14 +85,6 @@ def parse_stop_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Termination")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
-    # TODO(varisd): add option to stop only the selected steps
-    #parser.add_argument(
-    #    "--targets",
-    #    type=str,
-    #    nargs="+",
-    #    default=None,
-    #    help="List of steps to be executed together with their dependencies.",
-    #)
 
     return parser.parse_args(argv)
 
