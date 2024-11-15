@@ -157,7 +157,7 @@ class OpusPocusStep:
     @property
     def dependencies(self) -> Dict[str, "OpusPocusStep"]:
         """Shortcut that returns step-dependency attributes (denoted by a '_step' substring)."""
-        return asdict(self, filter=lambda attr, _: "_step" in attr.name)
+        return {attr.name: getattr(self, attr.name) for attr in fields(type(self)) if "_step" in attr.name}
 
     @property
     def step_dir(self) -> Path:

@@ -2,9 +2,11 @@ import importlib
 from pathlib import Path
 from typing import Callable
 
+from .corpus_step import CorpusStep
 from .opuspocus_step import OpusPocusStep, StepState
 
 __all__ = [
+    "CorpusStep",
     "OpusPocusStep",
     "StepState",
 ]

@@ -183,8 +183,6 @@ class OpusPocusRunner:
             if dep_sub_info is not None:
                 dep_sub_info_list.append(dep_sub_info)
 
-        cmd_path = Path(step.step_dir, step.command_file)
-
         # Submit the main step task which then is responsible of submitting its subtasks
         logger.info("[%s] Submitting '%s' main step task.", self.runner, step.step_label)
 
@@ -193,7 +191,7 @@ class OpusPocusRunner:
         try:
             timestamp = time.time()
             task_info = self.submit_task(
-                cmd_path=cmd_path,
+                cmd_path=step.cmd_path,
                 target_file=None,
                 dependencies=[dep["main_task"] for dep in dep_sub_info_list],
                 step_resources=self.get_resources(step),

@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from attrs import converters, define, field, validators
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
@@ -21,6 +22,7 @@ class CategoriesDict(TypedDict):
     mapping: Dict[str, List[str]]
 
 
+@define(kw_only=True)
 class CorpusStep(OpusPocusStep):
     """Base class for corpus-producing pipeline steps.
 
@@ -32,54 +34,24 @@ class CorpusStep(OpusPocusStep):
     of its execution.
     """
 
-    categories_file = "categories.json"
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(converter=converters.optional(str))
+    shard_size: int = field(validator=validators.optional(validators.instance_of(int)))
+    prev_corpus_step: "CorpusStep" = field(default=None)
 
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        src_lang: str,
-        tgt_lang: Optional[str] = None,
-        previous_corpus_step: Optional["CorpusStep"] = None,
-        shard_size: Optional[int] = None,
-        **kwargs,  # noqa: ANN003
-    ) -> None:
-        """Object initialization.
+    _categories_file = "categories.json"
 
-        Definition of common corpus step attributes such as corpora language,
-        previous corpus step or sharding size.
-
-        Args:
-            step: string used for step class registration
-            step_label: unique label of the step instance
-            pipeline_dir: root directory of a pipeline
-            src_lang: source-side language
-            tgt_lang: target-side language
-            prev_corpus_step: previous CorpusStep (being processed by the step)
-            shard_size: number of lines per individual dataset shards
-        """
-        if src_lang is None:
-            err_msg = "src_lang value cannot by NoneType."
+    @shard_size.validator
+    def must_be_positive_integer(self, attribute: str, value: int) -> None:
+        if value is not None and value <= 0:
+            err_msg = f"{attribute} must be a positive integer value (current value: {value})"
             raise ValueError(err_msg)
-        if shard_size is not None and shard_size <= 0:
-            err_msg = f"shard_size must be a positive integer value (value: {shard_size})."
-            raise ValueError(err_msg)
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            previous_corpus_step=previous_corpus_step,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            shard_size=shard_size,
-            **kwargs,
-        )
 
-    @property
-    def prev_corpus_step(self) -> "CorpusStep":
-        """Shortcut to the previous corpus step dependency."""
-        return self.dependencies["previous_corpus_step"]
+    @prev_corpus_step.validator
+    def none_or_inherited_from_corpus_step(self, attribute: str, value: Optional["CorpusStep"]) -> None:
+        if value is not None and not issubclass(type(value), type(self)):
+            err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep"
+            raise ValueError(err_msg)
 
     @property
     def input_dir(self) -> Optional[Path]:
@@ -89,95 +61,16 @@ class CorpusStep(OpusPocusStep):
         return self.prev_corpus_step.output_dir
 
     @property
-    def line_index_dict(self) -> Dict[str, List[int]]:
-        """Provides a list of file seek indices for each registered dataset.
-
-        Return:
-            A dictionary with keys reflecting the .output_dir filenames
-            and values containing the lists of seek indices indicating
-            beginning of line in the respective files.
-        """
-        assert self.state == StepState.DONE, (
-            f"{self.step_label}.output_dir dataset's line index can only be construceted "
-            "after the step successfully finished execution."
-        )
-
-        idx_dict = {}
-        for f_name in self.dataset_filename_list:
-            idx_dict[f_name] = file_line_index(Path(self.output_dir, f_name))
-        return idx_dict
-
-    def read_shard_from_dataset_file(self, filename: str, start: int, shard_size: int) -> List[str]:
-        """Provides input by reading a part of an input (.prev_corpus_step)
-        dataset corpus with regard to the output dataset shard.
-
-        Args:
-            filename: filename within a directory (without full path)
-        """
-        if filename not in self.dataset_filename_list:
-            dlist_str = " ".join(self.dataset_filename_list)
-            err_msg = f"{filename} is not in the list of dataset files ({dlist_str})"
-            raise ValueError(err_msg)
-
-        file_path = Path(self.output_dir, filename)
-        if not file_path.exists():
-            err_msg = f"File {file_path} does not exists"
-            raise FileNotFoundError(err_msg)
-
-        return read_shard(file_path, self.line_index_dict[filename], start, shard_size)
-
-    def get_input_dataset_shard_path_list(self, filename: str) -> List[Path]:
-        """Gets a list of shard files useful for prallel data processing.
-
-        The shard filenames are computed based on the size of the respective
-        input .prev_corpus_step dataset. The CorpusStep suporting sharding
-        should implement .command in a way that fetches the relevant shard
-        input using the .prev_corpus_step.line_index_dict method.
-
-        Args:
-            filename: dataset's filename
-
-        Returns:
-            List of full paths to the respective dataset output shards.
-        """
-        # Get list of indexed filenames based on the prev_corpus_step dataset size
-        assert self.prev_corpus_step is not None, (
-            f"({self.step_label}).previous_corpus_step is not specified. Sharding "
-            f"of the {filename} dataset in the ({self.step_label}).output_dir is "
-            f"determined using ({self.step_label}).previvous_corpus_step.output_dir "
-            f"{filename} file"
-        )
-        n_lines = len(self.prev_corpus_step.line_index_dict[filename])
-        n_shards = n_lines // self.shard_size
-        if n_lines % self.shard_size != 0:
-            n_shards += 1
-        return [Path(self.tmp_dir, f"{filename}.{i}.gz") for i in range(n_shards)]
-
-    def command_postprocess(self) -> None:
-        """By default merges all output dataset shards (if shard_size is not
-        None) into the single dataset file.
-        """
-        super().command_postprocess()
-
-        # By default, all dataset files must be available after a successful
-        # step command execution. If not, there must be sharded output that can
-        # be concatenated into the target file
-        for f_name in self.dataset_filename_list:
-            target_file = Path(self.output_dir, f_name)
-            if not target_file.exists():
-                concat_files(self.get_input_dataset_shard_path_list(f_name), target_file)
-
-    @property
     def categories_path(self) -> Path:
         """Full path to the categories.json."""
-        return Path(self.output_dir, self.categories_file)
+        return Path(self.output_dir, self._categories_file)
 
     @property
     def categories_dict(self) -> Optional[CategoriesDict]:
         """Shortcut for the categories.json contents."""
         if not self.categories_path.exists():
             return None
-        return self.load_categories_dict()
+        return json.load(self.categories_path.open("r"))
 
     @property
     def categories(self) -> Optional[List[str]]:
@@ -205,18 +98,92 @@ class CorpusStep(OpusPocusStep):
         """Full list of all the output_dir dataset filenames."""
         return [f"{dset}.{lang}.gz" for dset in self.dataset_list for lang in self.languages]
 
-    # Loading and Saving abstractions
-    # (if we want to change the file format in the future)
-    def load_categories_dict(self) -> CategoriesDict:
-        """Load categories.json file."""
-        return json.load(open(self.categories_path))  # noqa: PTH123, SIM115
+    @property
+    def line_index_dict(self) -> Dict[str, List[int]]:
+        """Provide a list of file seek indices for each registered dataset.
+
+        The indices can be used to seek shard inputs for the respective output shard files.
+
+        Return:
+            A dictionary with keys reflecting the .output_dir filenames
+            and values containing the lists of seek indices indicating
+            beginning of line in the respective files.
+        """
+        assert self.state == StepState.DONE, (
+            f"{self.step_label}.output_dir dataset's line index can only be construceted "
+            "after the step successfully finished execution."
+        )
+
+        idx_dict = {}
+        for f_name in self.dataset_filename_list:
+            idx_dict[f_name] = file_line_index(Path(self.output_dir, f_name))
+        return idx_dict
+
+    def main_task_postprocess(self) -> None:
+        """By default, merge all sharded output datasets into the single dataset files."""
+        super().main_task_postprocess()
+
+        # By default, all dataset files must be available after a successful
+        # step command execution. If not, there must be sharded output that can
+        # be concatenated into the target file
+        for f_name in self.dataset_filename_list:
+            target_file = Path(self.output_dir, f_name)
+            if not target_file.exists():
+                concat_files(self.infer_dataset_output_shard_path_list(f_name), target_file)
+
+    def read_shard_from_dataset_file(self, filename: str, start: int, shard_size: int) -> List[str]:
+        """Provides input by reading a part of an input (CorpusStep.prev_corpus_step) dataset corpus with regard
+        to the output dataset shard.
+
+        Args:
+            filename (str): filename within a directory (without full path)
+            start (int): starting line in the dataset
+            shard_size (int): number of returned lines
+
+        Return:
+            List of lines extracted from the filename.
+        """
+        if filename not in self.dataset_filename_list:
+            dlist_str = " ".join(self.dataset_filename_list)
+            err_msg = f"{filename} is not in the list of dataset files ({dlist_str})"
+            raise ValueError(err_msg)
+
+        file_path = Path(self.output_dir, filename)
+        if not file_path.exists():
+            err_msg = f"File {file_path} does not exists"
+            raise FileNotFoundError(err_msg)
+
+        return read_shard(file_path, self.line_index_dict[filename], start, shard_size)
+
+    def infer_dataset_output_shard_path_list(self, filename: str) -> List[Path]:
+        """Return a list of output shard file paths useful for parallel data processing.
+
+        The output shard filenames are computed based on the size of the respective input CorpusStep.prev_corpus_step
+        dataset. The CorpusStep suporting sharding should implement OpusPocusStep.command() in a way that fetches
+        the relevant shard input using the CorpusStep.prev_corpus_step.line_index_dict method.
+
+        Args:
+            filename: dataset's filename
+
+        Returns:
+            List of full paths to the respective dataset output shards.
+        """
+        # Get list of indexed filenames based on the prev_corpus_step dataset size
+        assert self.prev_corpus_step is not None, (
+            f"No {self.step_label}.prev_corpus_step was provided. Sharding of the {filename} dataset "
+            f"in the {self.step_label}.output_dir is determined using "
+            f"{self.step_label}.previvous_corpus_step.output_dir {filename} file"
+        )
+        n_lines = len(self.prev_corpus_step.line_index_dict[filename])
+        n_shards = n_lines // self.shard_size
+        if n_lines % self.shard_size != 0:
+            n_shards += 1
+        return [Path(self.tmp_dir, f"{filename}.{i}.gz") for i in range(n_shards)]
 
     def save_categories_dict(self, categories_dict: CategoriesDict) -> None:
-        """Save the categories dict into categories.json.
-
-        TODO: add syntax checking for the categories_dict parameter
-        """
-        json.dump(categories_dict, open(self.categories_path, "w"), indent=2)  # noqa: PTH123, SIM115
+        """Save the categories dict into categories.json."""
+        # TODO(varisd): add syntax checking for the categories_dict parameter
+        json.dump(categories_dict, self.categories_path.open("w"), indent=2)
 
     def init_step(self) -> None:
         """Step initialization method.
@@ -242,7 +209,7 @@ class CorpusStep(OpusPocusStep):
         self.init_categories_file()
         self.save_parameters()
         self.save_dependencies()
-        self.create_command()
+        self.create_cmd_file()
 
         # Initialize state
         logger.info("[%s] Step Initialized.", self.step_label)
@@ -253,8 +220,8 @@ class CorpusStep(OpusPocusStep):
         self.register_categories()
         if not self.categories_path.exists():
             err_msg = (
-                f"{self.categories_file} not found after initialization. Perhaps there is an issue "
-                "with the register_categories derived method implementation?"
+                f"{self._categories_file} not found after initialization. Perhaps there is an issue "
+                "with the {self.__name__}.register_categories() derived method implementation?"
             )
             raise FileNotFoundError(err_msg)
 
@@ -262,11 +229,11 @@ class CorpusStep(OpusPocusStep):
         """Step-specific code for listing corpora available in the step output.
         Produces categories.json
         """
-        NotImplementedError()  # noqa: PLW0133
+        raise NotImplementedError()
 
     @property
     def languages(self) -> List[str]:
-        """Provide the corpora lanugages."""
+        """Provide the corpora lanugage list."""
         if self.tgt_lang is not None:
             return [self.src_lang, self.tgt_lang]
         return [self.src_lang]
