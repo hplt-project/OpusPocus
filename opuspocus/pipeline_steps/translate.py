@@ -5,11 +5,12 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List
+
+from attrs import define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
 from opuspocus.pipeline_steps.train_model import TrainModelStep
 from opuspocus.utils import RunnerResources, open_file, read_shard, save_filestream
 
@@ -17,47 +18,37 @@ logger = logging.getLogger(__name__)
 
 
 @register_step("translate")
+@define(kw_only=True)
 class TranslateCorpusStep(CorpusStep):
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        marian_dir: Path,
-        src_lang: str,
-        tgt_lang: str,
-        previous_corpus_step: CorpusStep,
-        model_step: TrainModelStep,
-        beam_size: int = 4,
-        shard_size: Optional[int] = None,
-        model_suffix: str = "best-chrf",
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            marian_dir=marian_dir,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            previous_corpus_step=previous_corpus_step,
-            model_step=model_step,
-            beam_size=beam_size,
-            shard_size=shard_size,
-            model_suffix=model_suffix,
-        )
+    """Class implementing dataset translation using a provided NMT model."""
 
-    @property
-    def model_step(self) -> OpusPocusStep:
-        return self.dependencies["model_step"]
+    marian_dir: Path = field(validator=validators.instance_of(Path))
+    model_step: TrainModelStep = field()
+    beam_size: int = field(default=4, validator=validators.gt(0))
+    model_suffix: str = field(default="best-chrf")
+
+    @marian_dir.validator
+    def _path_exists(self, _: str, value: Path) -> None:
+        if not value.exists():
+            err_msg = f"Provided path ({value}) does not exist."
+            raise FileNotFoundError(err_msg)
+
+    @model_step.validator
+    def _inherited_from_train_model_step(self, attribute: str, value: TrainModelStep) -> None:
+        if not issubclass(type(value), TrainModelStep):
+            err_msg = f"{attribute} value must contain a class instance that inherits from TrainModelStep"
+            raise TypeError(err_msg)
 
     @property
     def model_config_path(self) -> Path:
+        """Location of the training config file."""
         return Path(f"{self.model_step.model_path}.{self.model_suffix}.npz.decoder.yml")
 
     def register_categories(self) -> None:
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
 
     def infer_input(self, tgt_file: Path) -> Path:
+        """Infer the input files (including sharing if enabled) given a target_file."""
         tgt_filename_stem_split = tgt_file.stem.split(".")
 
         lang_idx = -1  # non-sharded
@@ -96,6 +87,12 @@ class TranslateCorpusStep(CorpusStep):
         return src_file
 
     def get_command_targets(self) -> List[Path]:
+        """One file per each translated dataset.
+
+        If shard_size > 1, return a target_file for each translated output dataset shard instead.
+        The shards will be merged at the end of the main_task execution in the CorpusStep.main_task_postprocess()
+        method.
+        """
         if self.shard_size is not None:
             return [
                 shard_file_path
@@ -105,6 +102,10 @@ class TranslateCorpusStep(CorpusStep):
         return [Path(self.output_dir, f"{dset}.{self.tgt_lang}.gz") for dset in self.dataset_list]
 
     def command(self, target_file: Path) -> None:
+        """Invoke Marian's decode program to translate the input dataset.
+
+        The input file for the provided target_file is infered using TranslateStep.infer_input() method
+        """
         env = os.environ
         n_cpus = env[RunnerResources.get_env_name("cpus")]
         n_gpus = 0

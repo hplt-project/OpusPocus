@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import List
 
+from attrs import converters, define, field, validators
+
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
@@ -21,32 +23,24 @@ logger = logging.getLogger(__name__)
 
 
 @register_step("generate_vocab")
+@define(kw_only=True)
 class GenerateVocabStep(OpusPocusStep):
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        src_lang: str,
-        tgt_lang: str,
-        datasets: List[str],
-        marian_dir: Path,
-        corpus_step: CorpusStep,
-        seed: int = 42,
-        vocab_size: int = 64000,
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            datasets=datasets,
-            marian_dir=marian_dir,
-            corpus_step=corpus_step,
-            seed=seed,
-            vocab_size=vocab_size,
-        )
+    """Class implementing sentencepiece vocabulary generation."""
+
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(converter=converters.optional(str))
+    corpus_step: CorpusStep = field()
+    marian_dir: Path = field(converter=Path)
+    datasets: List[str] = field(factory=list)
+    seed: int = field(default=42)
+    vocab_size: int = field(default=64000, validator=validators.gt(0))
+
+    @corpus_step.validator
+    def _inherited_from_corpus_step(self, attribute: str, value: CorpusStep) -> None:
+        # TODO(varisd): remove duplicate code (similar to corpus_step.py validator)
+        if not issubclass(type(value), CorpusStep):
+            err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep."
+            raise TypeError(err_msg)
 
     def init_step(self) -> None:
         super().init_step()
@@ -57,29 +51,30 @@ class GenerateVocabStep(OpusPocusStep):
                     self.corpus_step.step_label,
                     self.corpus_step.categories_dict,
                 )
-                err_msg = f"Dataset {dset} is not registered in the {self.corpus_step.step_label} categories.json"
+                err_msg = f"Dataset {dset} is not registered in the {self.corpus_step.step_label} categories.json."
                 raise ValueError(err_msg)
 
     @property
-    def corpus_step(self) -> OpusPocusStep:
-        return self.dependencies["corpus_step"]
-
-    @property
     def input_dir(self) -> Path:
+        """Previous step's output_dir."""
         return self.corpus_step.output_dir
 
     @property
     def vocab_path(self) -> Path:
+        """Sentencepiece vocabulary model file path."""
         return Path(self.output_dir, f"model.{self.src_lang}-{self.tgt_lang}.spm")
 
     @property
     def languages(self) -> List[str]:
+        """Provide the model's language list."""
         return [self.src_lang, self.tgt_lang]
 
     def get_command_targets(self) -> List[Path]:
+        """The only target is the sentencepiece vocabulary."""
         return [self.vocab_path]
 
     def command(self, target_file: Path) -> None:
+        """Invoke Marian's spm_train to create the sentencepiece model (and its related files)."""
         spm_train_path = Path(self.marian_dir, "build", "spm_train")
         model_prefix = f"{self.output_dir}/{target_file.stem}"
         n_cpus = int(os.environ[RunnerResources.get_env_name("cpus")])

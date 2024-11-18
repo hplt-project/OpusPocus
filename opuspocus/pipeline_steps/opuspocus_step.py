@@ -137,7 +137,7 @@ class OpusPocusStep:
                     param_dict[attr] = value.step_label
             elif isinstance(value, Path):
                 param_dict[attr] = str(value)
-            elif isinstance(value, (list, tuple)) and isinstance(value[0], Path):
+            elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
                 param_dict[attr] = [str(v) for v in value]
             else:
                 param_dict[attr] = value
@@ -156,7 +156,7 @@ class OpusPocusStep:
 
     @property
     def dependencies(self) -> Dict[str, "OpusPocusStep"]:
-        """Shortcut that returns step-dependency attributes (denoted by a '_step' substring)."""
+        """Provide step-dependency attributes (denoted by a '_step' substring)."""
         return {attr.name: getattr(self, attr.name) for attr in fields(type(self)) if "_step" in attr.name}
 
     @property
@@ -301,7 +301,7 @@ class OpusPocusStep:
 
     @property
     def is_running_or_submitted(self) -> bool:
-        """Shortcut for checking whether a step is in RUNNING or SUBMITTED state."""
+        """Check whether a step is in RUNNING or SUBMITTED state."""
         return any(self.has_state(state) for state in [StepState.RUNNING, StepState.SUBMITTED])
 
     def get_command_targets(self) -> List[Path]:

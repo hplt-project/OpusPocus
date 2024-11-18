@@ -5,7 +5,7 @@ from opuspocus.pipeline_steps.evaluate import EvaluateStep
 from opuspocus.runners.debug import DebugRunner
 
 
-@pytest.fixture(params=EvaluateStep.AVAILABLE_METRICS)
+@pytest.fixture(params=EvaluateStep._available_metrics)  # noqa: SLF001
 def evaluate_step_inited(request, train_data_parallel_tiny_raw_step_inited):
     """Create and initialize the evaluate step."""
     step = build_step(

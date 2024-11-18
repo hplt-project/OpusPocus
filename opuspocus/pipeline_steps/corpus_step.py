@@ -36,26 +36,20 @@ class CorpusStep(OpusPocusStep):
 
     src_lang: str = field(validator=validators.instance_of(str))
     tgt_lang: str = field(converter=converters.optional(str))
-    shard_size: int = field(validator=validators.optional(validators.instance_of(int)))
+    shard_size: int = field(validator=validators.optional(validators.gt(0)), default=None)
     prev_corpus_step: "CorpusStep" = field(default=None)
 
     _categories_file = "categories.json"
 
-    @shard_size.validator
-    def must_be_positive_integer(self, attribute: str, value: int) -> None:
-        if value is not None and value <= 0:
-            err_msg = f"{attribute} must be a positive integer value (current value: {value})"
-            raise ValueError(err_msg)
-
     @prev_corpus_step.validator
-    def none_or_inherited_from_corpus_step(self, attribute: str, value: Optional["CorpusStep"]) -> None:
-        if value is not None and not issubclass(type(value), type(self)):
-            err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep"
+    def _none_or_inherited_from_corpus_step(self, attribute: str, value: Optional["CorpusStep"]) -> None:
+        if value is not None and not issubclass(type(value), CorpusStep):
+            err_msg = f"{attribute} value must contain NoneType or a class instance that inherits from CorpusStep"
             raise ValueError(err_msg)
 
     @property
     def input_dir(self) -> Optional[Path]:
-        """Shortcut to the input directory (previous step's output)."""
+        """Previous step's output directory."""
         if self.prev_corpus_step is None:
             return None
         return self.prev_corpus_step.output_dir
@@ -67,14 +61,14 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def categories_dict(self) -> Optional[CategoriesDict]:
-        """Shortcut for the categories.json contents."""
+        """Contents of the categories.json file."""
         if not self.categories_path.exists():
             return None
         return json.load(self.categories_path.open("r"))
 
     @property
     def categories(self) -> Optional[List[str]]:
-        """Shortcut for the categories list in categories.json."""
+        """List of categories in categories.json file."""
         if self.categories_dict is None:
             return None
         return [cat["name"] for cat in self.categories_dict["categories"]]
@@ -233,7 +227,7 @@ class CorpusStep(OpusPocusStep):
 
     @property
     def languages(self) -> List[str]:
-        """Provide the corpora lanugage list."""
+        """List of the corpora lanugages."""
         if self.tgt_lang is not None:
             return [self.src_lang, self.tgt_lang]
         return [self.src_lang]

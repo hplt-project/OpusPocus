@@ -1,54 +1,44 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List
+
+from attrs import define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 
 
 @register_step("merge")
+@define(kw_only=True)
 class MergeCorpusStep(CorpusStep):
-    """Merge two corpus steps into a single one.
+    """Class for merging of two corpus steps into a single one.
 
     Takes the other_corpus_step output_dir contents and adds them
     to the contents of the previous_corpus_step output_dir.
 
     This is mainly a helper step for training with backtranslation.
+
+    # TODO(varisd): support merging more than two corpus steps.
     """
 
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        previous_corpus_step: CorpusStep,
-        previous_corpus_label: str,
-        other_corpus_step: CorpusStep,
-        other_corpus_label: str,
-        src_lang: str,
-        tgt_lang: str = None,  # noqa: RUF013
-        shard_size: Optional[int] = None,
-        *,
-        merge_categories: bool = False,
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            previous_corpus_step=previous_corpus_step,
-            previous_corpus_label=previous_corpus_label,
-            other_corpus_step=other_corpus_step,
-            other_corpus_label=other_corpus_label,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            shard_size=shard_size,
-            merge_categories=merge_categories,
-        )
+    prev_corpus_label: str = field(validator=validators.instance_of(str))
+    other_corpus_step: CorpusStep = field()
+    other_corpus_label: str = field(validator=validators.instance_of(str))
+    merge_categories: bool = field(default=False)
 
-    @property
-    def other_corpus_step(self) -> CorpusStep:
-        return self.dependencies["other_corpus_step"]
+    @other_corpus_step.validator
+    def _inherited_from_corpus_step(self, attribute: str, value: CorpusStep) -> None:
+        # TODO(varisd): remove duplicate code (similar to corpus_step.py validator)
+        if not issubclass(type(value), CorpusStep):
+            err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep."
+            raise TypeError(err_msg)
 
     def register_categories(self) -> None:
+        """Infer new categories.json by merging the categories.json files from the prev_corpus_step
+        and other_corpus_step.
+
+        We avoid naming collissions by using the prev_corpus_label and other_corpus_label as the prefix for the
+        MergeStep corpus files.
+        """
         categories_dict = {"categories": [], "mapping": {}}
 
         # Register categories
@@ -84,9 +74,16 @@ class MergeCorpusStep(CorpusStep):
         self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
+        """One target_file per corpus linked from prev_corpus_step or other_corpus_step
+        (with its after-merge naming).
+        """
         return [Path(self.output_dir, f"{dset}.{lang}.gz") for dset in self.dataset_list for lang in self.languages]
 
     def command(self, target_file: Path) -> None:
+        """Create a target_file by hardlinking it to its original corpus file.
+
+        We infer the original corpus filename from the target_file.
+        """
         target_filename = target_file.stem + target_file.suffix
         source_filename = ".".join(target_filename.split(".")[1:])
         source_label = target_filename.split(".")[0]
