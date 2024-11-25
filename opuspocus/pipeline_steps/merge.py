@@ -13,7 +13,7 @@ class MergeCorpusStep(CorpusStep):
     """Class for merging of two corpus steps into a single one.
 
     Takes the other_corpus_step output_dir contents and adds them
-    to the contents of the previous_corpus_step output_dir.
+    to the contents of the prev_corpus_step output_dir.
 
     This is mainly a helper step for training with backtranslation.
 
@@ -45,7 +45,7 @@ class MergeCorpusStep(CorpusStep):
         for cat in self.prev_corpus_step.categories:
             cat_val = cat
             if not self.merge_categories:
-                cat_val = f"{self.previous_corpus_label}.{cat}"
+                cat_val = f"{self.prev_corpus_label}.{cat}"
             categories_dict["categories"].append({"name": cat_val})
         for cat in self.other_corpus_step.categories:
             cat_val = cat
@@ -58,10 +58,8 @@ class MergeCorpusStep(CorpusStep):
         for cat, dset_list in self.prev_corpus_step.category_mapping.items():
             cat_val = cat
             if not self.merge_categories:
-                cat_val = f"{self.previous_corpus_label}.{cat}"
-            categories_dict["mapping"][cat_val] = [
-                f"{self.previous_corpus_label}.{dset_name}" for dset_name in dset_list
-            ]
+                cat_val = f"{self.prev_corpus_label}.{cat}"
+            categories_dict["mapping"][cat_val] = [f"{self.prev_corpus_label}.{dset_name}" for dset_name in dset_list]
         for cat, dset_list in self.other_corpus_step.category_mapping.items():
             cat_val = cat
             if not self.merge_categories:
@@ -87,7 +85,7 @@ class MergeCorpusStep(CorpusStep):
         target_filename = target_file.stem + target_file.suffix
         source_filename = ".".join(target_filename.split(".")[1:])
         source_label = target_filename.split(".")[0]
-        if source_label == self.previous_corpus_label:
+        if source_label == self.prev_corpus_label:
             target_file.hardlink_to(Path(self.prev_corpus_step.output_dir, source_filename))
         elif source_label == self.other_corpus_label:
             target_file.hardlink_to(Path(self.other_corpus_step.output_dir, source_filename))

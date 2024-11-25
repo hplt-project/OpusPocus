@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, List
 
 import sacrebleu
-from attrs import Factory, define, field
+from attrs import Factory, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 class EvaluateStep(OpusPocusStep):
     """Class implementing translation evaluation."""
 
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(validator=validators.instance_of(str))
     translated_corpus_step: CorpusStep = field()
     reference_corpus_step: CorpusStep = field()
     datasets: List[str] = field(factory=list)

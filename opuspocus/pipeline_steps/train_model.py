@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import yaml
-from attrs import Factory, define, field, validators
+from attrs import Factory, converters, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -26,13 +26,13 @@ class TrainModelStep(OpusPocusStep):
 
     src_lang: str = field(validator=validators.instance_of(str))
     tgt_lang: str = field(validator=validators.instance_of(str))
-    marian_dir: Path = field(validator=validators.instance_of(Path))
-    marian_config: Path = field(validator=validators.instance_of(Path))
+    marian_dir: Path = field(converter=Path)
+    marian_config: Path = field(converter=Path)
     vocab_step: GenerateVocabStep = field()
     train_corpus_step: CorpusStep = field()
     valid_corpus_step: CorpusStep = field()
     model_init_step: "TrainModelStep" = field(default=None)
-    opustrainer_config: Path = field(default=None, validator=validators.optional(validators.instance_of(Path)))
+    opustrainer_config: Path = field(default=None, converter=converters.optional(Path))
     seed: int = field(default=42)
     max_epochs: int = field(default=None, validator=validators.optional(validators.gt(0)))
     train_categories: List[str] = field(factory=list)
@@ -46,7 +46,10 @@ class TrainModelStep(OpusPocusStep):
     @marian_dir.validator
     @marian_config.validator
     @opustrainer_config.validator
-    def _is_none_or_path_exists(self, _: str, value: Path) -> None:
+    def _path_exists(self, attribute: str, value: Path) -> None:
+        if value is None and attribute != "opustrainer_config":
+            err_msg = f"Attribute `{attribute}` value must be type Path (NoneType was provided)."
+            raise ValueError(err_msg)
         if value is not None and not value.exists():
             err_msg = f"Provided path ({value}) does not exist."
             raise FileNotFoundError(err_msg)

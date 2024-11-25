@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from attrs import converters, define, field, validators
 from omegaconf import OmegaConf
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step
@@ -15,10 +16,89 @@ logger = logging.getLogger(__name__)
 PipelineState = StepState
 
 
+@define(kw_only=True)
+class PipelineGraph:
+    """Class representing the pipelien graph structure."""
+
+    config: "PipelineConfig" = field(validator=validators.instance_of("PipelineConfig"))
+    steps: Dict[str, OpusPocusStep] = field(init=False, factory=dict)
+    targets: List[OpusPocusStep] = field(init=False, factory=list)
+
+    def __attrs_post_init__(self) -> None:
+        self.steps, self.targets = self.build_graph(self.config)
+
+    def build_graph(self, pipeline_config: OmegaConf) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
+        """TODO"""
+        pipeline_dir = pipeline_config.pipeline.pipeline_dir
+
+        steps = {}  # type: Dict[str, OpusPocusStep]
+        steps_configs = {s.step_label: OmegaConf.to_object(s) for s in pipeline_config.pipeline.steps}
+
+        def _build_step_inner(step_label: str) -> OpusPocusStep:
+            """Build step and its dependencies."""
+            if step_label in steps:
+                return steps[step_label]
+
+            # Create the arguments for the step instance initialization
+            step_args = {}
+            logger.info("Creating parameters to build %s object.", step_label)
+            for k, v in steps_configs[step_label].items():
+                # Simply assing the value if None or not a dependency parameter
+                if "_step" not in k or v is None:
+                    step_args[k] = v
+                else:
+                    if v not in steps_configs:
+                        err_msg = f"Step '{step_label}' has an undefined dependency '{k}={v}'."
+                        raise ValueError(err_msg)
+                    step_args[k] = _build_step_inner(v)
+
+            # Set default (global) pipeline_dir
+            if "pipeline_dir" not in steps_configs[step_label]:
+                step_args["pipeline_dir"] = pipeline_dir
+
+            try:
+                steps[step_label] = build_step(**step_args)
+            except Exception as e:
+                logger.exception("Step parameters:\n%s", step_args)
+                raise e  # noqa: TRY201
+
+            return steps[step_label]
+
+        # Create pipeline step objects
+        for step_label in steps_configs:
+            _build_step_inner(step_label)
+
+        targets = []
+        if "targets" in pipeline_config.pipeline:
+            targets = [steps[step_label] for step_label in pipeline_config.pipeline.targets]
+        return steps, targets
+
+
+@define(kw_only=True)
 class OpusPocusPipeline:
     """Base class for OpusPocus pipelines."""
 
-    config_file = "pipeline.config"
+    pipeline_dir: Path = field(converter=converters.optional(Path), default=None)
+    pipeline_config: "PipelineConfig" = field(
+        converter=validators.optional(validators.instance_of("PipelineConfig")), default=None
+    )
+    pipeline_graph: PipelineGraph = field(init=False, default=None)
+
+    _config_file = "pipeline.config"
+
+    def __attrs_post_init__(self) -> None:
+        if self.pipeline_config is None and self.pipeline_dir is None:
+            err_msg = (
+                "Either the pipeline_config or the pipeline_dir containing a pipeline config file must be provided"
+            )
+            raise ValueError(err_msg)
+        if self.pipeline_dir is None:
+            self.pipeline_dir = self.pipeline_config.pipeline_dir
+        elif self.pipeline_config is None:
+            self.pipeline_config = PipelineConfig.load(Path(self.pipeline_dir, self._config_file))
+        else:
+            self.pipeline_config.pipeline_dir = self.pipeline_dir
+        self.pipeline_graph = PipelineGraph(self.pipeline_config)
 
     @staticmethod
     def add_args(parser: argparse.ArgumentParser, *, pipeline_dir_required: bool = True) -> None:
@@ -31,37 +111,15 @@ class OpusPocusPipeline:
             help="Pipeline root directory location.",
         )
 
-    def __init__(
-        self,
-        pipeline_config_path: Path,
-        pipeline_dir: Optional[Path] = None,
-    ) -> None:
-        """TODO: describe the overwrite order"""
-        # Load pipeline config
-        pipeline_config = PipelineConfig.load(pipeline_config_path)
-        if pipeline_dir is not None:
-            pipeline_config.pipeline.pipeline_dir = pipeline_dir
-
-        # Construct the pipeline graph
-        graph_tuple = self.build_pipeline_graph(pipeline_config)
-        self.pipeline_graph = graph_tuple[0]
-        self.default_targets = graph_tuple[1]
-
-        # Create the pipeline config without the (global) wildcards
-        # Actually set the class attribute
-        self.pipeline_config = PipelineConfig.create(
-            pipeline_config.pipeline.pipeline_dir,
-            self.pipeline_graph,
-            self.default_targets,
-        )
+    @property
+    def steps(self) -> Dict[str, OpusPocusStep]:
+        """TODO"""
+        return self.pipeline_graph.steps
 
     @property
-    def pipeline_dir(self) -> Path:
-        return Path(self.pipeline_config.pipeline.pipeline_dir)
-
-    @property
-    def steps(self) -> List[OpusPocusStep]:
-        return list(self.pipeline_graph.values())
+    def targets(self) -> List[OpusPocusStep]:
+        """TODO"""
+        return self.pipeline_graph.targets
 
     @property
     def state(self) -> Optional[PipelineState]:  # noqa: PLR0911
@@ -82,27 +140,23 @@ class OpusPocusPipeline:
         return None
 
     @classmethod
-    def build_pipeline(
-        cls: "OpusPocusPipeline",
-        pipeline_config_path: Path,
-        pipeline_dir: Path,
-    ) -> "OpusPocusPipeline":
+    def build_pipeline(cls: "OpusPocusPipeline", pipeline_config_path: Path, pipeline_dir: Path) -> "OpusPocusPipeline":
         """Build a specified pipeline instance.
 
         Args:
-            pipeline_config_path (Path): TODO
-            pipeline_dir (Path): TODO
+            pipeline_config_path (Path): Location of the config file
+            pipeline_dir (Path): Location of the pipeline directory
 
         Returns:
-            An instance of the specified pipeline class.
+            An instance of the pipeline.
         """
-        return cls(pipeline_config_path, pipeline_dir)
+        pipeline_config = None
+        if pipeline_config_path is not None:
+            pipeline_config = PipelineConfig.load(pipeline_config_path)
+        return cls(pipeline_config=pipeline_config, pipeline_dir=pipeline_dir)
 
     @classmethod
-    def load_pipeline(
-        cls: "OpusPocusPipeline",
-        pipeline_dir: Path,
-    ) -> "OpusPocusPipeline":
+    def load_pipeline(cls: "OpusPocusPipeline", pipeline_dir: Path) -> "OpusPocusPipeline":
         """Load the existing pipeline."""
         if not pipeline_dir.exists():
             err_msg = f"Pipeline directory ({pipeline_dir}) does not exist."
@@ -111,7 +165,7 @@ class OpusPocusPipeline:
             err_msg = f"{pipeline_dir} is not a directory."
             raise NotADirectoryError(err_msg)
 
-        pipeline_config_path = Path(pipeline_dir, cls.config_file)
+        pipeline_config_path = Path(pipeline_dir, cls._config_file)
         return cls(pipeline_config_path, pipeline_dir)
 
     def save_pipeline(self) -> None:
@@ -120,58 +174,8 @@ class OpusPocusPipeline:
         Saves the dependency structure of the pipeline steps, pipeline target
         steps and pipeline parameters in their respective YAML files.
         """
-        PipelineConfig.save(self.pipeline_config, Path(self.pipeline_dir, self.config_file))
-
-    def build_pipeline_graph(
-        self, pipeline_config: Optional[OmegaConf] = None
-    ) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
-        # TODO: make this into a separate class -> Pipeline will contain a
-        #   Graph object (motivation: better testing, converting config
-        #   to graph, code maintenance)
-        """TODO"""
-        pipeline_dir = pipeline_config.pipeline.pipeline_dir
-
-        pipeline_steps = {}  # type: Dict[str, OpusPocusStep]
-        pipeline_steps_configs = {s.step_label: OmegaConf.to_object(s) for s in pipeline_config.pipeline.steps}
-
-        def _build_step_inner(step_label: str) -> OpusPocusStep:
-            """Build step and its dependencies."""
-            if step_label in pipeline_steps:
-                return pipeline_steps[step_label]
-
-            # Create the arguments for the step instance initialization
-            step_args = {}
-            logger.info("Creating parameters to build %s object.", step_label)
-            for k, v in pipeline_steps_configs[step_label].items():
-                # Simply assing the value if None or not a dependency parameter
-                if "_step" not in k or v is None:
-                    step_args[k] = v
-                else:
-                    if v not in pipeline_steps_configs:
-                        err_msg = f"Step '{step_label}' has an undefined dependency '{k}={v}'."
-                        raise ValueError(err_msg)
-                    step_args[k] = _build_step_inner(v)
-
-            # Set default (global) pipeline_dir
-            if "pipeline_dir" not in pipeline_steps_configs[step_label]:
-                step_args["pipeline_dir"] = pipeline_dir
-
-            try:
-                pipeline_steps[step_label] = build_step(**step_args)
-            except Exception as e:
-                logger.exception("Step parameters:\n%s", step_args)
-                raise e  # noqa: TRY201
-
-            return pipeline_steps[step_label]
-
-        # Create pipeline step objects
-        for step_label in pipeline_steps_configs:
-            _build_step_inner(step_label)
-
-        default_targets = []
-        if "default_targets" in pipeline_config.pipeline:
-            default_targets = [pipeline_steps[step_label] for step_label in pipeline_config.pipeline.default_targets]
-        return pipeline_steps, default_targets
+        config = PipelineConfig.create(self.pipeline_dir, self.pipeline_graph)
+        config.save(Path(self.pipeline_dir, self._config_file))
 
     def init(self) -> None:
         """Initialize the pipeline."""
@@ -197,22 +201,24 @@ class OpusPocusPipeline:
         clean_dir(self.pipeline_dir)
         self.init()
 
-    def status(self, steps: List[OpusPocusStep]) -> None:
+    def print_status(self, steps: List[OpusPocusStep]) -> None:
+        """TODO"""
         header = f"{self.pipeline_dir.stem}{self.pipeline_dir.suffix}|{self.__class__.__name__}|{self.state.value!s}"
         print(header)  # noqa: T201
         print("-" * len(header))  # noqa: T201
         for s in steps:
             print(f"{s.step_label}|{s.__class__.__name__}|{s.state.value!s}")  # noqa: T201
 
-    def traceback(self, target_labels: Optional[List[str]] = None, *, full: bool = False) -> None:
+    def print_traceback(self, target_labels: Optional[List[str]] = None, *, full: bool = False) -> None:
         """Print the pipeline structure and status of the individual steps."""
         targets = self.get_targets(target_labels)
         for i, v in enumerate(targets):
             print(f"Target {i}: {v.step_label}")  # noqa: T201
-            v.traceback_step(level=0, full=full)
+            v.print_traceback(level=0, full=full)
             print()  # noqa: T201
 
     def _get_step(self, step_label: str) -> Optional[OpusPocusStep]:
+        """TODO"""
         output = [s for s in self.steps if s.step_label == step_label]
         assert len(output) <= 1
         if output:
@@ -220,6 +226,7 @@ class OpusPocusPipeline:
         return None
 
     def get_targets(self, target_labels: Optional[List[str]] = None) -> List[OpusPocusStep]:
+        """TODO"""
         if target_labels is not None:
             targets = []
             for t_label in target_labels:
@@ -229,9 +236,9 @@ class OpusPocusPipeline:
                     raise ValueError(err_msg)
                 targets.append(t_step)
             return targets
-        if self.default_targets is not None:
+        if self.targets:
             logger.info("No target steps were specified. Using default targets.")
-            return self.default_targets
+            return self.targets
         err_msg = (
             "The pipeline does not contain any default target steps. "
             'Please specify the targets using the "--pipeline-targets" option.'
@@ -239,6 +246,7 @@ class OpusPocusPipeline:
         raise ValueError(err_msg)
 
     def get_dependants(self, step: OpusPocusStep) -> List[OpusPocusStep]:
+        """TODO"""
         logger.info("dep: %s", step.step_label)
         ret = []
         for s in self.steps:
@@ -249,17 +257,6 @@ class OpusPocusPipeline:
                     ret.append(s)
         return ret
 
-    def __eq__(self, other: "OpusPocusPipeline") -> bool:
-        """Object comparison logic."""
-        if self.pipeline_graph != other.pipeline_graph:
-            return False
-        if len(self.default_targets) != len(other.default_targets):
-            return False
-        return all(target in other.default_targets for target in self.default_targets)
-        # if self.pipeline_config != other.pipeline_config:
-        #    return False
-        return True
-
 
 class PipelineConfig(OmegaConf):
     """OmegaConf wrapper for storing pipeline config.
@@ -269,7 +266,7 @@ class PipelineConfig(OmegaConf):
     """
 
     top_keys = ["global", "pipeline"]  # noqa: RUF012
-    pipeline_keys = ["pipeline_dir", "steps", "default_targets"]  # noqa: RUF012
+    pipeline_keys = ["pipeline_dir", "steps", "targets"]  # noqa: RUF012
 
     @staticmethod
     def create(
@@ -282,7 +279,7 @@ class PipelineConfig(OmegaConf):
                 "pipeline": {
                     "pipeline_dir": str(pipeline_dir),
                     "steps": [s.get_parameters_dict(exclude_dependencies=False) for s in pipeline_steps.values()],
-                    "default_targets": [s.step_label for s in default_targets],
+                    "targets": [s.step_label for s in default_targets],
                 }
             }
         )
