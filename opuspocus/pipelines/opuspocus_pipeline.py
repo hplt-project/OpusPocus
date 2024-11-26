@@ -30,7 +30,18 @@ class PipelineGraph:
         self.steps, self.targets = self.build_graph(self.config)
 
     def build_graph(self, pipeline_config: DictConfig) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
-        """TODO"""
+        """Builds the DAG representing the pipeline structure.
+
+        We initialize the steps in the breadth-first recursive fashion: first, the dependencies of a step are
+        initialized, then we initialize the actual step using the dependency instances as the init parameters
+
+        The step dependencies are described through step_label assignment in the pipeline_config. Given a step label,
+        we either fetch the respective step instance (if already initialized) or fetch the parameters from the config
+        for the step initialization.
+
+        Returns:
+            Dict with keys containing the step_label(s) and values being the respective step instances.
+        """
         pipeline_dir = pipeline_config.pipeline.pipeline_dir
 
         steps = {}  # type: Dict[str, OpusPocusStep]
@@ -87,6 +98,11 @@ class OpusPocusPipeline:
     _config_file = "pipeline.config"
 
     def __attrs_post_init__(self) -> None:
+        """Finish the initialization.
+
+        Either the pipeline_dir or pipeline_config can be NoneType. Initialize the NoneTypes using the other value.
+        Also build the pipeline graph.
+        """
         if self.pipeline_config is None and self.pipeline_dir is None:
             err_msg = (
                 "Either the pipeline_config or the pipeline_dir containing a pipeline config file must be provided"
@@ -113,12 +129,12 @@ class OpusPocusPipeline:
 
     @property
     def steps(self) -> Dict[str, OpusPocusStep]:
-        """TODO"""
+        """List the step instances from the pipeline_graph."""
         return self.pipeline_graph.steps.values()
 
     @property
     def targets(self) -> List[OpusPocusStep]:
-        """TODO"""
+        """List the default pipeline_graph targets."""
         return self.pipeline_graph.targets
 
     @property
@@ -205,7 +221,7 @@ class OpusPocusPipeline:
         self.init()
 
     def print_status(self, steps: List[OpusPocusStep]) -> None:
-        """TODO"""
+        """Print the list of pipeline steps with their current status and print the status of the pipeline."""
         header = f"{self.pipeline_dir.stem}{self.pipeline_dir.suffix}|{self.__class__.__name__}|{self.state.value!s}"
         print(header)  # noqa: T201
         print("-" * len(header))  # noqa: T201
@@ -221,7 +237,7 @@ class OpusPocusPipeline:
             print()  # noqa: T201
 
     def _get_step(self, step_label: str) -> Optional[OpusPocusStep]:
-        """TODO"""
+        """Get a step instance with the given step_label."""
         output = [s for s in self.steps if s.step_label == step_label]
         assert len(output) <= 1
         if output:
@@ -229,7 +245,7 @@ class OpusPocusPipeline:
         return None
 
     def get_targets(self, target_labels: Optional[List[str]] = None) -> List[OpusPocusStep]:
-        """TODO"""
+        """Get the target steps, either based on the requested target_labels or the default ones."""
         if target_labels is not None:
             targets = []
             for t_label in target_labels:
@@ -249,7 +265,7 @@ class OpusPocusPipeline:
         raise ValueError(err_msg)
 
     def get_dependants(self, step: OpusPocusStep) -> List[OpusPocusStep]:
-        """TODO"""
+        """Given a pipeline step, get all steps having this step as a direct dependency."""
         logger.info("dep: %s", step.step_label)
         ret = []
         for s in self.steps:
