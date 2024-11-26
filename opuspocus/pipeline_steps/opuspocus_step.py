@@ -134,7 +134,7 @@ class OpusPocusStep:
                 # Extract step_label from the dependencies
                 param_dict[attr] = None
                 if value is not None:
-                    param_dict[attr] = value.step_label
+                    param_dict[attr] = value["step_label"]
             elif isinstance(value, Path):
                 param_dict[attr] = str(value)
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):

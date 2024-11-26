@@ -47,7 +47,7 @@ def test_load_pipeline_dir_not_directory(pipeline_preprocess_tiny_inited):
         **{
             "pipeline_dir": Path(
                 pipeline_preprocess_tiny_inited.pipeline_dir,
-                pipeline_preprocess_tiny_inited.config_file,
+                pipeline_preprocess_tiny_inited._config_file,  # noqa: SLF001
             ),
         }
     )
@@ -67,18 +67,18 @@ def test_pipeline_class_init_graph(pipeline_preprocess_tiny_config_file, pipelin
 def test_pipeline_class_init_default_targets(pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited):
     """Compare pipeline targets with targets declared in config file."""
     config = PipelineConfig.load(pipeline_preprocess_tiny_config_file)
-    config_targets = config["pipeline"]["default_targets"]
-    assert len(config_targets) == len(pipeline_preprocess_tiny_inited.default_targets)
-    for target in pipeline_preprocess_tiny_inited.default_targets:
+    config_targets = config["pipeline"]["targets"]
+    assert len(config_targets) == len(pipeline_preprocess_tiny_inited.targets)
+    for target in pipeline_preprocess_tiny_inited.targets:
         assert target.step_label in config_targets
 
 
 def test_get_pipeline_targets(pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited):
     """Pipeline returns target steps (step: OpusPocusStep) given the step labels (step_label: str)."""
     config = PipelineConfig.load(pipeline_preprocess_tiny_config_file)
-    config_targets = config["pipeline"]["default_targets"]
+    config_targets = config["pipeline"]["targets"]
     for target in pipeline_preprocess_tiny_inited.get_targets(config_targets):
-        assert target in pipeline_preprocess_tiny_inited.default_targets
+        assert target in pipeline_preprocess_tiny_inited.targets
 
 
 def test_get_unknown_pipeline_target_step_fail(pipeline_preprocess_tiny_inited):

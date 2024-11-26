@@ -35,7 +35,7 @@ class CorpusStep(OpusPocusStep):
     """
 
     src_lang: str = field(validator=validators.instance_of(str))
-    tgt_lang: str = field(converter=converters.optional(str))
+    tgt_lang: str = field(converter=converters.optional(str), default=None)
     shard_size: int = field(validator=validators.optional(validators.gt(0)), default=None)
     prev_corpus_step: "CorpusStep" = field(default=None)
 
