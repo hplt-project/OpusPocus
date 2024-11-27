@@ -144,8 +144,8 @@ class OpusPocusRunner:
         """Submit and execute pipeline steps with labels in target_labels and their dependencies.
 
         Args:
-            pipeline (OpusPocusPipeline): pipeline to be executed
-            target_labels (List[str]): list of step labels to be executed (implying execution of their dependencies)
+            pipeline (OpusPocusPipeline): pipeline to execute
+            target_labels (List[str]): list of step labels to execute (implying execution of their dependencies)
             resubmit_done (bool): should we resubmit finished subtasks of a failed task
         """
         self.save_parameters()
@@ -165,7 +165,7 @@ class OpusPocusRunner:
         save the information about the main_task submission.
 
         Args:
-            step (OpusPocusStep): step to be submitted
+            step (OpusPocusStep): step to submit
             resubmit_finished_subtasks (bool): resubmit finished subtasks of a failed (partially done) task
 
         Returns:
@@ -235,7 +235,7 @@ class OpusPocusRunner:
         All of this is implemented via the signal-handling within the OpusPocusStep.run_main_task method.
 
         Args:
-            step (OpusPocusStep): running step to be resubmitted
+            step (OpusPocusStep): running step to resubmit
             resubmit_finished_subtasks (bool): resubmit step's subtasks that have alredy finished execution (delete
                 their output files)
 
@@ -251,13 +251,24 @@ class OpusPocusRunner:
             time.sleep(SLEEP_TIME)
         return self.load_submission_info(step)
 
-    def _update_dependants(
+    def update_dependants(
         self,
         step: OpusPocusStep,
         remove_task_list: Optional[List[TaskInfo]] = None,
         add_task_list: Optional[List[TaskInfo]] = None,
     ) -> None:
-        """TODO"""
+        """Update tasks that have the provided step as a dependency.
+
+        Each dependant (task with the `step` as a dependency) is updated using the provided task lists.
+        This method is aimed at updating a running pipeline a pipeline step is resubmitted. After submitting new
+        main_task, the previous dependencies should be updated to have the new task replace the old task in the
+        dependency list.
+
+        Args:
+            step (OpusPocusStep): step that is the dependency of the updated tasks
+            remove_task_list (List[SlurmTaskInfo]): tasks to remove from the dependencies
+            add_task_list (List[SlurmTaskInfo]): tasks to add to the dependencies
+        """
         raise NotImplementedError()
 
     def submit_task(
@@ -272,14 +283,14 @@ class OpusPocusRunner:
         """A runner specific code for submitting step's tasks.
 
         Args:
-            cmd_path (Path): location of the step's command to be executed
-            target_file (Path): target_file to be created by a subtask (if not None)
+            cmd_path (Path): location of the step's command to execute
+            target_file (Path): target_file to create by a subtask (if not None)
             dependencies (List[TaskInfo]): list of task information about the running dependencies
-            step_resources (RunnerResources): resources to be allocated for the task
+            step_resources (RunnerResources): resources to allocate for the task
             stdout_file (Path): location of the log file for task's stdout
             stderr_file (Path): location of the log file for task's stderr
 
-        Return:
+        Returns:
             TaskInfo containing the information about the submitted task.
         """
         raise NotImplementedError()
@@ -289,7 +300,7 @@ class OpusPocusRunner:
 
         Args:
             task_info (TaskInfo): specification of the task receiving the signal
-            signal (int): signal to be sent
+            signal (int): signal to sent
         """
         raise NotImplementedError()
 
@@ -297,7 +308,7 @@ class OpusPocusRunner:
         """Cancel given task info (send a SIGTERM signal).
 
         Args:
-            task_info (TaskInfo): specification of the task to be cancelled
+            task_info (TaskInfo): specification of the task to cancel
         """
         self.send_signal(task_info, signal.SIGTERM)
 
@@ -329,7 +340,7 @@ class OpusPocusRunner:
             task_info (TaskInfo): task-specific information
 
         Returns:
-            Boolean value based on the status of the task.
+            True if the task is currenly running.
         """
         raise NotImplementedError()
 
@@ -360,6 +371,6 @@ class OpusPocusRunner:
             return yaml.safe_load(fh)
 
     def get_resources(self, step: OpusPocusStep) -> RunnerResources:
-        """TODO"""
+        """Get default runner resources."""
         # TODO: expand the logic here
         return step.default_resources

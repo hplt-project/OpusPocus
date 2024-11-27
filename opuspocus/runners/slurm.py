@@ -4,6 +4,7 @@ import signal
 import subprocess
 import sys
 import time
+from attrs import define, field, validators
 from pathlib import Path
 from typing import List, Optional
 
@@ -19,12 +20,19 @@ TIMEOUT_ITERATIONS = 15
 
 
 class SlurmTaskInfo(TaskInfo):
-    id: int
+    id: int  # job ID
 
 
 @register_runner("slurm")
+@define(kw_only=True)
 class SlurmRunner(OpusPocusRunner):
-    """TODO"""
+    """Class implementing task execution using the Slurm scheduler.
+
+    Due to no proper Slurm Python API, we communicate with slurm directly via the subprocess library and Slurm CLI
+    commands.
+    """
+
+    slurm_other_options: str = field(validator=validators.optional(validators.instance_of(str), default=None))
 
     @staticmethod
     def add_args(parser):  # noqa: ANN001, ANN205
@@ -32,18 +40,6 @@ class SlurmRunner(OpusPocusRunner):
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
             "--slurm-other-options", type=str, metavar="RUNNER", default=None, help="Additional Slurm CLI options."
-        )
-
-    def __init__(
-        self,
-        runner: str,
-        pipeline_dir: Path,
-        slurm_other_options: str,
-    ) -> None:
-        super().__init__(
-            runner=runner,
-            pipeline_dir=pipeline_dir,
-            slurm_other_options=slurm_other_options,
         )
 
     def submit_task(
@@ -55,6 +51,19 @@ class SlurmRunner(OpusPocusRunner):
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> SlurmTaskInfo:
+        """Submits the task using the Slurm submit command.
+
+        Args:
+            cmd_path (Path): location of the step's command to be executed
+            target_file (Path): target_file to be created by a subtask (if not None)
+            dependencies (List[SlurmTaskInfo]): list of task information about the running dependencies
+            step_resources (RunnerResources): resources to be allocated for the task
+            stdout_file (Path): location of the log file for task's stdout
+            stderr_file (Path): location of the log file for task's stderr
+
+        Returns:
+            SlurmTaskInfo with the Slurm job ID and the related target_file in case of subtask execution.
+        """
         dependencies_ids = []
         if dependencies is not None:
             dependencies_ids = [dep["id"] for dep in dependencies]
@@ -114,6 +123,16 @@ class SlurmRunner(OpusPocusRunner):
         remove_task_list: Optional[List[SlurmTaskInfo]] = None,
         add_task_list: Optional[List[SlurmTaskInfo]] = None,
     ) -> None:
+        """Update tasks that have the provided step as a dependency.
+
+        We update every dependant's main_task job dependencies by removing job IDs from the remove_task_list
+        and adding additional dependencies from the add_task_list.
+
+        Args:
+            step (OpusPocusStep): step that is the dependency of the updated tasks
+            remove_task_list (List[SlurmTaskInfo]): job IDs to remove from the dependencies
+            add_task_list (List[SlurmTaskInfo]): job IDs to include to the dependencies
+        """
         if remove_task_list is None:
             remove_task_list = []
         if add_task_list is None:
@@ -142,7 +161,12 @@ class SlurmRunner(OpusPocusRunner):
             subprocess_wait(proc)
 
     def send_signal(self, task_info: SlurmTaskInfo, signal: int = signal.SIGTERM) -> None:
-        """TODO"""
+        """Send the signal to the Slurm job with the ID from the task_info.
+
+        Args:
+            task_info (SlurmTaskInfo): task info containing the Slurm job ID of the task's process
+            signal (int): signal to send
+        """
         time.sleep(SLEEP_TIME)
         status = self._get_job_status(task_info)
         logger.debug("Sending signal to job %s with '%s' status...", task_info["id"], status)
@@ -166,7 +190,12 @@ class SlurmRunner(OpusPocusRunner):
         subprocess_wait(proc)
 
     def wait_for_single_task(self, task_info: SlurmTaskInfo, *, ignore_returncode: bool = False) -> None:
-        """TODO"""
+        """Wait for the task's Slurm job to finish.
+
+        Args:
+            task_info (SlurmTaskInfo): task info containing the Slurm job ID of the task's process
+            ignore_returncode (bool): ignore the return code of the finished Slurm job
+        """
         time.sleep(SLEEP_TIME)  # NOTE(varisd): workaround to give sbatch time to properly submit the job
         while self.is_task_running(task_info):
             time.sleep(SLEEP_TIME)
@@ -183,10 +212,25 @@ class SlurmRunner(OpusPocusRunner):
             raise subprocess.SubprocessError(err_msg)
 
     def is_task_running(self, task_info: SlurmTaskInfo) -> bool:
-        """TODO"""
+        """Check Whether the task's job is currently running.
+
+        Args:
+            task_info (SlurmTaskInfo): task info containing the job ID of the task's Slurm job
+
+        Returns:
+            True if the Slurm job is currently running.
+        """
         return self._get_job_status(task_info) in {"PENDING", "RUNNING"}
 
     def _get_sacct_info(self, task_info: SlurmTaskInfo) -> List[str]:
+        """Execute the Slurm's sacct command to get task's job details.
+
+        Args:
+            task_info (SlurmTaskInfo): task info containing the job ID
+
+        Returns:
+            List of lines from the sacct command's output.
+        """
         jid = task_info["id"]
         cmd_out = []
 
@@ -208,6 +252,14 @@ class SlurmRunner(OpusPocusRunner):
         return cmd_out
 
     def _get_slurm_dependencies(self, task_info: SlurmTaskInfo, exclude_ids: Optional[List[int]] = None) -> List[int]:
+        """Execute a Slurm command to get the job IDs of the task's dependencies.
+
+        Args:
+            task_info (SlurmTaskInfo): task info containing the job ID
+
+        Returns:
+            List of Slurm job IDs of the task's dependencies.
+        """
         if exclude_ids is None:
             exclude_ids = []
         jid = task_info["id"]
@@ -223,6 +275,14 @@ class SlurmRunner(OpusPocusRunner):
         return [dep_id for dep_id in cmd_out.split(",") if dep_id not in exclude_ids]
 
     def _get_job_status(self, task_info: SlurmTaskInfo) -> str:
+        """Execute a Slurm command to get the status of a job.
+
+        Args:
+            task_info (SlurmTaskInfo): task info containing the job ID
+
+        Returns:
+            String containg the job status.
+        """
         cmd_out = self._get_sacct_info(task_info)
         jid = str(task_info["id"])
         for line in cmd_out:
@@ -233,6 +293,7 @@ class SlurmRunner(OpusPocusRunner):
         raise subprocess.SubprocessError(err_msg)
 
     def _convert_resources(self, resources: RunnerResources) -> List[str]:
+        """Convert the runner resources to the Slurm CLI arguments."""
         converted = []
         if resources.cpus is not None:
             converted += ["--cpus-per-task", str(resources.cpus)]
