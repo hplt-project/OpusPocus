@@ -270,7 +270,7 @@ class OpusPocusStep:
         logger.debug(
             "[%s] Finished cleaning subdirectory contents (remove_finished_command_targets=%s)",
             self.step_label,
-            remove_finished_command_targets
+            remove_finished_command_targets,
         )
 
     @property
