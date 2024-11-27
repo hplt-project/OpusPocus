@@ -49,7 +49,7 @@ class OpusPocusStep:
             step (str): step class name in the step class registry
             step_label (str): unique step instance label
             pipeline_dir (Path): path to the pipeline directory
-            **kwargs: additional parameters for the derived class
+            **kwargs: additional parameters for the specific pipeline step class implementation
 
         Returns:
             An instance of the specified pipeline class.
@@ -58,14 +58,17 @@ class OpusPocusStep:
 
     @classmethod
     def list_parameters(cls: "OpusPocusStep", *, exclude_dependencies: bool = True) -> List[str]:
-        """Return a list of arguments/required for initialization
+        """Return a list of arguments required for step initialization.
+
+        Parameter list used mainly during step instance saving/loading.
+        Step dependencies are handled differently, by saving/loading their respective dep.step_label properties instead
+        of saving the whole class instance.
 
         Args:
             exclude_dependencies (bool): exlude the step dependencies parameters
 
-        Returns
-        These parameter lists are used during step instance saving/loading. Step dependencies are handled differently
-        (by saving/loading their respective dep.step_label properties).
+        Returns:
+            List of step parameters.
         """
         param_list = []
         for p in fields(cls):
@@ -115,13 +118,13 @@ class OpusPocusStep:
             return yaml.safe_load(fh)
 
     def get_parameters_dict(self, *, exclude_dependencies: bool = True) -> Dict[str, Any]:
-        """Serialize the step parameters.
+        """Serialize step parameters.
 
         Args:
             exclude_dependencies (bool): exlude the step dependencies parameters
 
         Returns:
-            Dict containing key-value paris for the step instance initialization. Step dependencies are represented
+            Dict containing key-value pairs for the step instance initialization. Step dependencies are represented
             by their unique step labels.
         """
         param_dict = {}
@@ -250,21 +253,25 @@ class OpusPocusStep:
             d.mkdir(parents=True)
         logger.debug("[%s] Finished creating step directory.", self.step_label)
 
-    def clean_directories(self, *, keep_finished: bool = False) -> None:
+    def clean_directories(self, *, remove_finished_command_targets: bool = True) -> None:
         """Remove the contents of the output and tmp directories.
 
         In certain execution scenarios (e.g. execution restart/resubmit) we need to remove files created during
         the previous execution to avoid undesired behavior.
 
         Args:
-            keep_finished (bool): keep the previously finished target_files
+            remove_finished_command_targets (bool): remove the target_files of the previous finished subtasks
         """
         clean_dir(self.tmp_dir)
-        if not keep_finished:
+        if remove_finished_command_targets:
             # TODO(varisd): this should not be hard-wired in case we change naming in the derived
             #   (e.g. CorpusStep class)
             clean_dir(self.output_dir, exclude="categories.json")
-        logger.debug("[%s] Finished cleaning subdirectory contents (keep_finished=%s)", self.step_label, keep_finished)
+        logger.debug(
+            "[%s] Finished cleaning subdirectory contents (remove_finished_command_targets=%s)",
+            self.step_label,
+            remove_finished_command_targets
+        )
 
     @property
     def state(self) -> Optional[StepState]:
@@ -357,7 +364,7 @@ class OpusPocusStep:
                 runner.send_signal(task_info, signal.SIGTERM)
             runner.wait_for_tasks(task_info_list, ignore_returncode=True)
             old_sub_info = runner.load_submission_info(self)
-            new_sub_info = runner.submit_step(self, keep_finished=(signum == signal.SIGUSR1))
+            new_sub_info = runner.submit_step(self, remove_finished_command_targets=(signum == signal.SIGUSR2))
 
             logger.info("[%s] Updating task dependants...")
             runner.update_dependants(
