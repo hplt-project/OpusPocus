@@ -34,7 +34,9 @@ class OpusPocusStep:
 
     step: str = field(converter=str)
     step_label: str = field(converter=str)
-    pipeline_dir: Path = field(converter=Path)
+    pipeline_dir: Path = field(
+        converter=Path, eq=False
+    )  # enables comparing pipeliens/steps from different pipeline dirs
 
     _cmd_filename = "step.command"
     _dependency_filename = "step.dependencies"

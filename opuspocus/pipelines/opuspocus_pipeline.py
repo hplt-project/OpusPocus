@@ -22,7 +22,7 @@ PipelineState = StepState
 class PipelineGraph:
     """Class representing the pipelien graph structure."""
 
-    config: DictConfig = field(validator=validators.instance_of(DictConfig))
+    config: DictConfig = field(validator=validators.instance_of(DictConfig), eq=False)
     steps: Dict[str, OpusPocusStep] = field(init=False, factory=dict)
     targets: List[OpusPocusStep] = field(init=False, factory=list)
 
@@ -92,7 +92,9 @@ class OpusPocusPipeline:
     """Base class for OpusPocus pipelines."""
 
     pipeline_dir: Path = field(converter=converters.optional(Path), default=None)
-    pipeline_config: DictConfig = field(validator=validators.optional(validators.instance_of(DictConfig)), default=None)
+    pipeline_config: DictConfig = field(
+        validator=validators.optional(validators.instance_of(DictConfig)), default=None, eq=False
+    )
     pipeline_graph: PipelineGraph = field(init=False, default=None)
 
     _config_file = "pipeline.config"

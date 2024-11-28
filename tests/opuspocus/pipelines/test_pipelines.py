@@ -24,14 +24,14 @@ def test_build_pipeline_method(
     )
     pipeline = build_pipeline(args)
     pipeline.init()
-    assert pipeline == pipeline_preprocess_tiny_inited
+    assert pipeline.pipeline_graph == pipeline_preprocess_tiny_inited.pipeline_graph
 
 
 def test_load_pipeline_method(pipeline_preprocess_tiny_inited):
     """Load previously created pipeline and compare the two instances."""
     args = Namespace(**{"pipeline_dir": Path(pipeline_preprocess_tiny_inited.pipeline_dir)})
     pipeline = load_pipeline(args)
-    assert pipeline == pipeline_preprocess_tiny_inited
+    assert pipeline.pipeline_graph == pipeline_preprocess_tiny_inited.pipeline_graph
 
 
 def test_load_pipeline_dir_not_exist():

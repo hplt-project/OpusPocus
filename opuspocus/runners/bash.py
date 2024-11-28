@@ -4,10 +4,10 @@ import subprocess
 import sys
 import time
 from argparse import ArgumentParser
-from attrs import define, field, validators
 from pathlib import Path
 from typing import List, Optional
 
+from attrs import define, field, validators
 from psutil import NoSuchProcess, Process, wait_procs
 
 from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
@@ -27,7 +27,7 @@ class BashTaskInfo(TaskInfo):
 class BashRunner(OpusPocusRunner):
     """Class implementing task execution using bash."""
 
-    run_tasks_in_parallel: bool = field(validator=validators.instance_of(bool),default=False)
+    run_tasks_in_parallel: bool = field(validator=validators.instance_of(bool), default=False)
 
     _submit_wrapper = "scripts/bash_runner_submit.py"
 

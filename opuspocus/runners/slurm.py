@@ -4,9 +4,10 @@ import signal
 import subprocess
 import sys
 import time
-from attrs import define, field, validators
 from pathlib import Path
 from typing import List, Optional
+
+from attrs import define, field, validators
 
 from opuspocus.pipeline_steps import OpusPocusStep
 from opuspocus.pipelines import OpusPocusPipeline
@@ -32,7 +33,7 @@ class SlurmRunner(OpusPocusRunner):
     commands.
     """
 
-    slurm_other_options: str = field(validator=validators.optional(validators.instance_of(str), default=None))
+    slurm_other_options: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
 
     @staticmethod
     def add_args(parser):  # noqa: ANN001, ANN205
