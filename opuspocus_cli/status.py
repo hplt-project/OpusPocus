@@ -14,7 +14,7 @@ def parse_args(argv: Sequence[str]) -> Namespace:
 def main(args: Namespace) -> int:
     """Command that prints the current status of each pipeline step."""
     pipeline = load_pipeline(args)
-    pipeline.status(pipeline.steps)
+    pipeline.print_status(pipeline.steps)
     return 0
 
 

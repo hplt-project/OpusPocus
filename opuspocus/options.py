@@ -57,7 +57,9 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--stop-previous-run", default=False, action="store_true", help="Stop previous pipeline execution first."
     )
-    parser.add_argument("--resubmit-done", default=False, action="store_true", help="Re-run finished steps.")
+    parser.add_argument(
+        "--resubmit-finished-subtasks", default=False, action="store_true", help="Re-run finished steps."
+    )
     parser.add_argument("--pipeline-config", type=file_path, default=None, help="Pipeline configuration YAML file.")
     parser.add_argument(
         "--runner",

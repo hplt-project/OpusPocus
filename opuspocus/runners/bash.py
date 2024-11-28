@@ -94,7 +94,7 @@ class BashRunner(OpusPocusRunner):
         else:
             proc = subprocess.Popen(
                 [
-                    self.submit_wrapper,
+                    self._submit_wrapper,
                     str(cmd_path),
                     dependencies_str,
                 ],

@@ -130,9 +130,13 @@ class OpusPocusPipeline:
         )
 
     @property
+    def pipeline_config_path(self) -> Path:
+        return Path(self.pipeline_dir, self._config_file)
+
+    @property
     def steps(self) -> Dict[str, OpusPocusStep]:
         """List the step instances from the pipeline_graph."""
-        return self.pipeline_graph.steps.values()
+        return list(self.pipeline_graph.steps.values())
 
     @property
     def targets(self) -> List[OpusPocusStep]:
@@ -196,7 +200,7 @@ class OpusPocusPipeline:
         steps and pipeline parameters in their respective YAML files.
         """
         config = PipelineConfig.create(self.pipeline_dir, self.pipeline_graph.steps, self.pipeline_graph.targets)
-        PipelineConfig.save(config, Path(self.pipeline_dir, self._config_file))
+        PipelineConfig.save(config, self.pipeline_config_path)
 
     def init(self) -> None:
         """Initialize the pipeline."""

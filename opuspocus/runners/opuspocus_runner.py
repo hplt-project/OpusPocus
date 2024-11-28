@@ -56,7 +56,7 @@ class OpusPocusRunner:
         Returns:
             An instance of the specified runner class.
         """
-        return cls(runner, pipeline_dir, **kwargs)
+        return cls(runner=runner, pipeline_dir=pipeline_dir, **kwargs)
 
     @classmethod
     def list_parameters(cls: "OpusPocusRunner") -> List[str]:
@@ -71,7 +71,7 @@ class OpusPocusRunner:
         for p in fields(cls):
             if p.name.startswith("_"):
                 continue
-            param_list.append(p)
+            param_list.append(p.name)
         return param_list
 
     @classmethod
@@ -97,7 +97,7 @@ class OpusPocusRunner:
             Dict containing key-value pairs for the runner instance initialization.
         """
         param_dict = {}
-        for attr, value in asdict(self, filter=lambda attr, _: not attr.name.startswith("_")):
+        for attr, value in asdict(self, filter=lambda attr, _: not attr.name.startswith("_")).items():
             if isinstance(value, Path):
                 param_dict[attr] = str(value)
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
@@ -151,7 +151,6 @@ class OpusPocusRunner:
         self.save_parameters()
         for step in pipeline.get_targets(target_labels):
             self.submit_step(step, resubmit_finished_subtasks=resubmit_finished_subtasks)
-        self.run()
         logger.info("[%s] Pipeline tasks submitted successfully.", self.runner)
 
     def submit_step(self, step: OpusPocusStep, *, resubmit_finished_subtasks: bool = True) -> Optional[SubmissionInfo]:
@@ -185,7 +184,7 @@ class OpusPocusRunner:
             logger.info("[%s] Step %s has already finished. Skipping...", self.runner, step.step_label)
             return None
         if step.has_state(StepState.FAILED):
-            step.clean_directories(resubmit_finished_command_targets=resubmit_finished_subtasks)
+            step.clean_directories(remove_finished_command_targets=resubmit_finished_subtasks)
             logger.info(
                 "[%s] Step %s is in FAILED state. Resubmitting...",
                 self.runner,
