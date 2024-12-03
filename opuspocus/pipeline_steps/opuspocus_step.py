@@ -366,7 +366,7 @@ class OpusPocusStep:
                 runner.send_signal(task_info, signal.SIGTERM)
             runner.wait_for_tasks(task_info_list, ignore_returncode=True)
             old_sub_info = runner.load_submission_info(self)
-            new_sub_info = runner.submit_step(self, remove_finished_command_targets=(signum == signal.SIGUSR2))
+            new_sub_info = runner.submit_step(self, resubmit_finished_subtasks=(signum == signal.SIGUSR2))
 
             logger.info("[%s] Updating task dependants...")
             runner.update_dependants(

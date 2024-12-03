@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class TranslateCorpusStep(CorpusStep):
     """Class implementing dataset translation using a provided NMT model."""
 
-    marian_dir: Path = field(validator=validators.instance_of(Path))
+    marian_dir: Path = field(converter=Path)
     model_step: TrainModelStep = field()
     beam_size: int = field(default=4, validator=validators.gt(0))
     model_suffix: str = field(default="best-chrf")
@@ -97,7 +97,7 @@ class TranslateCorpusStep(CorpusStep):
             return [
                 shard_file_path
                 for dset in self.dataset_list
-                for shard_file_path in self.get_input_dataset_shard_path_list(f"{dset}.{self.tgt_lang}.gz")
+                for shard_file_path in self.infer_dataset_output_shard_path_list(f"{dset}.{self.tgt_lang}.gz")
             ]
         return [Path(self.output_dir, f"{dset}.{self.tgt_lang}.gz") for dset in self.dataset_list]
 

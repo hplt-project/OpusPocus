@@ -27,9 +27,9 @@ class PipelineGraph:
     targets: List[OpusPocusStep] = field(init=False, factory=list)
 
     def __attrs_post_init__(self) -> None:
-        self.steps, self.targets = self.build_graph(self.config)
+        self.steps, self.targets = self._build_graph(self.config)
 
-    def build_graph(self, pipeline_config: DictConfig) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
+    def _build_graph(self, pipeline_config: DictConfig) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
         """Builds the DAG representing the pipeline structure.
 
         We initialize the steps in the breadth-first recursive fashion: first, the dependencies of a step are
@@ -43,7 +43,6 @@ class PipelineGraph:
             Dict with keys containing the step_label(s) and values being the respective step instances.
         """
         pipeline_dir = pipeline_config.pipeline.pipeline_dir
-
         steps = {}  # type: Dict[str, OpusPocusStep]
         steps_configs = {s.step_label: OmegaConf.to_object(s) for s in pipeline_config.pipeline.steps}
 
@@ -111,11 +110,11 @@ class OpusPocusPipeline:
             )
             raise ValueError(err_msg)
         if self.pipeline_dir is None:
-            self.pipeline_dir = self.pipeline_config.pipeline_dir
+            self.pipeline_dir = self.pipeline_config.pipeline.pipeline_dir
         elif self.pipeline_config is None:
             self.pipeline_config = PipelineConfig.load(Path(self.pipeline_dir, self._config_file))
         else:
-            self.pipeline_config.pipeline_dir = self.pipeline_dir
+            self.pipeline_config.pipeline.pipeline_dir = self.pipeline_dir
         self.pipeline_graph = PipelineGraph(config=self.pipeline_config)
 
     @staticmethod

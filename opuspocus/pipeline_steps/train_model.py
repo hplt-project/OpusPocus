@@ -47,8 +47,8 @@ class TrainModelStep(OpusPocusStep):
     @marian_config.validator
     @opustrainer_config.validator
     def _path_exists(self, attribute: str, value: Path) -> None:
-        if value is None and attribute != "opustrainer_config":
-            err_msg = f"Attribute `{attribute}` value must be type Path (NoneType was provided)."
+        if value is None and attribute.name != "opustrainer_config":
+            err_msg = f"Attribute `{attribute.name}` value must be type Path (NoneType was provided)."
             raise ValueError(err_msg)
         if value is not None and not value.exists():
             err_msg = f"Provided path ({value}) does not exist."
