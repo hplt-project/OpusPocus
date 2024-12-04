@@ -115,8 +115,6 @@ pipeline:
       model_step: train_model.${global.tgt_lang}-${global.src_lang}
     - step: merge
       step_label: merge.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       prev_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       prev_corpus_label: organic
       other_corpus_step: translate.${global.tgt_lang}-${global.src_lang}
@@ -171,8 +169,6 @@ pipeline:
     # Eval (iter 2)
     - step: translate
       step_label: translate_test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: tune_bt_model.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}

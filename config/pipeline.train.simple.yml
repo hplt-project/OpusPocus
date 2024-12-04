@@ -46,7 +46,7 @@ pipeline:
       step_label: generate_vocab.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
-      datasets: 
+      datasets:
         - clean.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}
       corpus_step: gather.${global.src_lang}-${global.tgt_lang}
@@ -87,8 +87,6 @@ pipeline:
     # Eval
     - step: translate
       step_label: translate_test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: train_model.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}
