@@ -15,7 +15,7 @@ def decontaminate_step_inited(train_data_parallel_tiny_raw_step_inited):
         step_label="decontaminate.test",
         pipeline_dir=train_data_parallel_tiny_raw_step_inited.pipeline_dir,
         **{
-            "previous_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "prev_corpus_step": train_data_parallel_tiny_raw_step_inited,
             "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
             "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
             "valid_data_step": train_data_parallel_tiny_raw_step_inited,

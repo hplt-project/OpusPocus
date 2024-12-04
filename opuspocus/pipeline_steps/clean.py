@@ -6,7 +6,9 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List
+
+from attrs import define, field
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -16,30 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 @register_step("clean")
+@define(kw_only=True)
 class CleanCorpusStep(CorpusStep):
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        previous_corpus_step: CorpusStep,
-        python_venv_dir: Path,
-        src_lang: str,
-        tgt_lang: Optional[str] = None,
-        shard_size: Optional[int] = None,
-        opuscleaner_cmd: str = "opuscleaner-clean",
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            previous_corpus_step=previous_corpus_step,
-            python_venv_dir=python_venv_dir,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            shard_size=shard_size,
-            opuscleaner_cmd=opuscleaner_cmd,
-        )
+    """Class implementing dataset cleaning using OpusCleaner."""
+
+    python_venv_dir: Path = field(converter=Path)
+    opuscleaner_cmd: str = field(default="opuscleaner-clean")
 
     def register_categories(self) -> None:
         """Create a dataset list using the datasets listed in categories.json file.
@@ -50,9 +34,14 @@ class CleanCorpusStep(CorpusStep):
         shutil.copy(self.prev_corpus_step.categories_path, self.categories_path)
 
     def get_command_targets(self) -> List[Path]:
+        """One target file per each processed dataset."""
         return [Path(self.output_dir, f"{dset}.{self.src_lang}.gz") for dset in self.dataset_list]
 
     def command(self, target_file: Path) -> None:
+        """Invoke OpusCleaner to process corpus based on the target_file.
+
+        We infer the input corpus file, target-side corpus file and .filter.json file using the target_file.
+        """
         # TODO: use OpusCleaner Python API instead when available
         target_filename = target_file.stem + target_file.suffix
         dataset = ".".join(str(target_filename).split(".")[:-2])
