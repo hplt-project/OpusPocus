@@ -58,10 +58,6 @@ pipeline:
     # Train (iter 1)
     - step: generate_vocab
       step_label: generate_vocab.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      datasets: 
-        - clean.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}
       corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       vocab_size: ${global.vocab_size}
@@ -174,8 +170,6 @@ pipeline:
       marian_dir: ${global.marian_dir}
     - step: evaluate
       step_label: evaluate_test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       translated_corpus_step: translate_test.${global.src_lang}-${global.tgt_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
     - step: translate
@@ -187,8 +181,6 @@ pipeline:
       marian_dir: ${global.marian_dir}
     - step: evaluate
       step_label: evaluate_test.${global.tgt_lang}-${global.src_lang}
-      src_lang: ${global.tgt_lang}
-      tgt_lang: ${global.src_lang}
       translated_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
 

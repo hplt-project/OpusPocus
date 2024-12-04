@@ -5,9 +5,9 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
-from attrs import converters, define, field, validators
+from attrs import define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -27,9 +27,10 @@ logger = logging.getLogger(__name__)
 class GenerateVocabStep(OpusPocusStep):
     """Class implementing sentencepiece vocabulary generation."""
 
-    src_lang: str = field(validator=validators.instance_of(str))
-    tgt_lang: str = field(converter=converters.optional(str))
     corpus_step: CorpusStep = field()
+
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(validator=validators.optional(validators.instance_of(str)))
     marian_dir: Path = field(converter=Path)
     datasets: List[str] = field(factory=list)
     seed: int = field(default=42)
@@ -42,8 +43,18 @@ class GenerateVocabStep(OpusPocusStep):
             err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep."
             raise TypeError(err_msg)
 
+    @src_lang.default
+    def _inherit_src_lang_from_corpus_step(self) -> Optional[str]:
+        return self.corpus_step.src_lang
+
+    @tgt_lang.default
+    def _inherit_tgt_lang_from_corpus_step(self) -> Optional[str]:
+        return self.corpus_step.tgt_lang
+
     def init_step(self) -> None:
         super().init_step()
+        if self.datasets is None:
+            self.datasets = self.corpus_step.dataset_list
         for dset in self.datasets:
             if dset not in self.corpus_step.dataset_list:
                 logger.debug(
