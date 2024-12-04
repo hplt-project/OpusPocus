@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 class EvaluateStep(OpusPocusStep):
     """Class implementing translation evaluation."""
 
-    src_lang: str = field(validator=validators.instance_of(str))
-    tgt_lang: str = field(validator=validators.instance_of(str))
     translated_corpus_step: CorpusStep = field()
     reference_corpus_step: CorpusStep = field()
+
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(validator=validators.instance_of(str))
     datasets: List[str] = field(factory=list)
     seed: int = field(default=42)
     metrics: List[str] = field(default=Factory(lambda: ["BLEU", "CHRF"]))
@@ -43,6 +44,21 @@ class EvaluateStep(OpusPocusStep):
         if not issubclass(type(value), CorpusStep):
             err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep."
             raise TypeError(err_msg)
+
+    @reference_corpus_step.validator
+    def _identical_langpair(self, attribute: str, value: CorpusStep) -> None:
+        tr_step = self.translated_corpus_step
+        if value.src_lang != tr_step.src_lang or value.tgt_lang != tr_step.tgt_lang:
+            err_msg = f"{attribute} language pair must be identical to the translated_corpus language pair."
+            raise ValueError(err_msg)
+
+    @src_lang.default
+    def _inherit_src_lang_from_corpus_step(self) -> str:
+        return self.translated_corpus_step.src_lang
+
+    @tgt_lang.default
+    def _inherit_tgt_lang_from_corpus_step(self) -> str:
+        return self.translated_corpus_step.tgt_lang
 
     def init_step(self) -> None:
         super().init_step()
