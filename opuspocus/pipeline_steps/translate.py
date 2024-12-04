@@ -22,8 +22,9 @@ logger = logging.getLogger(__name__)
 class TranslateCorpusStep(CorpusStep):
     """Class implementing dataset translation using a provided NMT model."""
 
-    marian_dir: Path = field(converter=Path)
     model_step: TrainModelStep = field()
+
+    marian_dir: Path = field(converter=Path)
     beam_size: int = field(default=4, validator=validators.gt(0))
     model_suffix: str = field(default="best-chrf")
 
@@ -38,6 +39,10 @@ class TranslateCorpusStep(CorpusStep):
         if not issubclass(type(value), TrainModelStep):
             err_msg = f"{attribute} value must contain a class instance that inherits from TrainModelStep"
             raise TypeError(err_msg)
+
+    @marian_dir.default
+    def _inherit_marian_dir_from_train_model(self) -> Path:
+        return self.model_step.marian_dir
 
     @property
     def model_config_path(self) -> Path:
