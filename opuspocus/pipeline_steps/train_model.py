@@ -24,14 +24,16 @@ logger = logging.getLogger(__name__)
 class TrainModelStep(OpusPocusStep):
     """Class implementing model training using OpusTrainer."""
 
-    src_lang: str = field(validator=validators.instance_of(str))
-    tgt_lang: str = field(validator=validators.instance_of(str))
-    marian_dir: Path = field(converter=Path)
-    marian_config: Path = field(converter=Path)
     vocab_step: GenerateVocabStep = field()
     train_corpus_step: CorpusStep = field()
     valid_corpus_step: CorpusStep = field()
     model_init_step: "TrainModelStep" = field(default=None)
+
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(validator=validators.instance_of(str))
+    marian_dir: Path = field(converter=Path)
+
+    marian_config: Path = field(converter=Path)
     opustrainer_config: Path = field(default=None, converter=converters.optional(Path))
     seed: int = field(default=42)
     max_epochs: int = field(default=None, validator=validators.optional(validators.gt(0)))
@@ -72,6 +74,18 @@ class TrainModelStep(OpusPocusStep):
         if value is not None and not issubclass(type(value), type(self)):
             err_msg = f"{attribute} value must contain NoneType or a class instance that inherits from TrainModelStep."
             raise TypeError(err_msg)
+
+    @src_lang.default
+    def _inherit_src_lang_from_train_step(self) -> str:
+        return self.train_corpus_step.src_lang
+
+    @tgt_lang.default
+    def _inherit_tgt_lang_from_train_step(self) -> str:
+        return self.train_corpus_step.tgt_lang
+
+    @marian_dir.default
+    def _inherit_marian_dir_from_generate_vocab(self) -> Path:
+        return self.vocab_step.marian_dir
 
     def __attrs_post_init__(self) -> None:
         if self.opustrainer_config is None and (self.train_categories is None or self.train_category_ratios is None):

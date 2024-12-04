@@ -49,9 +49,6 @@ pipeline:
       vocab_size: ${global.vocab_size}
     - step: train_model
       step_label: train_model.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      marian_dir: ${global.marian_dir}
       marian_config: ${global.marian_config}
       opustrainer_config: null
       max_epochs: ${global.max_epochs}
@@ -67,7 +64,6 @@ pipeline:
       step_label: train_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
       tgt_lang: ${global.src_lang}
-      marian_dir: ${global.marian_dir}
       marian_config: ${global.marian_config}
       opustrainer_config: null
       max_epochs: ${global.max_epochs}
