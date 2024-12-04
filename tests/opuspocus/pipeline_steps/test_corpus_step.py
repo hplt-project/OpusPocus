@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import pytest
+from attrs import define, field
 
 from opuspocus import pipeline_steps
 from opuspocus.pipeline_steps import StepState, build_step, register_step
@@ -9,8 +10,6 @@ from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.runners.debug import DebugRunner
 from opuspocus.utils import count_lines, open_file, read_shard
 
-# TODO(varisd): test that the shards are created in a place where
-#   command_postprocess expect them to be (?)
 # TODO(varisd): test categories.json load/save
 # TODO(varisd): stuff related to the abstract methods (e.g. creating
 #   categories.json, etc) should be generalized to be tested with each
@@ -21,38 +20,20 @@ N_LANGUAGES_BI = 2
 
 
 @register_step("foo_corpus")
+@define(kw_only=True)
 class FooCorpusStep(CorpusStep):
     """Mock that copies the input dataset files into the .output_dir, or copies
     the dataset files from the .prev_corpus_step .output_dir
-
     """
 
-    CATEGORIES: frozenset[str] = ("foo", "bar")
+    dataset_files: List[Path] = field(factory=list)
 
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        src_lang: str,
-        tgt_lang: Optional[str] = None,
-        previous_corpus_step: Optional[CorpusStep] = None,
-        dataset_files: Optional[List[Path]] = None,
-        shard_size: Optional[int] = None,
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            dataset_files=dataset_files,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            previous_corpus_step=previous_corpus_step,
-            shard_size=shard_size,
-        )
-        """Minimal init implementation."""
-        if dataset_files is not None:
-            for file in self.dataset_files:
+    _categories: frozenset[str] = ("foo", "bar")
+
+    @dataset_files.validator
+    def files_are_gzipped(self, _, value: List[Path]) -> None:
+        if value is not None:
+            for file in value:
                 assert file.suffix == ".gz"
 
     def register_categories(self) -> None:
@@ -63,11 +44,11 @@ class FooCorpusStep(CorpusStep):
 
         assert self.dataset_files is not None
         cat_dict = {}
-        cat_dict["categories"] = [{"name": cat} for cat in self.CATEGORIES]
-        cat_dict["mapping"] = {cat: [] for cat in self.CATEGORIES}
+        cat_dict["categories"] = [{"name": cat} for cat in self._categories]
+        cat_dict["mapping"] = {cat: [] for cat in self._categories}
 
         dset = ".".join(self.dataset_files[0].stem.split(".")[:-1])
-        cat_dict["mapping"][self.CATEGORIES[0]] = [dset]
+        cat_dict["mapping"][self._categories[0]] = [dset]
         self.save_categories_dict(cat_dict)
 
     def get_command_targets(self) -> List[Path]:
@@ -76,7 +57,7 @@ class FooCorpusStep(CorpusStep):
             return [
                 shard
                 for f_name in self.dataset_filename_list
-                for shard in self.get_input_dataset_shard_path_list(f_name)
+                for shard in self.infer_dataset_output_shard_path_list(f_name)
             ]
         return [Path(self.output_dir, f_name) for f_name in self.dataset_filename_list]
 
@@ -124,7 +105,7 @@ def foo_corpus_languages(request, languages):
 
 
 @pytest.mark.parametrize(
-    ("foo_languages", "shard_size"), [(("en", "fr"), "-1"), (("en", "fr"), "0"), (("null", "fr"), "null")]
+    ("foo_languages", "shard_size"), [(("en", "fr"), "-1"), (("en", "fr"), "0"), (("null", "fr"), "1")]
 )
 def test_foo_corpus_invalid_values(foo_languages, shard_size, train_data_parallel_tiny, tmp_path_factory):
     """Test invalid langauge combination or shard_size values."""
@@ -134,7 +115,12 @@ def test_foo_corpus_invalid_values(foo_languages, shard_size, train_data_paralle
     pipeline_dir = tmp_path_factory.mktemp("foo.mock.{}".format("-".join(foo_languages)))
     src_lang = None if foo_languages[0] == "null" else foo_languages[0]
     tgt_lang = foo_languages[1]
-    with pytest.raises(ValueError):  # noqa: PT011
+
+    exception_type = ValueError
+    if src_lang is None:
+        exception_type = TypeError
+
+    with pytest.raises(exception_type):
         build_step(
             step="foo_corpus",
             step_label="foo.test",
@@ -143,7 +129,7 @@ def test_foo_corpus_invalid_values(foo_languages, shard_size, train_data_paralle
                 "dataset_files": train_data_parallel_tiny,
                 "src_lang": src_lang,
                 "tgt_lang": tgt_lang,
-                "previous_corpus_step": None,
+                "prev_corpus_step": None,
                 "shard_size": shard_size,
             },
         )
@@ -167,7 +153,7 @@ def foo_corpus_step_inited(foo_corpus_languages, train_data_parallel_tiny, tmp_p
             "dataset_files": train_data_parallel_tiny,
             "src_lang": src_lang,
             "tgt_lang": tgt_lang,
-            "previous_corpus_step": None,
+            "prev_corpus_step": None,
             "shard_size": None,
         },
     )
@@ -197,7 +183,7 @@ def bar_corpus_step_inited(foo_shard_size, foo_corpus_step_inited):
             "dataset_files": None,
             "src_lang": foo_corpus_step_inited.src_lang,
             "tgt_lang": foo_corpus_step_inited.tgt_lang,
-            "previous_corpus_step": foo_corpus_step_inited,
+            "prev_corpus_step": foo_corpus_step_inited,
             "shard_size": foo_shard_size,
         },
     )
@@ -255,14 +241,14 @@ def test_corpus_step_inited_categories_file_exists(corpus_step_inited):
 
 def test_corpus_step_inited_categories(corpus_step_inited):
     """Test the correctness of categories in categories.json."""
-    ref_sorted = sorted(corpus_step_inited.CATEGORIES)
+    ref_sorted = sorted(corpus_step_inited._categories)  # noqa: SLF001
     hyp_sorted = sorted(corpus_step_inited.categories)
     assert hyp_sorted == ref_sorted
 
 
 def test_corpus_step_inited_mapping(corpus_step_inited, train_data_parallel_tiny_dataset):
     """Test the correctness of the dataset mapping in categories.json."""
-    category = corpus_step_inited.CATEGORIES[0]
+    category = corpus_step_inited._categories[0]  # noqa: SLF001
     ref_sorted = sorted([train_data_parallel_tiny_dataset])
     hyp_sorted = sorted(corpus_step_inited.category_mapping[category])
     assert hyp_sorted == ref_sorted
@@ -288,7 +274,7 @@ def test_foo_corpus_step_inited_shard_list_fail(foo_corpus_step_inited):
     """
     for f_name in foo_corpus_step_inited.dataset_filename_list:
         with pytest.raises(AssertionError):
-            foo_corpus_step_inited.get_input_dataset_shard_path_list(f_name)
+            foo_corpus_step_inited.infer_dataset_output_shard_path_list(f_name)
 
 
 def test_languages(corpus_step_inited):

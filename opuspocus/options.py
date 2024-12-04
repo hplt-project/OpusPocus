@@ -57,7 +57,9 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--stop-previous-run", default=False, action="store_true", help="Stop previous pipeline execution first."
     )
-    parser.add_argument("--resubmit-done", default=False, action="store_true", help="Re-run finished steps.")
+    parser.add_argument(
+        "--resubmit-finished-subtasks", default=False, action="store_true", help="Re-run finished steps."
+    )
     parser.add_argument("--pipeline-config", type=file_path, default=None, help="Pipeline configuration YAML file.")
     parser.add_argument(
         "--runner",
@@ -85,14 +87,6 @@ def parse_stop_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Termination")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
-    # TODO(varisd): add option to stop only the selected steps
-    #parser.add_argument(
-    #    "--targets",
-    #    type=str,
-    #    nargs="+",
-    #    default=None,
-    #    help="List of steps to be executed together with their dependencies.",
-    #)
 
     return parser.parse_args(argv)
 

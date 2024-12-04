@@ -31,7 +31,7 @@ def translate_step_inited(
             "marian_dir": marian_dir,
             "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
             "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
-            "previous_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "prev_corpus_step": train_data_parallel_tiny_raw_step_inited,
             "model_step": train_data_parallel_tiny_model_step_inited,
             "shard_size": shard_size,
             "model_suffix": "best-chrf",

@@ -4,9 +4,10 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import yaml
+from attrs import Factory, converters, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -17,82 +18,86 @@ from opuspocus.utils import RunnerResources, paste_files
 
 logger = logging.getLogger(__name__)
 
-SLURM_RESUBMIT_TIME = 600  # resubmit N seconds before job finishes
-DEFAULT_MODIFIERS = [{"UpperCase": 0.01}, {"TitleCase": 0.01}]
-
 
 @register_step("train_model")
+@define(kw_only=True)
 class TrainModelStep(OpusPocusStep):
-    opustrainer_config_file = "opustrainer.config.yml"
-    marian_config_file = "marian.config.yml"
+    """Class implementing model training using OpusTrainer."""
 
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        marian_dir: Path,
-        src_lang: str,
-        tgt_lang: str,
-        marian_config: Path,
-        vocab_step: GenerateVocabStep,
-        train_corpus_step: CorpusStep,
-        valid_corpus_step: CorpusStep,
-        model_init_step: Optional["TrainModelStep"] = None,
-        opustrainer_config: Optional[Path] = None,
-        seed: int = 42,
-        max_epochs: Optional[int] = None,
-        train_categories: Optional[List[str]] = None,
-        train_category_ratios: Optional[List[float]] = None,
-        train_modifiers: List[Dict[str, Any]] = DEFAULT_MODIFIERS,
-        valid_dataset: str = "flores200.dev",
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            marian_dir=marian_dir,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            marian_config=marian_config,
-            vocab_step=vocab_step,
-            train_corpus_step=train_corpus_step,
-            valid_corpus_step=valid_corpus_step,
-            model_init_step=model_init_step,
-            opustrainer_config=opustrainer_config,
-            seed=seed,
-            max_epochs=max_epochs,
-            train_categories=train_categories,
-            train_category_ratios=train_category_ratios,
-            train_modifiers=train_modifiers,
-            valid_dataset=valid_dataset,
-        )
-        if opustrainer_config is None and (train_categories is None or train_category_ratios is None):
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(validator=validators.instance_of(str))
+    marian_dir: Path = field(converter=Path)
+    marian_config: Path = field(converter=Path)
+    vocab_step: GenerateVocabStep = field()
+    train_corpus_step: CorpusStep = field()
+    valid_corpus_step: CorpusStep = field()
+    model_init_step: "TrainModelStep" = field(default=None)
+    opustrainer_config: Path = field(default=None, converter=converters.optional(Path))
+    seed: int = field(default=42)
+    max_epochs: int = field(default=None, validator=validators.optional(validators.gt(0)))
+    train_categories: List[str] = field(factory=list)
+    train_category_ratios: List[float] = field(factory=list)
+    train_modifiers: List[Dict[str, Any]] = field(default=Factory(lambda: [{"UpperCase": 0.01}, {"TitleCase": 0.01}]))
+    valid_dataset: str = field(default="flores200.dev")
+
+    _opustrainer_config_file = "opustrainer.config.yml"
+    _marian_config_file = "marian.config.yml"
+
+    @marian_dir.validator
+    @marian_config.validator
+    @opustrainer_config.validator
+    def _path_exists(self, attribute: str, value: Path) -> None:
+        if value is None and attribute.name != "opustrainer_config":
+            err_msg = f"Attribute `{attribute.name}` value must be type Path (NoneType was provided)."
+            raise ValueError(err_msg)
+        if value is not None and not value.exists():
+            err_msg = f"Provided path ({value}) does not exist."
+            raise FileNotFoundError(err_msg)
+
+    @train_corpus_step.validator
+    @valid_corpus_step.validator
+    def _inherited_from_corpus_step(self, attribute: str, value: CorpusStep) -> None:
+        if not issubclass(type(value), CorpusStep):
+            err_msg = f"{attribute} value must contain a class instance that inherits from CorpusStep."
+            raise TypeError(err_msg)
+
+    @vocab_step.validator
+    def _inherited_from_vocab_step(self, attribute: str, value: GenerateVocabStep) -> None:
+        if not issubclass(type(value), GenerateVocabStep):
+            err_msg = f"{attribute} value must contain a class instance that inherits from GenerateVocabStep."
+            raise TypeError(err_msg)
+
+    @model_init_step.validator
+    def _is_none_or_inherited_from_train_model_step(self, attribute: str, value: "TrainModelStep") -> None:
+        if value is not None and not issubclass(type(value), type(self)):
+            err_msg = f"{attribute} value must contain NoneType or a class instance that inherits from TrainModelStep."
+            raise TypeError(err_msg)
+
+    def __attrs_post_init__(self) -> None:
+        if self.opustrainer_config is None and (self.train_categories is None or self.train_category_ratios is None):
             err_msg = (
                 "'train_categories' and 'train_category_ratios' must be provided if 'opustrainer_config' is NoneType."
             )
             raise ValueError(err_msg)
-
-        if (train_categories is not None) != (train_category_ratios is not None):
+        if (self.train_categories is not None) != (self.train_category_ratios is not None):
             err_msg = "'train_categories' and 'train_category_ratios' must be either both specified or both None."
             raise ValueError(err_msg)
-        if train_categories is not None and train_category_ratios is not None:
-            if len(train_categories) != len(train_category_ratios):
+        if self.train_categories is not None and self.train_category_ratios is not None:
+            if len(self.train_categories) != len(self.train_category_ratios):
                 err_msg = "'train_categories' and 'train_category_ratios' lists must have same number of elements."
                 raise ValueError(err_msg)
-            if sum(train_category_ratios) != 1.0:
+            if sum(self.train_category_ratios) != 1.0:
                 err_msg = "'train_category_ratios' list elements must sum up to 1."
                 raise ValueError(err_msg)
 
-        if max_epochs is not None and max_epochs < 0:
-            err_msg = "'max_epochs' must be a positive integer."
-            raise ValueError(err_msg)
-
     def init_step(self) -> None:
+        """Check whether the train/valid datasets are present in the provided CorpusStep(s) and make copies of the
+        provided config files or prepare the default ones.
+        """
         super().init_step()
         if self.valid_dataset not in self.valid_corpus_step.dataset_list:
             err_msg = (
-                f"Dataset {self.valid_dataset} is not registered in {self.valid_corpus_step.step_label}"
+                f"Dataset {self.valid_dataset} is not registered in {self.valid_corpus_step.step_label} "
                 "categories.json"
             )
             raise ValueError(err_msg)
@@ -127,6 +132,7 @@ class TrainModelStep(OpusPocusStep):
             yaml.dump(self._generate_marian_config(), fh)
 
     def _generate_opustrainer_config(self) -> Dict[str, Any]:
+        """Generate OpusTrainer config file base on the provided TrainModelStep parameters."""
         config = {"seed": self.seed, "stages": ["main"], "modifiers": self.train_modifiers, "num_fields": 2}
 
         categories = self.train_categories
@@ -149,11 +155,12 @@ class TrainModelStep(OpusPocusStep):
         ]
         return config
 
-    @property
-    def opustrainer_config_path(self) -> Path:
-        return Path(self.step_dir, self.opustrainer_config_file)
-
     def _generate_marian_config(self) -> Dict[str, Any]:
+        """Generate the Marian training configuration file.
+
+        Use the provided config file and replace relevant values with the TraimModelStep's context, i.e. vocabulary
+        size, location, valid data location, etc.
+        """
         with self.marian_config.open("r") as fh:
             config = yaml.safe_load(fh)
         config["seed"] = self.seed
@@ -169,76 +176,87 @@ class TrainModelStep(OpusPocusStep):
         return config
 
     @property
+    def opustrainer_config_path(self) -> Path:
+        """OpusTrainer config path."""
+        return Path(self.step_dir, self._opustrainer_config_file)
+
+    @property
+    def marian_config_path(self) -> Path:
+        """Marian config path."""
+        return Path(self.step_dir, self._marian_config_file)
+
+    @property
     def opustrainer_config_dict(self) -> Dict[str, Any]:
+        """Contents of the OpusTrainer config file."""
         with self.opustrainer_config_path.open("r") as fh:
             return yaml.safe_load(fh)
 
     @property
     def opustrainer_dataset_paths(self) -> List[Path]:
+        """List of training datasets in OpusTrainer config."""
         return [Path(dset) for dset in self.opustrainer_config_dict["datasets"].values()]
 
     @property
-    def valid_dataset_path(self) -> Path:
-        return Path(f"{self.valid_data_dir}/{self.valid_dataset}.tsv.gz")
-
-    @property
-    def marian_config_path(self) -> Path:
-        return Path(self.step_dir, self.marian_config_file)
-
-    @property
-    def train_corpus_step(self) -> CorpusStep:
-        return self.dependencies["train_corpus_step"]
-
-    @property
-    def valid_corpus_step(self) -> CorpusStep:
-        return self.dependencies["valid_corpus_step"]
-
-    @property
-    def vocab_step(self) -> OpusPocusStep:
-        return self.dependencies["vocab_step"]
-
-    @property
     def input_dir(self) -> Path:
+        """Training corpora location."""
         return self.train_corpus_step.output_dir
 
     @property
     def valid_data_dir(self) -> Path:
+        """Validation step's output directory."""
         return self.valid_corpus_step.output_dir
 
     @property
+    def valid_dataset_path(self) -> Path:
+        """Path to the validation dataset."""
+        return Path(f"{self.valid_data_dir}", f"{self.valid_dataset}.tsv.gz")
+
+    @property
     def model_init_path(self) -> Path:
-        if self.dependencies["model_init_step"] is not None:
-            return self.dependencies["model_init_step"].model_path
+        """Location of the model used for training initialization."""
+        if self.model_init_step is not None:
+            return self.model_init_step.model_path
         return None
 
     @property
     def vocab_path(self) -> Path:
+        """VocabStep's vocabulary model file path."""
         return self.vocab_step.vocab_path
 
     @property
     def vocab_size(self) -> int:
+        """Vocabulary size."""
         return self.vocab_step.vocab_size
 
     @property
     def model_path(self) -> Path:
+        """Location of the output Marian model."""
         return Path(self.output_dir, "model.npz")
 
     @property
     def languages(self) -> List[str]:
+        """List of languages."""
         return [self.src_lang, self.tgt_lang]
 
     @property
     def langpair(self) -> str:
+        """Language pair string."""
         return "-".join(self.languages)
 
-    @property
-    def default_resources(self) -> RunnerResources:
-        return RunnerResources(gpus=1)
-
     def get_command_targets(self) -> List[Path]:
+        """At the end of the TrainModelStep.command() execution, create a flag file that indicates end of training."""
         return [Path(str(self.model_path) + ".DONE")]
 
     def command(self, target_file: Path) -> None:
+        """Invoke tools/opustrainer_train.py OpusTrainer wrapper to train a Marian model.
+
+        Executes the following steps:
+            1. Creates the trainer string for the OpusTrainer wrapper (setting training compute parameters for Marian).
+            2. Combines the source and target corpora into single tab-separated temporary files.
+            3. Executes the the OpusTrainer wrapper
+
+        Creates a flag file (target_file) after the training successfully terminates.
+        """
         env = os.environ
         n_cpus = int(env[RunnerResources.get_env_name("cpus")])
         n_gpus = 0
@@ -298,3 +316,7 @@ class TrainModelStep(OpusPocusStep):
             raise subprocess.SubprocessError(err_msg)
 
         target_file.touch()  # touch target file so we know that the training finished
+
+    @property
+    def default_resources(self) -> RunnerResources:
+        return RunnerResources(gpus=1)

@@ -1,6 +1,5 @@
 import importlib
 import py_compile
-from pathlib import Path
 
 import pytest
 
@@ -31,8 +30,7 @@ def step_command_module(foo_step_inited, monkeypatch):
         pipeline_steps, "STEP_CLASS_NAMES", {v for v in pipeline_steps.STEP_CLASS_NAMES if "Foo" not in v}
     )
 
-    cmd_file = Path(foo_step_inited.step_dir, foo_step_inited.command_file)
-    loader = importlib.machinery.SourceFileLoader("step_command", str(cmd_file))
+    loader = importlib.machinery.SourceFileLoader("step_command", str(foo_step_inited.cmd_path))
     spec = importlib.util.spec_from_loader("step_command", loader)
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
@@ -41,13 +39,12 @@ def step_command_module(foo_step_inited, monkeypatch):
 
 def test_cmd_file_exists(foo_step_inited):
     """Command file exists after init_step() call."""
-    assert Path(foo_step_inited.step_dir, foo_step_inited.command_file).exists()
+    assert foo_step_inited.cmd_path.exists()
 
 
 def test_cmd_file_syntax_valid(foo_step_inited):
     """Command file does not have syntax errors."""
-    cmd_file = Path(foo_step_inited.step_dir, foo_step_inited.command_file)
-    py_compile.compile(cmd_file)
+    py_compile.compile(foo_step_inited.cmd_path)
     assert True
 
 
@@ -55,7 +52,7 @@ def test_cmd_file_syntax_valid(foo_step_inited):
 def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner, partially_done):
     """Command file's main task method executes correctly without issues (standalone, no runner)."""
     foo_runner.save_parameters()
-    foo_step_inited.SLEEP_TIME = 1
+    foo_step_inited.sleep_time = 1
 
     finished_target = None
     if partially_done:
@@ -79,7 +76,7 @@ def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner,
 
 def test_cmd_file_execute_sub(step_command_module, foo_step_inited):
     """Command file's subtask method executes correctly without issues (standalone, no runner)."""
-    foo_step_inited.SLEEP_TIME = 1
+    foo_step_inited.sleep_time = 1
 
     target_file = foo_step_inited.get_command_targets()[0]
     assert not target_file.exists()

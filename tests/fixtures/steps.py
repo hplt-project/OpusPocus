@@ -1,35 +1,24 @@
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import pytest
+from attrs import define, field
 
 from opuspocus.pipeline_steps import OpusPocusStep, build_step, register_step
 from tests.utils import teardown_step
 
 
 @register_step("foo")
+@define(kw_only=True)
 class FooStep(OpusPocusStep):
     """Mock step for ligthweight unit testing.
 
     Waits for the SLEEP_TIME seconds and prints the output filenames into the respective output files.
     """
 
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        dependency_step: Optional["FooStep"] = None,
-        sleep_time: int = 5,
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            dependency_step=dependency_step,
-            sleep_time=sleep_time,
-        )
+    dependency_step: "FooStep" = field(default=None)
+    sleep_time: int = field(default=5)
 
     @property
     def dep_step(self) -> "FooStep":
@@ -46,8 +35,8 @@ class FooStep(OpusPocusStep):
         with target_file.open("w") as fh:
             print(self.get_output_str(target_file), file=fh)
 
-    def compose_command(self) -> str:
-        cmd = super().compose_command()
+    def _generate_cmd_file_contents(self) -> str:
+        cmd = super()._generate_cmd_file_contents()
         cmd_split = cmd.split("\n")
         cmd_split = [cmd_split[0], "import tests.fixtures.steps", *cmd_split[1:]]
         return "\n".join(cmd_split)

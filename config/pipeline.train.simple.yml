@@ -89,7 +89,7 @@ pipeline:
       step_label: translate_test.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
-      previous_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+      prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: train_model.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}
     - step: evaluate
@@ -102,7 +102,7 @@ pipeline:
       step_label: translate_test.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
       tgt_lang: ${global.src_lang}
-      previous_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+      prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: train_model.${global.tgt_lang}-${global.src_lang}
       marian_dir: ${global.marian_dir}
     - step: evaluate
@@ -112,6 +112,6 @@ pipeline:
       translated_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
 
-  default_targets:
+  targets:
     - evaluate_test.${global.src_lang}-${global.tgt_lang}
     - evaluate_test.${global.tgt_lang}-${global.src_lang}

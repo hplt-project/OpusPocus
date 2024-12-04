@@ -55,7 +55,7 @@ class DebugRunner(OpusPocusRunner):
             return TaskInfo(file_path=target_file, id=-1)
 
         step.state = StepState.RUNNING
-        step.command_preprocess()
+        step.main_task_preprocess()
 
         # Recursively process all the target files
         for t_file in step.get_command_targets():
@@ -67,7 +67,7 @@ class DebugRunner(OpusPocusRunner):
                 dependencies=None,
                 step_resources=self.get_resources(step),
             )
-        step.command_postprocess()
+        step.main_task_postprocess()
         clean_dir(step.tmp_dir)
         step.state = StepState.DONE
 

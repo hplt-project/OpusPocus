@@ -2,6 +2,7 @@ from argparse import Namespace
 from pathlib import Path
 
 import pytest
+from attrs import define, field, validators
 
 from opuspocus import pipeline_steps
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
@@ -11,20 +12,28 @@ from opuspocus.runners.debug import DebugRunner
 from tests.utils import teardown_pipeline
 
 
+@define(kw_only=True)
 class FooPipeline(OpusPocusPipeline):
     """Mock pipeline for lightweight unit testing."""
 
-    def __init__(self, bar_step: OpusPocusStep) -> None:
-        foo_step = bar_step.dep_step
-        self.pipeline_graph = {
-            foo_step.step_label: foo_step,
-            bar_step.step_label: bar_step,
-        }
-        self.default_targets = [bar_step]
-        self.pipeline_config = PipelineConfig.create(
-            bar_step.pipeline_dir,
-            self.pipeline_graph,
-            self.default_targets,
+    bar_step: OpusPocusStep = field(validator=validators.instance_of(OpusPocusStep))
+    foo_step: OpusPocusStep = field(validator=validators.instance_of(OpusPocusStep), init=False)
+    pipeline_dir: Path = field(init=False)
+    pipeline_config: PipelineConfig = field(init=False)
+
+    @foo_step.default
+    def _get_bar_steps_dep_step(self) -> OpusPocusStep:
+        return self.bar_step.dep_step
+
+    @pipeline_dir.default
+    def _get_foo_pipeline_dir(self) -> Path:
+        return self.bar_step.pipeline_dir
+
+    @pipeline_config.default
+    def _get_foo_config(self) -> PipelineConfig:
+        steps = {self.foo_step.step_label: self.foo_step, self.bar_step.step_label: self.bar_step}
+        return PipelineConfig.create(
+            pipeline_dir=self.pipeline_dir, pipeline_steps=steps, default_targets=[self.bar_step]
         )
 
 
@@ -32,7 +41,7 @@ class FooPipeline(OpusPocusPipeline):
 def foo_pipeline(bar_step):
     """Basic (two-step) mock pipeline."""
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
-    pipeline = FooPipeline(bar_step)
+    pipeline = FooPipeline(bar_step=bar_step)
     yield pipeline
 
     teardown_pipeline(pipeline)
