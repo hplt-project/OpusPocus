@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from attrs import define, field, validators
+from attrs import Attribute, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -37,10 +37,10 @@ class GenerateVocabStep(OpusPocusStep):
     vocab_size: int = field(default=64000, validator=validators.gt(0))
 
     @corpus_step.validator
-    def _inherited_from_corpus_step(self, attribute: str, value: CorpusStep) -> None:
+    def _inherited_from_corpus_step(self, attribute: Attribute, value: CorpusStep) -> None:
         # TODO(varisd): remove duplicate code (similar to corpus_step.py validator)
         if not issubclass(type(value), CorpusStep):
-            err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep."
+            err_msg = f"{attribute.name} value must contain class instance that inherits from CorpusStep."
             raise TypeError(err_msg)
 
     @src_lang.default

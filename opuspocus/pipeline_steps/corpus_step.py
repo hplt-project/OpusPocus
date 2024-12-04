@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from attrs import define, field, validators
+from attrs import Attribute, define, field, validators
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
@@ -43,9 +43,9 @@ class CorpusStep(OpusPocusStep):
     _categories_file = "categories.json"
 
     @prev_corpus_step.validator
-    def _none_or_inherited_from_corpus_step(self, attribute: str, value: Optional["CorpusStep"]) -> None:
+    def _none_or_inherited_from_corpus_step(self, attribute: Attribute, value: Optional["CorpusStep"]) -> None:
         if value is not None and not issubclass(type(value), CorpusStep):
-            err_msg = f"{attribute} value must contain NoneType or a class instance that inherits from CorpusStep"
+            err_msg = f"{attribute.name} value must contain NoneType or a class instance that inherits from CorpusStep"
             raise ValueError(err_msg)
 
     @src_lang.default

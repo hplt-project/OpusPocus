@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List
 
-from attrs import define, field, validators
+from attrs import Attribute, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -26,10 +26,10 @@ class MergeCorpusStep(CorpusStep):
     merge_categories: bool = field(default=False)
 
     @other_corpus_step.validator
-    def _inherited_from_corpus_step(self, attribute: str, value: CorpusStep) -> None:
+    def _inherited_from_corpus_step(self, attribute: Attribute, value: CorpusStep) -> None:
         # TODO(varisd): remove duplicate code (similar to corpus_step.py validator)
         if not issubclass(type(value), CorpusStep):
-            err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep."
+            err_msg = f"{attribute.name} value must contain class instance that inherits from CorpusStep."
             raise TypeError(err_msg)
 
     def register_categories(self) -> None:

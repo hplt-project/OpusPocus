@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from attrs import define, field, validators
+from attrs import Attribute, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -35,9 +35,9 @@ class TranslateCorpusStep(CorpusStep):
             raise FileNotFoundError(err_msg)
 
     @model_step.validator
-    def _inherited_from_train_model_step(self, attribute: str, value: TrainModelStep) -> None:
+    def _inherited_from_train_model_step(self, attribute: Attribute, value: TrainModelStep) -> None:
         if not issubclass(type(value), TrainModelStep):
-            err_msg = f"{attribute} value must contain a class instance that inherits from TrainModelStep"
+            err_msg = f"{attribute.name} value must contain a class instance that inherits from TrainModelStep"
             raise TypeError(err_msg)
 
     @marian_dir.default

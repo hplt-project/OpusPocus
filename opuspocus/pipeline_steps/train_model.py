@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import yaml
-from attrs import Factory, converters, define, field, validators
+from attrs import Attribute, Factory, converters, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -48,9 +48,9 @@ class TrainModelStep(OpusPocusStep):
     @marian_dir.validator
     @marian_config.validator
     @opustrainer_config.validator
-    def _path_exists(self, attribute: str, value: Path) -> None:
+    def _path_exists(self, attribute: Attribute, value: Path) -> None:
         if value is None and attribute.name != "opustrainer_config":
-            err_msg = f"Attribute `{attribute.name}` value must be type Path (NoneType was provided)."
+            err_msg = f"`{attribute.name}` value must be type Path (NoneType was provided)."
             raise ValueError(err_msg)
         if value is not None and not value.exists():
             err_msg = f"Provided path ({value}) does not exist."
@@ -58,21 +58,23 @@ class TrainModelStep(OpusPocusStep):
 
     @train_corpus_step.validator
     @valid_corpus_step.validator
-    def _inherited_from_corpus_step(self, attribute: str, value: CorpusStep) -> None:
+    def _inherited_from_corpus_step(self, attribute: Attribute, value: CorpusStep) -> None:
         if not issubclass(type(value), CorpusStep):
-            err_msg = f"{attribute} value must contain a class instance that inherits from CorpusStep."
+            err_msg = f"{attribute.name} value must contain a class instance that inherits from CorpusStep."
             raise TypeError(err_msg)
 
     @vocab_step.validator
-    def _inherited_from_vocab_step(self, attribute: str, value: GenerateVocabStep) -> None:
+    def _inherited_from_vocab_step(self, attribute: Attribute, value: GenerateVocabStep) -> None:
         if not issubclass(type(value), GenerateVocabStep):
-            err_msg = f"{attribute} value must contain a class instance that inherits from GenerateVocabStep."
+            err_msg = f"{attribute.name} value must contain a class instance that inherits from GenerateVocabStep."
             raise TypeError(err_msg)
 
     @model_init_step.validator
-    def _is_none_or_inherited_from_train_model_step(self, attribute: str, value: "TrainModelStep") -> None:
+    def _is_none_or_inherited_from_train_model_step(self, attribute: Attribute, value: "TrainModelStep") -> None:
         if value is not None and not issubclass(type(value), type(self)):
-            err_msg = f"{attribute} value must contain NoneType or a class instance that inherits from TrainModelStep."
+            err_msg = (
+                f"{attribute.name} value must contain NoneType or a class instance that inherits from TrainModelStep."
+            )
             raise TypeError(err_msg)
 
     @src_lang.default
