@@ -48,30 +48,22 @@ pipeline:
     # Preprocessing
     - step: clean
       step_label: clean.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       python_venv_dir: ${global.opuscleaner_python_venv_dir}
       prev_corpus_step: raw.${global.src_lang}-${global.tgt_lang}
     - step: decontaminate
       step_label: decontaminate.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       prev_corpus_step: clean.${global.src_lang}-${global.tgt_lang}
       valid_data_step: valid.${global.src_lang}-${global.tgt_lang}
       test_data_step: test.${global.src_lang}-${global.tgt_lang}
       min_length: ${global.decontaminate_min_length}
     - step: gather
       step_label: gather.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       prev_corpus_step: decontaminate.${global.src_lang}-${global.tgt_lang}
     - step: gather
       step_label: gather.${global.src_lang}
-      src_lang: ${global.src_lang}
       prev_corpus_step: raw.${global.src_lang}
     - step: gather
       step_label: gather.${global.tgt_lang}
-      src_lang: ${global.tgt_lang}
       prev_corpus_step: raw.${global.tgt_lang}
 
   targets:

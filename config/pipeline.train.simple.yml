@@ -44,18 +44,11 @@ pipeline:
     # Train
     - step: generate_vocab
       step_label: generate_vocab.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      datasets: 
-        - clean.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}
       corpus_step: gather.${global.src_lang}-${global.tgt_lang}
       vocab_size: ${global.vocab_size}
     - step: train_model
       step_label: train_model.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      marian_dir: ${global.marian_dir}
       marian_config: ${global.marian_config}
       opustrainer_config: null
       max_epochs: ${global.max_epochs}
@@ -71,7 +64,6 @@ pipeline:
       step_label: train_model.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
       tgt_lang: ${global.src_lang}
-      marian_dir: ${global.marian_dir}
       marian_config: ${global.marian_config}
       opustrainer_config: null
       max_epochs: ${global.max_epochs}
@@ -87,15 +79,10 @@ pipeline:
     # Eval
     - step: translate
       step_label: translate_test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: train_model.${global.src_lang}-${global.tgt_lang}
-      marian_dir: ${global.marian_dir}
     - step: evaluate
       step_label: evaluate_test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
       translated_corpus_step: translate_test.${global.src_lang}-${global.tgt_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
     - step: translate
@@ -104,11 +91,8 @@ pipeline:
       tgt_lang: ${global.src_lang}
       prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: train_model.${global.tgt_lang}-${global.src_lang}
-      marian_dir: ${global.marian_dir}
     - step: evaluate
       step_label: evaluate_test.${global.tgt_lang}-${global.src_lang}
-      src_lang: ${global.tgt_lang}
-      tgt_lang: ${global.src_lang}
       translated_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
 

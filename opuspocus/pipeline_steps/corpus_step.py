@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from attrs import converters, define, field, validators
+from attrs import Attribute, define, field, validators
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep, StepState
@@ -34,18 +34,37 @@ class CorpusStep(OpusPocusStep):
     of its execution.
     """
 
-    src_lang: str = field(validator=validators.instance_of(str))
-    tgt_lang: str = field(converter=converters.optional(str), default=None)
-    shard_size: int = field(validator=validators.optional(validators.gt(0)), default=None)
     prev_corpus_step: "CorpusStep" = field(default=None)
+
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(validator=validators.optional(validators.instance_of(str)))
+    shard_size: int = field(validator=validators.optional(validators.gt(0)))
 
     _categories_file = "categories.json"
 
     @prev_corpus_step.validator
-    def _none_or_inherited_from_corpus_step(self, attribute: str, value: Optional["CorpusStep"]) -> None:
+    def _none_or_inherited_from_corpus_step(self, attribute: Attribute, value: Optional["CorpusStep"]) -> None:
         if value is not None and not issubclass(type(value), CorpusStep):
-            err_msg = f"{attribute} value must contain NoneType or a class instance that inherits from CorpusStep"
+            err_msg = f"{attribute.name} value must contain NoneType or a class instance that inherits from CorpusStep"
             raise ValueError(err_msg)
+
+    @src_lang.default
+    def _inherit_src_lang_from_prev_step(self) -> Optional[str]:
+        if self.prev_corpus_step is not None:
+            return self.prev_corpus_step.src_lang
+        return None
+
+    @tgt_lang.default
+    def _inherit_tgt_lang_from_prev_step(self) -> Optional[str]:
+        if self.prev_corpus_step is not None:
+            return self.prev_corpus_step.tgt_lang
+        return None
+
+    @shard_size.default
+    def _inherit_shard_size_from_prev_step(self) -> Optional[int]:
+        if self.prev_corpus_step is not None:
+            return self.prev_corpus_step.shard_size
+        return None
 
     @property
     def input_dir(self) -> Optional[Path]:
