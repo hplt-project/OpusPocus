@@ -16,8 +16,8 @@ def merge_step_inited(request, train_data_parallel_tiny_raw_step_inited):
         **{
             "src_lang": train_data_parallel_tiny_raw_step_inited.src_lang,
             "tgt_lang": train_data_parallel_tiny_raw_step_inited.tgt_lang,
-            "previous_corpus_step": train_data_parallel_tiny_raw_step_inited,
-            "previous_corpus_label": "previous",
+            "prev_corpus_step": train_data_parallel_tiny_raw_step_inited,
+            "prev_corpus_label": "prev",
             "other_corpus_step": train_data_parallel_tiny_raw_step_inited,
             "other_corpus_label": "other",
             "merge_categories": request.param,

@@ -29,7 +29,7 @@ def test_run_nonempty_directory_exists_fail(foo_pipeline):
     """Fail execution when pipeline exists and is not in the INITED state."""
     with Path(foo_pipeline.pipeline_dir, "mock_file.txt").open("w") as fh:
         print("Some text.", file=fh)
-    config_path = Path(foo_pipeline.pipeline_dir.parent, foo_pipeline.config_file)
+    config_path = Path(foo_pipeline.pipeline_dir.parent, foo_pipeline._config_file)  # noqa: SLF001
     PipelineConfig.save(foo_pipeline.pipeline_config, config_path)
 
     with pytest.raises(PipelineInitError):
@@ -53,14 +53,13 @@ def test_run_nonempty_directory_exists_fail(foo_pipeline):
 def test_run_pipeline_in_state(pipeline_in_state, request):
     """Run a pipeline in the initialized or failed state."""
     pipeline = request.getfixturevalue(pipeline_in_state)
-    pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
     rc = main(
         [
             "run",
             "--pipeline-dir",
             str(pipeline.pipeline_dir),
             "--pipeline-config",
-            str(pipeline_config),
+            str(pipeline.pipeline_config_path),
             "--runner",
             "bash",
         ]
@@ -75,7 +74,6 @@ def test_run_pipeline_in_state(pipeline_in_state, request):
 def test_run_pipeline_in_state_fail(pipeline_in_state, request):
     """Fail running a pipeline in running or done states without the rerun flag."""
     pipeline = request.getfixturevalue(pipeline_in_state)
-    pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
     with pytest.raises(SystemExit):
         main(
             [
@@ -83,7 +81,7 @@ def test_run_pipeline_in_state_fail(pipeline_in_state, request):
                 "--pipeline-dir",
                 str(pipeline.pipeline_dir),
                 "--pipeline-config",
-                str(pipeline_config),
+                str(pipeline.pipeline_config_path),
                 "--runner",
                 "bash",
             ]
@@ -103,14 +101,13 @@ def test_run_pipeline_in_state_fail(pipeline_in_state, request):
 def test_run_pipeline_in_state_reinit(pipeline_in_state, request):
     """Fully reinitialize and run a pipeline in a specific state, canceling the previous run."""
     pipeline = request.getfixturevalue(pipeline_in_state)
-    pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
     rc = main(
         [
             "run",
             "--pipeline-dir",
             str(pipeline.pipeline_dir),
             "--pipeline-config",
-            str(pipeline_config),
+            str(pipeline.pipeline_config_path),
             "--runner",
             "bash",
             "--reinit",
@@ -132,14 +129,12 @@ def test_run_pipeline_in_state_reinit(pipeline_in_state, request):
 def test_run_pipeline_in_state_stop(pipeline_in_state, warn, request):
     """Rerun a pipeline in a specific state, canceling the previous run."""
     pipeline = request.getfixturevalue(pipeline_in_state)
-    pipeline_config = Path(pipeline.pipeline_dir, pipeline.config_file)
-
     cmd = [
         "run",
         "--pipeline-dir",
         str(pipeline.pipeline_dir),
         "--pipeline-config",
-        str(pipeline_config),
+        str(pipeline.pipeline_config_path),
         "--runner",
         "bash",
         "--stop-previous-run",

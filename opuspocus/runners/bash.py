@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Optional
 
+from attrs import define, field, validators
 from psutil import NoSuchProcess, Process, wait_procs
 
 from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
@@ -18,36 +19,27 @@ SLEEP_TIME = 0.5
 
 
 class BashTaskInfo(TaskInfo):
-    id: int
+    id: int  # process ID
 
 
 @register_runner("bash")
+@define(kw_only=True)
 class BashRunner(OpusPocusRunner):
-    """TODO"""
+    """Class implementing task execution using bash."""
 
-    submit_wrapper = "scripts/bash_runner_submit.py"
+    run_tasks_in_parallel: bool = field(validator=validators.instance_of(bool), default=False)
+
+    _submit_wrapper = "scripts/bash_runner_submit.py"
 
     @staticmethod
     def add_args(parser: ArgumentParser) -> None:
+        """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
         parser.add_argument(
             "--run-tasks-in-parallel",
             default=False,
             action="store_true",
-            help="TODO",
-        )
-
-    def __init__(
-        self,
-        runner: str,
-        pipeline_dir: Path,
-        *,
-        run_tasks_in_parallel: bool = False,
-    ) -> None:
-        super().__init__(
-            runner=runner,
-            pipeline_dir=pipeline_dir,
-            run_tasks_in_parallel=run_tasks_in_parallel,
+            help="Submit tasks as processes running in parallel wherever possible.",
         )
 
     def submit_task(
@@ -59,7 +51,25 @@ class BashRunner(OpusPocusRunner):
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> BashTaskInfo:
-        """TODO"""
+        """Submits the task using the `bash` command.
+
+        Submits the command via the _submit_wrapper that handles waiting for the task dependencies to finish.
+        This logic is moved to the wrapper conserve OpusPocus's runner "execute and terminate" policy.
+        OpusPocus exectus the requested command (run, stop, etc.) and then the OpusPocus process terminates.
+        Any scheduling, task monitoring is handled outside of the OpusPocus process (in this case using
+        the task's specific wrapper).
+
+        Args:
+            cmd_path (Path): location of the step's command to be executed
+            target_file (Path): target_file to be created by a subtask (if not None)
+            dependencies (List[BashTaskInfo]): list of task information about the running dependencies
+            step_resources (RunnerResources): resources to be allocated for the task
+            stdout_file (Path): location of the log file for task's stdout
+            stderr_file (Path): location of the log file for task's stderr
+
+        Returns:
+            BashTaskInfo with the process ID and the related target_file in case of subtask execution.
+        """
         dependencies_str = ""
         if dependencies is not None:
             dependencies_str = " ".join([str(dep["id"]) for dep in dependencies])
@@ -84,7 +94,7 @@ class BashRunner(OpusPocusRunner):
         else:
             proc = subprocess.Popen(
                 [
-                    self.submit_wrapper,
+                    self._submit_wrapper,
                     str(cmd_path),
                     dependencies_str,
                 ],
@@ -108,13 +118,24 @@ class BashRunner(OpusPocusRunner):
         return task_info
 
     def send_signal(self, task_info: BashTaskInfo, signal: int = signal.SIGTERM) -> None:
-        """TODO"""
+        """Send the signal to the process with ID from the task_info.
+
+        Args:
+            task_info (BashTaskInfo): task info containing the PID of the task's process
+            signal (int): signal to send
+        """
         proc = self._get_process(task_info)
         logger.debug("Signal %i was sent to process %i.", signal, task_info["id"])
         if proc is not None:
             proc.send_signal(signal)
 
     def wait_for_single_task(self, task_info: BashTaskInfo, *, ignore_returncode: bool = False) -> None:
+        """Wait for the task's process to finish.
+
+        Args:
+            task_info (BashTaskInfo): task info containing the PID of the task's process
+            ignore_returncode (bool): ignore the return code of the finished process execution
+        """
         pid = task_info["id"]
         proc = self._get_process(task_info)
         if proc is None:
@@ -131,11 +152,23 @@ class BashRunner(OpusPocusRunner):
                 err_msg = f"Process {pid} exited with non-zero value."
                 raise subprocess.SubprocessError(err_msg)
 
-    def is_task_running(self, task_info: TaskInfo) -> bool:
+    def is_task_running(self, task_info: BashTaskInfo) -> bool:
+        """Check whether the task's process is currently running.
+
+        Args:
+            task_info (BashTaskInfo): task info containing the PID of the task's process
+
+        Returns:
+            True if the process is currently running.
+        """
         return self._get_process(task_info) is not None
 
     def _get_process(self, task_info: BashTaskInfo) -> Optional[Process]:
-        """TODO"""
+        """Get the process given the process ID.
+
+        Args:
+            task_info (BashTaskInfo): task info containing the PID of the task's process
+        """
         try:
             proc = Process(task_info["id"])
         except NoSuchProcess:

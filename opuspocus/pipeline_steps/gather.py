@@ -1,5 +1,7 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List
+
+from attrs import define
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -7,32 +9,9 @@ from opuspocus.utils import concat_files
 
 
 @register_step("gather")
+@define(kw_only=True)
 class GatherCorpusStep(CorpusStep):
-    """Gather the input corpora and merge them into datasets based
-    on the OpusCleaner categories labels.
-
-    TODO: Monolingual dataset support (?)
-    """
-
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        previous_corpus_step: CorpusStep,
-        src_lang: str,
-        tgt_lang: Optional[str] = None,
-        shard_size: Optional[int] = None,
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            previous_corpus_step=previous_corpus_step,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            shard_size=shard_size,
-        )
+    """Gather the input corpora and merge them into datasets based on the OpusCleaner categories labels."""
 
     def register_categories(self) -> None:
         """Extract the dataset names.
@@ -60,6 +39,7 @@ class GatherCorpusStep(CorpusStep):
         self.save_categories_dict(categories_dict)
 
     def get_command_targets(self) -> List[Path]:
+        """Get the list of output corpora using the categories defined in the prev_corpus_step categories.json."""
         langpair = ""
         if self.tgt_lang is not None:
             langpair = f".{self.src_lang}-{self.tgt_lang}"
@@ -70,6 +50,11 @@ class GatherCorpusStep(CorpusStep):
         ]
 
     def command(self, target_file: Path) -> None:
+        """Concatenate files that belong to the specified category.
+
+        We infer the input file list based on the target_file name and the list of datasets that correspond to the
+        category_mapping used to create the target_file filename.
+        """
         target_stem_split = target_file.stem.split(".")
         category = ".".join(target_stem_split[:-1])
         if self.tgt_lang is not None:

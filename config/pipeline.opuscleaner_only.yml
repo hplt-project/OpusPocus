@@ -20,6 +20,6 @@ pipeline:
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
       python_venv_dir: ${global.opuscleaner_python_venv_dir}
-      previous_corpus_step: raw.${global.src_lang}-${global.tgt_lang}
-  default_targets:
+      prev_corpus_step: raw.${global.src_lang}-${global.tgt_lang}
+  targets:
     - clean.${global.src_lang}-${global.tgt_lang}

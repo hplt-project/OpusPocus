@@ -104,29 +104,29 @@ pipeline:
       marian_dir: ${global.marian_dir}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
-      previous_corpus_step: gather.${global.src_lang}
+      prev_corpus_step: gather.${global.src_lang}
       model_step: train_model.${global.src_lang}-${global.tgt_lang}
     - step: translate
       step_label: translate.${global.tgt_lang}-${global.src_lang}
       marian_dir: ${global.marian_dir}
       src_lang: ${global.tgt_lang}
       tgt_lang: ${global.src_lang}
-      previous_corpus_step: gather.${global.tgt_lang}
+      prev_corpus_step: gather.${global.tgt_lang}
       model_step: train_model.${global.tgt_lang}-${global.src_lang}
     - step: merge
       step_label: merge.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
-      previous_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
-      previous_corpus_label: organic
+      prev_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
+      prev_corpus_label: organic
       other_corpus_step: translate.${global.tgt_lang}-${global.src_lang}
       other_corpus_label: synthetic
     - step: merge
       step_label: merge.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
       tgt_lang: ${global.src_lang}
-      previous_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
-      previous_corpus_label: organic
+      prev_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
+      prev_corpus_label: organic
       other_corpus_step: translate.${global.src_lang}-${global.tgt_lang}
       other_corpus_label: synthetic
 
@@ -173,7 +173,7 @@ pipeline:
       step_label: translate_test.${global.src_lang}-${global.tgt_lang}
       src_lang: ${global.src_lang}
       tgt_lang: ${global.tgt_lang}
-      previous_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+      prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: tune_bt_model.${global.src_lang}-${global.tgt_lang}
       marian_dir: ${global.marian_dir}
     - step: evaluate
@@ -186,7 +186,7 @@ pipeline:
       step_label: translate_test.${global.tgt_lang}-${global.src_lang}
       src_lang: ${global.tgt_lang}
       tgt_lang: ${global.src_lang}
-      previous_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+      prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
       model_step: tune_bt_model.${global.tgt_lang}-${global.src_lang}
       marian_dir: ${global.marian_dir}
     - step: evaluate
@@ -196,6 +196,6 @@ pipeline:
       translated_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
       reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
 
-  default_targets:
+  targets:
     - evaluate_test.${global.src_lang}-${global.tgt_lang}
     - evaluate_test.${global.tgt_lang}-${global.src_lang}

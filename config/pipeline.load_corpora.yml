@@ -26,7 +26,7 @@ pipeline:
       tgt_lang: ${global.tgt_lang}
       raw_data_dir: ${global.test_data_dir}
       compressed: false
-  default_targets:
+  targets:
     - raw.${global.src_lang}-${global.tgt_lang}
     - valid.${global.src_lang}-${global.tgt_lang}
     - test.${global.src_lang}-${global.tgt_lang}

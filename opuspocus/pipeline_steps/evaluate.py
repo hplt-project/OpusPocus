@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List
 
 import sacrebleu
+from attrs import Factory, define, field, validators
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
@@ -13,39 +14,35 @@ logger = logging.getLogger(__name__)
 
 
 @register_step("evaluate")
+@define(kw_only=True)
 class EvaluateStep(OpusPocusStep):
-    AVAILABLE_METRICS = sacrebleu.metrics.METRICS
+    """Class implementing translation evaluation."""
 
-    def __init__(
-        self,
-        step: str,
-        step_label: str,
-        pipeline_dir: Path,
-        src_lang: str,
-        tgt_lang: str,
-        translated_corpus_step: CorpusStep,
-        reference_corpus_step: CorpusStep,
-        datasets: Optional[List[str]] = None,
-        seed: int = 42,
-        metrics: List[str] = ["BLEU", "CHRF"],  # noqa: B006
-    ) -> None:
-        super().__init__(
-            step=step,
-            step_label=step_label,
-            pipeline_dir=pipeline_dir,
-            src_lang=src_lang,
-            tgt_lang=tgt_lang,
-            datasets=datasets,
-            translated_corpus_step=translated_corpus_step,
-            reference_corpus_step=reference_corpus_step,
-            seed=seed,
-            metrics=metrics,
-        )
-        for metric in self.metrics:
-            if metric not in self.AVAILABLE_METRICS:
+    src_lang: str = field(validator=validators.instance_of(str))
+    tgt_lang: str = field(validator=validators.instance_of(str))
+    translated_corpus_step: CorpusStep = field()
+    reference_corpus_step: CorpusStep = field()
+    datasets: List[str] = field(factory=list)
+    seed: int = field(default=42)
+    metrics: List[str] = field(default=Factory(lambda: ["BLEU", "CHRF"]))
+
+    _available_metrics = sacrebleu.metrics.METRICS
+
+    @metrics.validator
+    def _is_available(self, _: str, value: Any) -> None:  # noqa: ANN401
+        for metric in value:
+            if metric not in self._available_metrics:
                 raise ValueError(
-                    f"Unknown metric: {metric}.\n" + "Supported metrics: {}".format(",".join(self.AVAILABLE_METRICS))
+                    f"Unknown metric: {metric}.\n" + "Supported metrics: {}".format(",".join(self._available_metrics))
                 )
+
+    @translated_corpus_step.validator
+    @reference_corpus_step.validator
+    def _inherited_from_corpus_step(self, attribute: str, value: CorpusStep) -> None:
+        # TODO(varisd): remove duplicate code (similar to corpus_step.py validator)
+        if not issubclass(type(value), CorpusStep):
+            err_msg = f"{attribute} value must contain class instance that inherits from CorpusStep."
+            raise TypeError(err_msg)
 
     def init_step(self) -> None:
         super().init_step()
@@ -53,19 +50,21 @@ class EvaluateStep(OpusPocusStep):
             self.datasets = self.translated_step.dataset_list
         for dset in self.datasets:
             if dset not in self.translated_step.dataset_list:
-                err_msg = f"Dataset {dset} is not registered in the {self.translated_step.step_label} categories.json"
+                err_msg = f"Dataset {dset} is not registered in the {self.translated_step.step_label} categories.json."
                 raise ValueError(err_msg)
             if dset not in self.reference_step.dataset_list:
-                err_msg = f"Dataset {dset} is not registered in the {self.reference_step.step_label} categories.json"
+                err_msg = f"Dataset {dset} is not registered in the {self.reference_step.step_label} categories.json."
                 raise ValueError(err_msg)
 
     @property
     def translated_step(self) -> OpusPocusStep:
-        return self.dependencies["translated_corpus_step"]
+        """Attribute alias."""
+        return self.translated_corpus_step
 
     @property
     def reference_step(self) -> OpusPocusStep:
-        return self.dependencies["reference_corpus_step"]
+        """Attribute alias."""
+        return self.reference_corpus_step
 
     @property
     def languages(self) -> List[str]:
@@ -77,7 +76,7 @@ class EvaluateStep(OpusPocusStep):
     def command(self, target_file: Path) -> None:
         metric_label = target_file.stem.split(".")[0]
         dset = ".".join(target_file.stem.split(".")[1:])
-        metric = self.AVAILABLE_METRICS[metric_label]()
+        metric = self._available_metrics[metric_label]()
 
         sys = [
             line.rstrip("\n")
