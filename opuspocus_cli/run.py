@@ -51,7 +51,7 @@ def main(args: Namespace) -> int:
 
     # As a fallback, we can re-use config from the provided --pipeline-dir
     if args.pipeline_config is None:
-        args.pipeline_config = Path(args.pipeline_dir, OpusPocusPipeline.config_file)
+        args.pipeline_config = Path(args.pipeline_dir, OpusPocusPipeline._config_file)
         logger.info("No --pipeline-config was provided, reading pipeline configuration from %s", args.pipeline_config)
 
     # By default, we use the pipeline directory defined in the config file
