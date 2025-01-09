@@ -39,8 +39,13 @@ class SlurmRunner(OpusPocusRunner):
     def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
+        parser.add_argument("--slurm-time", type=int, default=None, help="Slurm job time limit.")
         parser.add_argument(
-            "--slurm-other-options", type=str, metavar="RUNNER", default=None, help="Additional Slurm CLI options."
+            "--slurm-other-options",
+            type=str,
+            metavar="RUNNER",
+            default=None,
+            help="Additional Slurm CLI options (catchall for less frequent options).",
         )
 
     def submit_task(
@@ -82,13 +87,15 @@ class SlurmRunner(OpusPocusRunner):
         if target_file is not None:
             jobname += f".{target_file.stem}"
         cmd += ["--job-name", jobname]
-        cmd += ["--time", "60"]
-        cmd += ["--signal", "10@600"]  # send SIGTERM 10m before time-limit
 
         if stdout_file is not None:
             cmd += ["-o", str(stdout_file)]
         if stderr_file is not None:
             cmd += ["-e", str(stderr_file)]
+
+        if self.slurm_time is not None:
+            cmd += ["--time", str(self.slurm_time)]
+            cmd += ["--signal", "10@600"]  # send SIGTERM 10m before time-limit
         if self.slurm_other_options is not None:
             cmd += [self.slurm_other_options.split(",")]
 
@@ -171,7 +178,7 @@ class SlurmRunner(OpusPocusRunner):
         time.sleep(SLEEP_TIME)
         status = self._get_job_status(task_info)
         logger.debug("Sending signal to job %s with '%s' status...", task_info["id"], status)
-        if status == "FAILED":
+        if status in ["CANCELLED", "FAILED", "TIMEOUT"]:
             return
         if status == "PENDING":
             proc = subprocess.Popen(
