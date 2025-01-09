@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-from attrs import define, field, validators
+from attrs import Attribute, define, field, validators
 
 from opuspocus.pipeline_steps import OpusPocusStep
 from opuspocus.pipelines import OpusPocusPipeline
@@ -33,13 +33,22 @@ class SlurmRunner(OpusPocusRunner):
     commands.
     """
 
+    slurm_time: str = field()
     slurm_other_options: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
+
+    @slurm_time.validator
+    def _validate_time(self, attribute: Attribute, value: Optional[str]) -> None:
+        if value is not None:
+            time_split = value.split(":")
+        if len(time_split) > 3 or any([len(t) > 2 for t in time_split]):
+            err_msg = f"Invalid '{attribute}' format (value)."
+            raise ValueError(err_msg)
 
     @staticmethod
     def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
-        parser.add_argument("--slurm-time", type=int, default=None, help="Slurm job time limit.")
+        parser.add_argument("--slurm-time", type=str, default=None, help="Slurm job time limit.")
         parser.add_argument(
             "--slurm-other-options",
             type=str,
@@ -81,7 +90,8 @@ class SlurmRunner(OpusPocusRunner):
             cmd.append("--dependency")
             cmd.append(",".join([f"afterok:{dep!s}" for dep in dependencies_ids]))
 
-        cmd += self._convert_resources(step_resources)
+        # TODO: fix this with resource config refactor
+        #cmd += self._convert_resources(step_resources)
 
         jobname = f"{self.runner}.{self.pipeline_dir.stem}{self.pipeline_dir.suffix}"
         if target_file is not None:
@@ -92,12 +102,11 @@ class SlurmRunner(OpusPocusRunner):
             cmd += ["-o", str(stdout_file)]
         if stderr_file is not None:
             cmd += ["-e", str(stderr_file)]
-
         if self.slurm_time is not None:
             cmd += ["--time", str(self.slurm_time)]
             cmd += ["--signal", "10@600"]  # send SIGTERM 10m before time-limit
         if self.slurm_other_options is not None:
-            cmd += [self.slurm_other_options.split(",")]
+            cmd += self.slurm_other_options.split(",")
 
         t_file_str = None
         if target_file is not None:
