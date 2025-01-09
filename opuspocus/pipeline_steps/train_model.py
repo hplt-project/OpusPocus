@@ -155,7 +155,7 @@ class TrainModelStep(OpusPocusStep):
         if categories is None:
             categories = self.train_corpus_step.categories
         config["datasets"] = {
-            cat: str(Path(self.tmp_dir, str(self.train_corpus_step.category_mapping[cat][0]) + ".tsv.gz"))
+            cat: str(Path(self.tmp_dir.name, str(self.train_corpus_step.category_mapping[cat][0]) + ".tsv.gz"))
             for cat in categories
         }
 
@@ -210,7 +210,7 @@ class TrainModelStep(OpusPocusStep):
     @property
     def opustrainer_dataset_paths(self) -> List[Path]:
         """List of training datasets in OpusTrainer config."""
-        return [Path(dset) for dset in self.opustrainer_config_dict["datasets"].values()]
+        return [Path(self.tmp_dir.parent, dset) for dset in self.opustrainer_config_dict["datasets"].values()]
 
     @property
     def input_dir(self) -> Path:
