@@ -1,4 +1,5 @@
 import argparse
+import enum
 import logging
 from argparse import Namespace
 from pathlib import Path
@@ -14,8 +15,19 @@ from opuspocus.utils import clean_dir, file_path
 
 logger = logging.getLogger(__name__)
 
-# We use the same set of states, we distinguish PipelineState and StepState for code clarity
-PipelineState = StepState
+
+class PipelineState(str, enum.Enum):
+    INIT_INCOMPLETE = "INIT_INCOMPLETE"
+    FAILED = "FAILED"
+    INITED = "INITED"
+    SUBMITTED = "SUBMITTED"
+    RUNNING = "RUNNING"
+    DONE = "DONE"
+    PARTIALLY_DONE = "PARTIALLY_DONE"
+
+    @staticmethod
+    def list() -> List[str]:
+        return [s.value for s in PipelineState]
 
 
 @define(kw_only=True)
@@ -158,6 +170,8 @@ class OpusPocusPipeline:
             return PipelineState.INITED
         if StepState.INIT_INCOMPLETE in step_states:
             return PipelineState.INIT_INCOMPLETE
+        if all(state in [StepState.INITED, StepState.DONE] for state in step_states):
+            return PipelineState.PARTIALLY_DONE
         return None
 
     @classmethod
@@ -217,13 +231,20 @@ class OpusPocusPipeline:
         self.save_pipeline()
         logger.info("Pipeline (%s) initialized successfully.", self.pipeline_dir)
 
-    def reinit(self) -> None:
+    def reinit(self, *, ignore_finished: bool = False) -> None:
         """Reinitialize the pipeline."""
         if self.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
             err_msg = f"Trying to re-initialize a pipeline in {self.state} state. Stop the pipeline execution first."
             raise ValueError(err_msg)
-        clean_dir(self.pipeline_dir)
-        self.init()
+
+        for v in self.steps:
+            if v.state == StepState.DONE and ignore_finished:
+                continue
+            clean_dir(v.step_dir)
+            v.init_step()
+
+        self.save_pipeline()
+        logger.info("Pipeline (%s) re-initialized successfully.", self.pipeline_dir)
 
     def print_status(self, steps: List[OpusPocusStep]) -> None:
         """Print the list of pipeline steps with their current status and print the status of the pipeline."""

@@ -24,13 +24,13 @@ def init_pipeline(pipeline: OpusPocusPipeline, args: Namespace) -> OpusPocusPipe
     elif pipeline.state == PipelineState.INIT_INCOMPLETE:
         logger.info("An existing pipeline's initialization is incomplete. Finishing initialization...")
         pipeline.init()
-    elif args.reinit:
+    elif args.reinit or args.reinit_failed:
         logger.info("Re-initializing the pipeline...")
         if pipeline.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
             logger.info("Stopping the previous run...")
             prev_runner = load_runner(pipeline.pipeline_dir)
             prev_runner.stop_pipeline(pipeline)
-        pipeline.reinit()
+        pipeline.reinit(ignore_finished=args.reinit_failed)
     return pipeline
 
 
@@ -51,7 +51,7 @@ def main(args: Namespace) -> int:
 
     # As a fallback, we can re-use config from the provided --pipeline-dir
     if args.pipeline_config is None:
-        args.pipeline_config = Path(args.pipeline_dir, OpusPocusPipeline._config_file)
+        args.pipeline_config = Path(args.pipeline_dir, OpusPocusPipeline._config_file)  # noqa: SLF001
         logger.info("No --pipeline-config was provided, reading pipeline configuration from %s", args.pipeline_config)
 
     # By default, we use the pipeline directory defined in the config file
