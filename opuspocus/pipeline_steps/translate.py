@@ -66,6 +66,9 @@ class TranslateCorpusStep(CorpusStep):
         src_filename = ".".join([*src_filename_stem_split, "gz"])
         src_file = Path(tgt_file.parent, src_filename)
 
+        if src_file.exists():
+            return src_file
+
         if tgt_filename_stem_split[-2] == "gz":
             # Write the relevant shard lines into the source-side file
 
