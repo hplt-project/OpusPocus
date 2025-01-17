@@ -38,11 +38,13 @@ class SlurmRunner(OpusPocusRunner):
 
     @slurm_time.validator
     def _validate_time(self, attribute: Attribute, value: Optional[str]) -> None:
+        max_time_fields = 3
+        max_time_field_size = 2
         if value is not None:
             time_split = value.split(":")
-        if len(time_split) > 3 or any([len(t) > 2 for t in time_split]):
-            err_msg = f"Invalid '{attribute}' format (value)."
-            raise ValueError(err_msg)
+            if len(time_split) > max_time_fields or any(len(t) > max_time_field_size for t in time_split):
+                err_msg = f"Invalid '{attribute}' format (value)."
+                raise ValueError(err_msg)
 
     @staticmethod
     def add_args(parser):  # noqa: ANN001, ANN205
@@ -91,7 +93,7 @@ class SlurmRunner(OpusPocusRunner):
             cmd.append(",".join([f"afterok:{dep!s}" for dep in dependencies_ids]))
 
         # TODO: fix this with resource config refactor
-        #cmd += self._convert_resources(step_resources)
+        # cmd += self._convert_resources(step_resources)
 
         jobname = f"{self.runner}.{self.pipeline_dir.stem}{self.pipeline_dir.suffix}"
         if target_file is not None:

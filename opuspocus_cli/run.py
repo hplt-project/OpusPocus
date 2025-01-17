@@ -72,7 +72,7 @@ def main(args: Namespace) -> int:
 
     # The pipeline must be at least INITED at this point
     if pipeline.state is None or pipeline.state == PipelineState.INIT_INCOMPLETE:
-        logger.error("Something went wrong with pipeline initialization (Current pipeline state: %s", pipeline.state)
+        logger.error("Something went wrong with pipeline initialization (Current pipeline state: %s)", pipeline.state)
         sys.exit(2)
 
     ## Run phase ##
