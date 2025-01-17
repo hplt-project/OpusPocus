@@ -147,6 +147,13 @@ class TrainModelStep(OpusPocusStep):
         with self.marian_config_path.open("w") as fh:
             yaml.dump(self._generate_marian_config(), fh)
 
+    def clean_directories(self, *, remove_finished_command_targets: bool = True) -> None:
+        """Remove the opuspocus state file if restarting from scratch."""
+        super().clean_directories(remove_finished_command_targets=remove_finished_command_targets)
+        opustrainer_state_file = Path(str(self.opustrainer_config_path) + ".state")
+        if remove_finished_command_targets and opustrainer_state_file.exists():
+            opustrainer_state_file.unlink()
+
     def _generate_opustrainer_config(self) -> Dict[str, Any]:
         """Generate OpusTrainer config file base on the provided TrainModelStep parameters."""
         config = {"seed": self.seed, "stages": ["main"], "modifiers": self.train_modifiers, "num_fields": 2}
@@ -188,7 +195,7 @@ class TrainModelStep(OpusPocusStep):
         config["log-level"] = "info"
         config["log"] = f"{self.log_dir}/train.log"
         config["valid-log"] = f"{self.log_dir}/valid.log"
-        config["valid-sets"] = f"{self.valid_data_dir}/{self.valid_dataset}.tsv.gz"
+        config["valid-sets"] = str(self.valid_dataset_path)
         return config
 
     @property
@@ -225,7 +232,7 @@ class TrainModelStep(OpusPocusStep):
     @property
     def valid_dataset_path(self) -> Path:
         """Path to the validation dataset."""
-        return Path(f"{self.valid_data_dir}", f"{self.valid_dataset}.tsv.gz")
+        return Path(f"{self.valid_data_dir}", f"{self.valid_dataset}.{self.src_lang}-{self.tgt_lang}.tsv.gz")
 
     @property
     def model_init_path(self) -> Path:
@@ -311,7 +318,7 @@ class TrainModelStep(OpusPocusStep):
         # Prepare valid dataset TSV file
         if not self.valid_dataset_path.exists():
             logger.info("Creating dataset %s...", self.valid_dataset_path)
-            dset = ".".join(self.valid_dataset_path.stem.split(".")[:-1])
+            dset = ".".join(self.valid_dataset_path.stem.split(".")[:-2])
             in_files = [Path(self.valid_corpus_step.output_dir, f"{dset}.{lang}.gz") for lang in self.languages]
             paste_files(in_files, self.valid_dataset_path)
 
