@@ -55,6 +55,12 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     _add_general_arguments(parser, pipeline_dir_required=False)
     parser.add_argument("--reinit", default=False, action="store_true", help="Re-initialize an existing pipeline.")
     parser.add_argument(
+        "--reinit-failed",
+        default=False,
+        action="store_true",
+        help="Re-initialize failed steps of an existing pipeline.",
+    )
+    parser.add_argument(
         "--stop-previous-run", default=False, action="store_true", help="Stop previous pipeline execution first."
     )
     parser.add_argument(

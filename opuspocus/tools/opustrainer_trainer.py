@@ -122,7 +122,7 @@ def main(args: argparse.Namespace) -> int:
         # process is no more. We can safely retrieve its return code and exit with that, it should
         # not block at this point.
         logger.info("[Trainer] trainer stopped reading input")
-        sys.exit(model_trainer.wait())
+        return model_trainer.wait()
     return 0
 
 

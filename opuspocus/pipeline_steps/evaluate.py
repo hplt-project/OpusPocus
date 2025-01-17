@@ -54,9 +54,12 @@ class EvaluateStep(OpusPocusStep):
         return self.translated_corpus_step.tgt_lang
 
     def init_step(self) -> None:
-        super().init_step()
-        if self.datasets is None:
+        # we need to set default datasets value before calling super,
+        # which saves the step parameters for later pipeline manipulation
+        if not self.datasets:
             self.datasets = self.translated_step.dataset_list
+
+        super().init_step()
         for dset in self.datasets:
             if dset not in self.translated_step.dataset_list:
                 err_msg = f"Dataset {dset} is not registered in the {self.translated_step.step_label} categories.json."

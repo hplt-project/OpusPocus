@@ -205,6 +205,9 @@ class CorpusStep(OpusPocusStep):
         categories.json initialization.
         """
         # TODO: refactor opuscleaner_step.init_step to reduce code duplication
+        if self.state is StepState.DONE:
+            logger.info("[%s] Step is in %s state. Skipping...", self.step_label, self.state)
+            return
         if self.state is StepState.INIT_INCOMPLETE:
             logger.warning("[%s] Step is in %s state. Re-initializing...", self.step_label, self.state)
             clean_dir(self.step_dir)

@@ -52,9 +52,12 @@ class GenerateVocabStep(OpusPocusStep):
         return self.corpus_step.tgt_lang
 
     def init_step(self) -> None:
-        super().init_step()
-        if self.datasets is None:
+        # we need to set default datasets value before calling super,
+        # which saves the step parameters for later pipeline manipulation
+        if not self.datasets:
             self.datasets = self.corpus_step.dataset_list
+
+        super().init_step()
         for dset in self.datasets:
             if dset not in self.corpus_step.dataset_list:
                 logger.debug(
