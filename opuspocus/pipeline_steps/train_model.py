@@ -342,4 +342,4 @@ class TrainModelStep(OpusPocusStep):
 
     @property
     def default_resources(self) -> RunnerResources:
-        return RunnerResources(gpus=1)
+        return RunnerResources(gpus=1, mem="40g")
