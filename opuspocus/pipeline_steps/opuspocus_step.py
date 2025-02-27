@@ -209,15 +209,25 @@ class OpusPocusStep:
         4. create the step command
         5. set set.state to INITED
         """
+        if self.state is StepState.DONE:
+            logger.info("[%s] Step is in %s state. Skipping...", self.step_label, self.state)
+            return
         if self.state is StepState.INIT_INCOMPLETE:
             logger.warning("[%s] Step is in %s state. Re-initializing...", self.step_label, self.state)
             clean_dir(self.step_dir)
-        elif self.state is not None:
+        if self.state is not None:
             if self.has_state(StepState.INITED):
                 logger.info("[%s] Step already initialized. Skipping...", self.step_label)
                 return
+            if self.has_state(StepState.DONE):
+                logger.info("[%s] Step already finished. Skipping...", self.step_label)
+                return
+            if self.has_state(StepState.INIT_INCOMPLETE):
+                logger.warning("[%s] Previous step initialization failed. Re-initializing...", self.step_label)
+                clean_dir(self.step_dir)
             err_msg = f"Trying to initialize step ({self.step_label}) in a {self.state} state."
             raise ValueError(err_msg)
+
         # Set state to incomplete until finished initializing.
         self.create_directories()
         self.state = StepState.INIT_INCOMPLETE
