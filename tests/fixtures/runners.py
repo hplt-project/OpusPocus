@@ -9,7 +9,7 @@ from opuspocus.runners import RUNNER_REGISTRY, build_runner
 @pytest.fixture(params=RUNNER_REGISTRY.keys())
 def parsed_runner_args(request, foo_step):
     """Create default runner arguments."""
-    if request.param == "slurm" and not Path("/bin/sbatch").exists():
+    if request.param == "slurm" and not (Path("/bin/sbatch").exists() or Path("/usr/bin/sbatch").exists()):
         pytest.skip(reason="Requires SLURM to be available...")
 
     extra = []

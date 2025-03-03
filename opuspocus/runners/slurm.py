@@ -104,6 +104,7 @@ class SlurmRunner(OpusPocusRunner):
             cmd += ["-o", str(stdout_file)]
         if stderr_file is not None:
             cmd += ["-e", str(stderr_file)]
+
         if self.slurm_time is not None:
             cmd += ["--time", str(self.slurm_time)]
             cmd += ["--signal", "10@600"]  # send SIGTERM 10m before time-limit
@@ -189,7 +190,7 @@ class SlurmRunner(OpusPocusRunner):
         time.sleep(SLEEP_TIME)
         status = self._get_job_status(task_info)
         logger.debug("Sending signal to job %s with '%s' status...", task_info["id"], status)
-        if status in ["CANCELLED", "FAILED", "TIMEOUT"]:
+        if status in ["FAILED", "TIMEOUT"] or "CANCELLED" in status:
             return
         if status == "PENDING":
             proc = subprocess.Popen(
@@ -319,6 +320,9 @@ class SlurmRunner(OpusPocusRunner):
 
         if resources.gpus is not None:
             converted += ["--gpus", str(resources.gpus)]
+            converted += ["--gpus-per-node", str(resources.gpus)]
+            converted += ["--nodes", "1"]
+            converted += ["--ntasks-per-node", "1"]
 
         if resources.mem is not None:
             converted += ["--mem", str(resources.mem)]

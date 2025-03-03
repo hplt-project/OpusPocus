@@ -165,3 +165,7 @@ class TranslateCorpusStep(CorpusStep):
         if rc:
             err_msg = f"Process {proc.pid} exited with non-zero value."
             raise Exception(err_msg)  # noqa: TRY002
+
+    @property
+    def default_resources(self) -> RunnerResources:
+        return RunnerResources(gpus=1, mem="20g")

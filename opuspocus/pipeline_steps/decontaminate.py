@@ -72,10 +72,11 @@ class DecontaminateCorpusStep(CorpusStep):
         We infer the input files (source-side, target-side) using the target_file.
         """
         dset_name = ".".join(target_file.stem.split(".")[:-1])
+        languages_str = "-".join(self.languages)
 
         # Combine the corpora before decontaminating
-        infile = Path(self.tmp_dir, "input.{}.gz".format("-".join(self.languages)))
-        outfile = Path(self.tmp_dir, "output.{}.gz".format("-".join(self.languages)))
+        infile = Path(self.tmp_dir, f"{dset_name}.input.{languages_str}.gz")
+        outfile = Path(self.tmp_dir, f"{dset_name}.output.{languages_str}.gz")
 
         paste_files(
             [Path(self.input_dir, f"{dset_name}.{lang}.gz") for lang in self.languages],
