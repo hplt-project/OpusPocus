@@ -6,6 +6,8 @@ psutil
 pycld2==0.41
 requests
 sacrebleu
+sacrebleu[ja]
+sacrebleu[ko]
 sacremoses
 spacy-pkuseg
 typing-extensions

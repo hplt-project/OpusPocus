@@ -88,7 +88,11 @@ class EvaluateStep(OpusPocusStep):
     def command(self, target_file: Path) -> None:
         metric_label = target_file.stem.split(".")[0]
         dset = ".".join(target_file.stem.split(".")[1:])
-        metric = self._available_metrics[metric_label]()
+        if metric_label == "BLEU":
+            # Pass the target language to select correct target-side tokenizer
+            metric = self._available_metrics[metric_label](trg_lang=self.tgt_lang)
+        else:
+            metric = self._available_metrics[metric_label]()
 
         sys = [
             line.rstrip("\n")
