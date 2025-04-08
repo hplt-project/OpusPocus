@@ -1,13 +1,12 @@
 import argparse
 import logging
-from argparse import Namespace
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from attrs import converters, define, field, validators
 from omegaconf import OmegaConf
-from omegaconf.dictconfig import DictConfig
 
+from opuspocus.config import PipelineConfig
 from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step
 from opuspocus.pipelines.exceptions import PipelineInitError, PipelineStateError
 from opuspocus.utils import clean_dir, file_path
@@ -22,15 +21,15 @@ PipelineState = StepState
 class PipelineGraph:
     """Class representing the pipelien graph structure."""
 
-    config: DictConfig = field(validator=validators.instance_of(DictConfig), eq=False)
+    config: PipelineConfig = field(validator=validators.instance_of(PipelineConfig), eq=False)
     steps: Dict[str, OpusPocusStep] = field(init=False, factory=dict)
     targets: List[OpusPocusStep] = field(init=False, factory=list)
 
     def __attrs_post_init__(self) -> None:
         self.steps, self.targets = self._build_graph(self.config)
 
-    def _build_graph(self, pipeline_config: DictConfig) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
-        """Builds the DAG representing the pipeline structure.
+    def _build_graph(self, pipeline_config: PipelineConfig) -> Tuple[Dict[str, OpusPocusStep], List[OpusPocusStep]]:
+        """Build the DAG representing the pipeline structure.
 
         We initialize the steps in the breadth-first recursive fashion: first, the dependencies of a step are
         initialized, then we initialize the actual step using the dependency instances as the init parameters
@@ -91,8 +90,8 @@ class OpusPocusPipeline:
     """Base class for OpusPocus pipelines."""
 
     pipeline_dir: Path = field(converter=converters.optional(Path), default=None)
-    pipeline_config: DictConfig = field(
-        validator=validators.optional(validators.instance_of(DictConfig)), default=None, eq=False
+    pipeline_config: PipelineConfig = field(
+        validator=validators.optional(validators.instance_of(PipelineConfig)), default=None, eq=False
     )
     pipeline_graph: PipelineGraph = field(init=False, default=None)
 
@@ -198,8 +197,7 @@ class OpusPocusPipeline:
         Saves the dependency structure of the pipeline steps, pipeline target
         steps and pipeline parameters in their respective YAML files.
         """
-        config = PipelineConfig.create(self.pipeline_dir, self.pipeline_graph.steps, self.pipeline_graph.targets)
-        PipelineConfig.save(config, self.pipeline_config_path)
+        self.pipeline_config.save(self.pipeline_config_path)
 
     def init(self) -> None:
         """Initialize the pipeline."""
@@ -280,82 +278,3 @@ class OpusPocusPipeline:
                 if dep.step_label == step.step_label:
                     ret.append(s)
         return ret
-
-
-class PipelineConfig(OmegaConf):
-    """OmegaConf wrapper for storing pipeline config.
-
-    TODO: convert to dataclass (?)
-
-    """
-
-    top_keys = frozenset(["global", "pipeline"])
-    pipeline_keys = frozenset(["pipeline_dir", "steps", "targets"])
-
-    @staticmethod
-    def create(
-        pipeline_dir: Path,
-        pipeline_steps: Dict[str, OpusPocusStep],
-        default_targets: List[OpusPocusStep],
-    ) -> OmegaConf:
-        return OmegaConf.create(
-            {
-                "pipeline": {
-                    "pipeline_dir": str(pipeline_dir),
-                    "steps": [s.get_parameters_dict(exclude_dependencies=False) for s in pipeline_steps.values()],
-                    "targets": [s.step_label for s in default_targets],
-                }
-            }
-        )
-
-    @staticmethod
-    def save(config: Union[DictConfig, dict], config_path: Path) -> None:
-        OmegaConf.save(config, f=config_path)
-
-    @classmethod
-    def load(cls: OmegaConf, config_file: Path, overwrite_args: Optional[argparse.Namespace] = None) -> DictConfig:
-        config = OmegaConf.load(config_file)
-        cls._valid_yaml_structure(config)
-        return cls._overwrite(config, overwrite_args)
-
-    @staticmethod
-    def _overwrite(config: DictConfig, args: Namespace) -> DictConfig:  # noqa: ARG004
-        # TODO: implement overwrite mechanisms
-        logger.warning("(NOT IMPLEMENTED) Overwriting the config file values with command line arguments.")
-        return config
-
-    @classmethod
-    def _valid_yaml_structure(cls: OmegaConf, config: DictConfig) -> bool:
-        """TODO."""
-        # TODO: other checks?
-
-        # Top has known keys
-        for key in config.keys():  # noqa: SIM118
-            if key not in cls.top_keys:
-                logger.warning("Config file contains unsupported top key (%s). Ignoring...", key)
-        # Contains "pipeline" top key
-        if "pipeline" not in config:
-            err_msg = 'Config file must contain pipeline definition of the ("pipeline" top key).'
-            raise ValueError(err_msg)
-        # Pipeline has known keys
-        for key in config.pipeline.keys():  # noqa: SIM118
-            if key not in cls.pipeline_keys:
-                logger.warning("Pipeline definition contains unsupported key (%s). Ignoring...", key)
-        # Contains "pipeline.steps" key
-        if "steps" not in config.pipeline:
-            err_msg = 'Config file must contain the list of steps ("pipeline.steps")'
-            raise ValueError(err_msg)
-
-        # All steps have an unique step_label
-        steps = {}
-        for step in config.pipeline.steps:
-            if step.step_label in steps:
-                err_msg = (
-                    "Duplicate step_label found in pipeline definition. Please "
-                    "make sure that each pipeline step has a unique step_label "
-                    "value.\n"
-                    f"Step-1: {step[step.step_label]},\nStep-{step}"
-                )
-                raise ValueError(err_msg)
-            steps[step.step_label] = step
-        return True

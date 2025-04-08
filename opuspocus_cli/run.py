@@ -6,8 +6,9 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Sequence
 
+from opuspocus.config import PipelineConfig
 from opuspocus.options import parse_run_args
-from opuspocus.pipelines import OpusPocusPipeline, PipelineConfig, PipelineState, build_pipeline, load_pipeline
+from opuspocus.pipelines import OpusPocusPipeline, PipelineState, build_pipeline, load_pipeline
 from opuspocus.runners import build_runner, load_runner
 
 logger = logging.getLogger(__name__)
