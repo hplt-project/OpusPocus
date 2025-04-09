@@ -1,19 +1,21 @@
-global:
+pipeline:
+  pipeline_dir: experiments/${.langpair}/train.simple.example
   seed: 42
+
   src_lang: en
   tgt_lang: eu
+  langpair: ${.src_lang}-${.tgt_lang}
+  bt_langpair: ${.tgt_lang}-${.src_lang}
 
-  preprocess_pipeline_dir: experiments/${.src_lang}-${.tgt_lang}/preprocess.simple
+  preprocess_pipeline_dir: experiments/${.langpair}/preprocess.simple
 
   # We set the "raw" data dir to the output of the preprocess pipeline
-  raw_data_dir: ${.preprocess_pipeline_dir}/gather.${.src_lang}-${.tgt_lang}/output
+  raw_data_dir: ${.preprocess_pipeline_dir}/gather.${.langpair}/output
 
-  valid_data_dir: ${.preprocess_pipeline_dir}/valid.${.src_lang}-${.tgt_lang}/output
-  test_data_dir: ${.preprocess_pipeline_dir}/test.${.src_lang}-${.tgt_lang}/output
+  valid_data_dir: ${.preprocess_pipeline_dir}/valid.${.langpair}/output
+  test_data_dir: ${.preprocess_pipeline_dir}/test.${.langpair}/output
 
-  valid_dataset: flores200.dev.${.src_lang}-${.tgt_lang}
-
-  decontaminate_min_length: 25
+  valid_dataset: flores200.dev.${.langpair}
 
   marian_dir: marian_dir 
   marian_config: config/marian.train.teacher.base.yml
@@ -21,56 +23,40 @@ global:
   max_epochs: null
   vocab_size: 64000
 
-pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/train.simple.example
   steps:
     # Load Datasets
     - step: raw
-      step_label: gather.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.raw_data_dir}
+      step_label: gather.${pipeline.langpair}
+      raw_data_dir: ${pipeline.raw_data_dir}
     - step: raw
-      step_label: valid.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.valid_data_dir}
+      step_label: valid.${pipeline.langpair}
+      raw_data_dir: ${pipeline.valid_data_dir}
     - step: raw
-      step_label: test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.test_data_dir}
+      step_label: test.${pipeline.langpair}
+      raw_data_dir: ${pipeline.test_data_dir}
 
     # Train
     - step: generate_vocab
-      step_label: generate_vocab.${global.src_lang}-${global.tgt_lang}
-      marian_dir: ${global.marian_dir}
-      corpus_step: gather.${global.src_lang}-${global.tgt_lang}
-      vocab_size: ${global.vocab_size}
+      step_label: generate_vocab.${pipeline.langpair}
+      corpus_step: gather.${pipeline.langpair}
     - step: train_model
-      step_label: train_model.${global.src_lang}-${global.tgt_lang}
-      marian_config: ${global.marian_config}
+      step_label: train_model.${pipeline.langpair}
       opustrainer_config: null
-      max_epochs: ${global.max_epochs}
-      vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
-      train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
-      valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset}
+      vocab_step: generate_vocab.${pipeline.langpair}
+      train_corpus_step: gather.${pipeline.langpair}
+      valid_corpus_step: valid.${pipeline.langpair}
       train_categories:
         - "clean"
       train_category_ratios:
         - 1.0
     - step: train_model
-      step_label: train_model.${global.tgt_lang}-${global.src_lang}
-      src_lang: ${global.tgt_lang}
-      tgt_lang: ${global.src_lang}
-      marian_config: ${global.marian_config}
+      step_label: train_model.${pipeline.bt_langpair}
+      src_lang: ${pipeline.tgt_lang}
+      tgt_lang: ${pipeline.src_lang}
       opustrainer_config: null
-      max_epochs: ${global.max_epochs}
-      vocab_step: generate_vocab.${global.src_lang}-${global.tgt_lang}
-      train_corpus_step: gather.${global.src_lang}-${global.tgt_lang}
-      valid_corpus_step: valid.${global.src_lang}-${global.tgt_lang}
-      valid_dataset: ${global.valid_dataset}
+      vocab_step: generate_vocab.${pipeline.langpair}
+      train_corpus_step: gather.${pipeline.langpair}
+      valid_corpus_step: valid.${pipeline.langpair}
       train_categories:
         - "clean"
       train_category_ratios:
@@ -78,24 +64,27 @@ pipeline:
 
     # Eval
     - step: translate
-      step_label: translate_test.${global.src_lang}-${global.tgt_lang}
-      prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
-      model_step: train_model.${global.src_lang}-${global.tgt_lang}
+      step_label: translate_test.${pipeline.langpair}
+      prev_corpus_step: test.${pipeline.langpair}
+      model_step: train_model.${pipeline.langpair}
     - step: evaluate
-      step_label: evaluate_test.${global.src_lang}-${global.tgt_lang}
-      translated_corpus_step: translate_test.${global.src_lang}-${global.tgt_lang}
-      reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+      step_label: evaluate_test.${pipeline.langpair}
+      translated_corpus_step: translate_test.${pipeline.langpair}
+      reference_corpus_step: test.${pipeline.langpair}
     - step: translate
-      step_label: translate_test.${global.tgt_lang}-${global.src_lang}
-      src_lang: ${global.tgt_lang}
-      tgt_lang: ${global.src_lang}
-      prev_corpus_step: test.${global.src_lang}-${global.tgt_lang}
-      model_step: train_model.${global.tgt_lang}-${global.src_lang}
+      step_label: translate_test.${pipeline.bt_langpair}
+      src_lang: ${pipeline.tgt_lang}
+      tgt_lang: ${pipeline.src_lang}
+      prev_corpus_step: test.${pipeline.langpair}
+      model_step: train_model.${pipeline.bt_langpair}
     - step: evaluate
-      step_label: evaluate_test.${global.tgt_lang}-${global.src_lang}
-      translated_corpus_step: translate_test.${global.tgt_lang}-${global.src_lang}
-      reference_corpus_step: test.${global.src_lang}-${global.tgt_lang}
+      step_label: evaluate_test.${pipeline.bt_langpair}
+      translated_corpus_step: translate_test.${pipeline.bt_langpair}
+      reference_corpus_step: test.${pipeline.langpair}
 
   targets:
-    - evaluate_test.${global.src_lang}-${global.tgt_lang}
-    - evaluate_test.${global.tgt_lang}-${global.src_lang}
+    - evaluate_test.${pipeline.langpair}
+    - evaluate_test.${pipeline.bt_langpair}
+
+runner:
+  runner: bash

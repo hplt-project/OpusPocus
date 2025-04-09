@@ -1,32 +1,29 @@
-global:
-  src_lang: en
-  tgt_lang: nn
-
-  raw_data_dir: data/${.src_lang}-${.tgt_lang}/raw
-  valid_data_dir: data/${.src_lang}-${.tgt_lang}/valid
-  test_data_dir: data/${.src_lang}-${.tgt_lang}/test
-
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/load_corpora.example
+  pipeline_dir: experiments/${.langpair}/load_corpora.example
+
+  src_lang: en
+  tgt_lang: eu
+  langpair: ${.src_lang}-${.tgt_lang}
+
+  raw_data_dir: data/${.langpair}/raw
+  valid_data_dir: data/${.langpair}/valid
+  test_data_dir: data/${.langpair}/test
+
   steps:
     - step: raw
-      step_label: raw.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.raw_data_dir}
+      step_label: raw.${pipeline.langpair}
     - step: raw
-      step_label: valid.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.valid_data_dir}
+      step_label: valid.${pipeline.langpair}
+      raw_data_dir: ${pipeline.valid_data_dir}
       compressed: false
     - step: raw
-      step_label: test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.test_data_dir}
+      step_label: test.${pipeline.langpair}
+      raw_data_dir: ${pipeline.test_data_dir}
       compressed: false
   targets:
-    - raw.${global.src_lang}-${global.tgt_lang}
-    - valid.${global.src_lang}-${global.tgt_lang}
-    - test.${global.src_lang}-${global.tgt_lang}
+    - raw.${pipeline.langpair}
+    - valid.${pipeline.langpair}
+    - test.${pipeline.langpair}
+
+runner:
+  runner: bash
