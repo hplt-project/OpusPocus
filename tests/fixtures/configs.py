@@ -8,9 +8,6 @@ PIPELINE_TRAIN_CONFIGS = [
     Path("config", "pipeline.train.backtranslation.yml"),
 ]
 
-# TODO(varisd): update the pipeline_*_config_file methods after we implement
-#   Python dataclasses
-
 
 @pytest.fixture(scope="session")
 def marian_tiny_config_file(config_dir):
@@ -57,17 +54,17 @@ def pipeline_preprocess_tiny_config_file(
         config = yaml.safe_load(fh)
     config["pipeline"]["pipeline_dir"] = str(tmp_path_factory.mktemp("pipeline_preprocess_tiny_default"))
 
-    config["global"]["src_lang"] = languages[0]
-    config["global"]["tgt_lang"] = languages[1]
+    config["pipeline"]["src_lang"] = languages[0]
+    config["pipeline"]["tgt_lang"] = languages[1]
 
     data_dir = str(train_data_parallel_tiny[0].parent)
-    config["global"]["raw_para_dir"] = data_dir
-    config["global"]["raw_mono_src_dir"] = data_dir
-    config["global"]["raw_mono_tgt_dir"] = data_dir
+    config["pipeline"]["raw_para_dir"] = data_dir
+    config["pipeline"]["raw_mono_src_dir"] = data_dir
+    config["pipeline"]["raw_mono_tgt_dir"] = data_dir
 
     data_dir_decompressed = str(train_data_parallel_tiny_decompressed[0].parent)
-    config["global"]["valid_data_dir"] = data_dir_decompressed
-    config["global"]["test_data_dir"] = data_dir_decompressed
+    config["pipeline"]["valid_data_dir"] = data_dir_decompressed
+    config["pipeline"]["test_data_dir"] = data_dir_decompressed
 
     config_file = Path(config_dir, "pipeline.preprocess.tiny.yml")
     yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115
@@ -89,26 +86,26 @@ def pipeline_train_tiny_config_file(
         config = yaml.safe_load(fh)
     config["pipeline"]["pipeline_dir"] = str(tmp_path_factory.mktemp("pipeline_train_tiny_default"))
 
-    config["global"]["original_config_file"] = str(request.param)
-    config["global"]["src_lang"] = languages[0]
-    config["global"]["tgt_lang"] = languages[1]
+    config["pipeline"]["original_config_file"] = str(request.param)
+    config["pipeline"]["src_lang"] = languages[0]
+    config["pipeline"]["tgt_lang"] = languages[1]
 
-    config["global"]["preprocess_pipeline_dir"] = str(pipeline_preprocess_tiny_done.pipeline_dir)
-    config["global"]["marian_config"] = str(marian_tiny_config_file)
-    config["global"]["marian_dir"] = str(marian_dir)
-    config["global"]["max_epochs"] = 2
+    config["pipeline"]["preprocess_pipeline_dir"] = str(pipeline_preprocess_tiny_done.pipeline_dir)
+    config["pipeline"]["marian_config"] = str(marian_tiny_config_file)
+    config["pipeline"]["marian_dir"] = str(marian_dir)
+    config["pipeline"]["max_epochs"] = 2
 
     # NOTE(varisd): value chosen to satisfy generate_vocab training
-    config["global"]["vocab_size"] = 275
+    config["pipeline"]["vocab_size"] = 275
 
     # NOTE(varisd): A bit hacky way of getting the test dataset name from
     #   the preprocessing pipeline
     for step in pipeline_preprocess_tiny_done.steps:
         if "test" in step.step_label:
-            config["global"]["valid_dataset"] = step.dataset_list[0]
+            config["pipeline"]["valid_dataset"] = step.dataset_list[0]
 
-    if "shard_size" in config["global"]:
-        config["global"]["shard_size"] = 2
+    if "shard_size" in config["pipeline"]:
+        config["pipeline"]["shard_size"] = 2
 
     config_file = Path(config_dir, "pipeline.train.tiny.yml")
     yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115

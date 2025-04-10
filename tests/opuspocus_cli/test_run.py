@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from opuspocus.pipelines import PipelineConfig, PipelineInitError
+from opuspocus.config import PipelineConfig
+from opuspocus.pipelines import PipelineInitError
 from opuspocus_cli import main
 
 

@@ -7,7 +7,7 @@ from attrs import converters, define, field, validators
 from omegaconf import OmegaConf
 
 from opuspocus.config import PipelineConfig
-from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step
+from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step, list_step_parameters
 from opuspocus.pipelines.exceptions import PipelineInitError, PipelineStateError
 from opuspocus.utils import clean_dir, file_path
 
@@ -41,7 +41,6 @@ class PipelineGraph:
         Returns:
             Dict with keys containing the step_label(s) and values being the respective step instances.
         """
-        pipeline_dir = pipeline_config.pipeline.pipeline_dir
         steps = {}  # type: Dict[str, OpusPocusStep]
         steps_configs = {s.step_label: OmegaConf.to_object(s) for s in pipeline_config.pipeline.steps}
 
@@ -53,6 +52,13 @@ class PipelineGraph:
             # Create the arguments for the step instance initialization
             step_args = {}
             logger.info("Creating parameters to build %s object.", step_label)
+
+            # Set default (global) parameters
+            for param in list_step_parameters(steps_configs[step_label]["step"]):
+                if param in pipeline_config.pipeline:
+                    step_args[param] = pipeline_config.pipeline[param]
+
+            # Set the step-specific step parameters, possibly overwriting the global ones
             for k, v in steps_configs[step_label].items():
                 # Simply assing the value if None or not a dependency parameter
                 if "_step" not in k or v is None:
@@ -62,10 +68,6 @@ class PipelineGraph:
                         err_msg = f"Step '{step_label}' has an undefined dependency '{k}={v}'."
                         raise ValueError(err_msg)
                     step_args[k] = _build_step_inner(v)
-
-            # Set default (global) pipeline_dir
-            if "pipeline_dir" not in steps_configs[step_label]:
-                step_args["pipeline_dir"] = pipeline_dir
 
             try:
                 steps[step_label] = build_step(**step_args)

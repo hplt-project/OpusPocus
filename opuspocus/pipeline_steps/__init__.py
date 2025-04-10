@@ -1,6 +1,6 @@
 import importlib
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List
 
 from .corpus_step import CorpusStep
 from .opuspocus_step import OpusPocusStep, StepState
@@ -47,6 +47,11 @@ def load_step(step_label: str, pipeline_dir: Path) -> OpusPocusStep:
         step_params[k] = load_step(v, pipeline_dir)
 
     return build_step(step, step_label, pipeline_dir, **step_params)
+
+
+def list_step_parameters(step: str, *, exclude_dependencies: bool = True) -> List[str]:
+    """Return a list of step parameter names."""
+    return get_step(step).list_parameters(exclude_dependencies=exclude_dependencies)
 
 
 def register_step(name: str) -> Callable:

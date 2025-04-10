@@ -36,7 +36,10 @@ class PipelineConfig:
     @classmethod
     def create(cls: "PipelineConfig", config_dict: Union[Dict[str, Any], DictConfig]) -> "PipelineConfig":
         """Create a new pipeline config using its dictionary definition."""
-        return cls(config=config_dict)
+        config = config_dict
+        if type(config_dict) != DictConfig:
+            config = OmegaConf.create(config_dict)
+        return cls(config=config)
 
     def save(self, config_path: Path) -> None:
         """Save the existing pipeline config."""

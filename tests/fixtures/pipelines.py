@@ -5,8 +5,9 @@ import pytest
 from attrs import define, field, validators
 
 from opuspocus import pipeline_steps
+from opuspocus.config import PipelineConfig
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
-from opuspocus.pipelines import OpusPocusPipeline, PipelineConfig, build_pipeline
+from opuspocus.pipelines import OpusPocusPipeline, build_pipeline
 from opuspocus.runners import build_runner
 from opuspocus.runners.debug import DebugRunner
 from tests.utils import teardown_pipeline
@@ -31,10 +32,19 @@ class FooPipeline(OpusPocusPipeline):
 
     @pipeline_config.default
     def _get_foo_config(self) -> PipelineConfig:
-        steps = {self.foo_step.step_label: self.foo_step, self.bar_step.step_label: self.bar_step}
-        return PipelineConfig.create(
-            pipeline_dir=self.pipeline_dir, pipeline_steps=steps, default_targets=[self.bar_step]
-        )
+        return PipelineConfig.create({
+            "pipeline": {
+                "pipeline_dir": str(self.pipeline_dir),
+                "steps": [
+                    self.foo_step.get_parameters_dict(exclude_dependencies=False),
+                    self.bar_step.get_parameters_dict(exclude_dependencies=False),
+                ],
+                "targets": [self.bar_step.step_label],
+            },
+            "runner": {
+                "runner": "bash"
+            }
+        })
 
 
 @pytest.fixture()

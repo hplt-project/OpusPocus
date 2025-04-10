@@ -57,8 +57,8 @@ def main(args: Namespace) -> int:
 
     # By default, we use the pipeline directory defined in the config file
     if args.pipeline_dir is None:
-        config_file = PipelineConfig.load(args.pipeline_config)
-        args.pipeline_dir = Path(config_file["pipeline"]["pipeline_dir"])
+        config = PipelineConfig.load(args.pipeline_config)
+        args.pipeline_dir = Path(config.pipeline.pipeline_dir)
 
     # First, we try to load a pipeline if it was previously saved
     try:
