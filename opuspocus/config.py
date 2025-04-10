@@ -37,7 +37,7 @@ class PipelineConfig:
     def create(cls: "PipelineConfig", config_dict: Union[Dict[str, Any], DictConfig]) -> "PipelineConfig":
         """Create a new pipeline config using its dictionary definition."""
         config = config_dict
-        if type(config_dict) != DictConfig:
+        if config_dict is not DictConfig:
             config = OmegaConf.create(config_dict)
         return cls(config=config)
 

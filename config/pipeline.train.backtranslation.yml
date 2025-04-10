@@ -99,13 +99,14 @@ pipeline:
       tgt_lang: ${pipeline.src_lang}
       prev_corpus_step: gather.${pipeline.langpair}
       prev_corpus_label: organic
-      other_corpus_step: translate.${pipeline.lnagpair}
+      other_corpus_step: translate.${pipeline.langpair}
       other_corpus_label: synthetic
 
     # Train (iter 2; with bt)
     - step: train_model
       step_label: train_bt_model.${pipeline.langpair}
       opustrainer_config: null
+      vocab_step: generate_vocab.${pipeline.langpair}
       train_corpus_step: merge.${pipeline.langpair}
       valid_corpus_step: valid.${pipeline.langpair}
       train_categories:
@@ -119,6 +120,7 @@ pipeline:
       src_lang: ${pipeline.tgt_lang}
       tgt_lang: ${pipeline.src_lang}
       opustrainer_config: null
+      vocab_step: generate_vocab.${pipeline.langpair}
       train_corpus_step: merge.${pipeline.bt_langpair}
       valid_corpus_step: valid.${pipeline.langpair}
       train_categories:

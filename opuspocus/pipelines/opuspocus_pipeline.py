@@ -54,7 +54,8 @@ class PipelineGraph:
             logger.info("Creating parameters to build %s object.", step_label)
 
             # Set default (global) parameters
-            for param in list_step_parameters(steps_configs[step_label]["step"]):
+            step = steps_configs[step_label]["step"]
+            for param in list_step_parameters(step):
                 if param in pipeline_config.pipeline:
                     step_args[param] = pipeline_config.pipeline[param]
 

@@ -55,9 +55,13 @@ pipeline:
       prev_corpus_step: decontaminate.${pipeline.langpair}
     - step: gather
       step_label: gather.${pipeline.src_lang}
+      src_lang: ${pipeline.src_lang}
+      tgt_lang: null
       prev_corpus_step: raw.${pipeline.src_lang}
     - step: gather
       step_label: gather.${pipeline.tgt_lang}
+      src_lang: ${pipeline.tgt_lang}
+      tgt_lang: null
       prev_corpus_step: raw.${pipeline.tgt_lang}
 
   targets:

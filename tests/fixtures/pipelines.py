@@ -32,19 +32,19 @@ class FooPipeline(OpusPocusPipeline):
 
     @pipeline_config.default
     def _get_foo_config(self) -> PipelineConfig:
-        return PipelineConfig.create({
-            "pipeline": {
-                "pipeline_dir": str(self.pipeline_dir),
-                "steps": [
-                    self.foo_step.get_parameters_dict(exclude_dependencies=False),
-                    self.bar_step.get_parameters_dict(exclude_dependencies=False),
-                ],
-                "targets": [self.bar_step.step_label],
-            },
-            "runner": {
-                "runner": "bash"
+        return PipelineConfig.create(
+            {
+                "pipeline": {
+                    "pipeline_dir": str(self.pipeline_dir),
+                    "steps": [
+                        self.foo_step.get_parameters_dict(exclude_dependencies=False),
+                        self.bar_step.get_parameters_dict(exclude_dependencies=False),
+                    ],
+                    "targets": [self.bar_step.step_label],
+                },
+                "runner": {"runner": "bash"},
             }
-        })
+        )
 
 
 @pytest.fixture()
