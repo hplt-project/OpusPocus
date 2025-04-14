@@ -5,6 +5,7 @@ from .exceptions import PipelineInitError
 from .opuspocus_pipeline import OpusPocusPipeline, PipelineState, PipelineStateError
 
 __all__ = ["OpusPocusPipeline", "PipelineInitError", "PipelineState", "PipelineStateError"]
+
 logger = logging.getLogger(__name__)
 
 

@@ -35,8 +35,9 @@ class BashRunner(OpusPocusRunner):
     def add_args(parser: ArgumentParser) -> None:
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
-        parser.add_argument(
-            "--run-tasks-in-parallel",
+        OpusPocusRunner.add_runner_argument(
+            parser,
+            "run_tasks_in_parallel",
             default=False,
             action="store_true",
             help="Submit tasks as processes running in parallel wherever possible.",

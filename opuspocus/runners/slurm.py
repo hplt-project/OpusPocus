@@ -50,13 +50,8 @@ class SlurmRunner(OpusPocusRunner):
     def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
-        parser.add_argument("--slurm-time", type=str, default=None, help="Slurm job time limit.")
-        parser.add_argument(
-            "--slurm-other-options",
-            type=str,
-            metavar="RUNNER",
-            default=None,
-            help="Additional Slurm CLI options (catchall for less frequent options).",
+        OpusPocusRunner.add_runner_argument(
+            parser, "slurm_other_options", type=str, default=None, help="Additional Slurm CLI options."
         )
 
     def submit_task(

@@ -124,7 +124,7 @@ class OpusPocusPipeline:
             )
             raise ValueError(err_msg)
         if self.pipeline_dir is None:
-            self.pipeline_dir = self.pipeline_config.pipeline.pipeline_dir
+            self.pipeline_dir = Path(self.pipeline_config.pipeline.pipeline_dir)
         elif self.pipeline_config is None:
             self.pipeline_config = PipelineConfig.load(Path(self.pipeline_dir, self._config_file))
         else:
@@ -142,8 +142,14 @@ class OpusPocusPipeline:
             help="Pipeline root directory location.",
         )
 
+    @classmethod
+    def get_config_file(cls: "OpusPocusPipeline") -> str:
+        """Config file name read-only accessor."""
+        return cls._config_file
+
     @property
     def pipeline_config_path(self) -> Path:
+        """Locations of the initialized pipeline's config."""
         return Path(self.pipeline_dir, self._config_file)
 
     @property

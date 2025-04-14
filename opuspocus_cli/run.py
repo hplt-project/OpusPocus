@@ -29,7 +29,7 @@ def init_pipeline(pipeline: OpusPocusPipeline, args: Namespace) -> OpusPocusPipe
         logger.info("Re-initializing the pipeline...")
         if pipeline.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
             logger.info("Stopping the previous run...")
-            prev_runner = load_runner(pipeline.pipeline_dir)
+            prev_runner = load_runner(Namespace(**{"pipeline_dir": pipeline.pipeline_dir}))
             prev_runner.stop_pipeline(pipeline)
         pipeline.reinit(ignore_finished=args.reinit_failed)
     return pipeline
@@ -56,8 +56,8 @@ def main(args: Namespace) -> int:
         logger.info("No --pipeline-config was provided, reading pipeline configuration from %s", args.pipeline_config)
 
     # By default, we use the pipeline directory defined in the config file
+    config = PipelineConfig.load(args.pipeline_config)
     if args.pipeline_dir is None:
-        config = PipelineConfig.load(args.pipeline_config)
         args.pipeline_dir = Path(config.pipeline.pipeline_dir)
 
     # First, we try to load a pipeline if it was previously saved
@@ -77,7 +77,11 @@ def main(args: Namespace) -> int:
         sys.exit(2)
 
     ## Run phase ##
-    runner = build_runner(args.runner, args.pipeline_dir, args)
+    # Get default runner value from the config if not provided via CLI
+    if args.runner is None:
+        args.runner = config.runner.runner
+
+    runner = build_runner(args)
 
     # Check the pipeline state and whether it requires --reinit or --rerun flags
     if args.stop_previous_run:
@@ -96,7 +100,7 @@ def main(args: Namespace) -> int:
                 stacklevel=1,
             )
         else:
-            prev_runner = load_runner(pipeline.pipeline_dir)
+            prev_runner = load_runner(args)
             prev_runner.stop_pipeline(pipeline)
     elif pipeline.state in [PipelineState.SUBMITTED, PipelineState.RUNNING]:
         logger.error(

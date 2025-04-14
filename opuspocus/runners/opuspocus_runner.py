@@ -44,6 +44,16 @@ class OpusPocusRunner:
         """Add runner-specific arguments to the parser."""
         pass
 
+    @staticmethod
+    def add_runner_argument(parser: ArgumentParser, arg_name: str, **kwargs) -> None:  # noqa: ANN003
+        """Wrapper for adding runner arguments that get stored in the proper OmegaConf destination.
+
+        To guarantee backwards compatibility, we still support the `--runner_arg` syntax.
+        However, the new syntax using `runner.runner_arg` should be preferred.
+        """
+        arg_name_hyphens = "-".join(arg_name.split("_"))
+        parser.add_argument(f"--{arg_name_hyphens}", dest=f"runner.{arg_name}", **kwargs)
+
     @classmethod
     def build_runner(cls: "OpusPocusRunner", runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":  # noqa: ANN003
         """Build a specified runner instance.
