@@ -6,8 +6,9 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Sequence
 
+from opuspocus.config import PipelineConfig
 from opuspocus.options import parse_run_args
-from opuspocus.pipelines import OpusPocusPipeline, PipelineConfig, PipelineState, build_pipeline, load_pipeline
+from opuspocus.pipelines import OpusPocusPipeline, PipelineState, build_pipeline, load_pipeline
 from opuspocus.runners import build_runner, load_runner
 
 logger = logging.getLogger(__name__)
@@ -56,8 +57,8 @@ def main(args: Namespace) -> int:
 
     # By default, we use the pipeline directory defined in the config file
     if args.pipeline_dir is None:
-        config_file = PipelineConfig.load(args.pipeline_config)
-        args.pipeline_dir = Path(config_file["pipeline"]["pipeline_dir"])
+        config = PipelineConfig.load(args.pipeline_config)
+        args.pipeline_dir = Path(config.pipeline.pipeline_dir)
 
     # First, we try to load a pipeline if it was previously saved
     try:

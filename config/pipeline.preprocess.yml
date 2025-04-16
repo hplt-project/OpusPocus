@@ -1,74 +1,75 @@
-global:
+pipeline:
+  pipeline_dir: experiments/${.langpair}/preprocess.simple
   seed: 42
+
   src_lang: en
   tgt_lang: eu
+  langpair: ${.src_lang}-${.tgt_lang}
 
-  raw_para_dir: data/${.src_lang}-${.tgt_lang}/raw
+  raw_para_dir: data/${.langpair}/raw
   # TODO: Replace the mono dirs with proper directories
-  raw_mono_src_dir: data/${.src_lang}-${.tgt_lang}/raw
-  raw_mono_tgt_dir: data/${.src_lang}-${.tgt_lang}/raw
+  raw_mono_src_dir: data/${.langpair}/raw
+  raw_mono_tgt_dir: data/${.langpair}/raw
 
-  valid_data_dir: data/${.src_lang}-${.tgt_lang}/valid
-  test_data_dir: data/${.src_lang}-${.tgt_lang}/test
+  valid_data_dir: data/${.langpair}/valid
+  test_data_dir: data/${.langpair}/test
 
-  opuscleaner_python_venv_dir: opuscleaner-venv
+  # this is required due to opustrainer and opuscleaner having conflicting dependencies
+  python_venv_dir: opuscleaner-venv
 
-  decontaminate_min_length: 25
-
-pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/preprocess.simple
   steps:
     # Load Datasets
     - step: raw
-      step_label: raw.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.raw_para_dir}
+      step_label: raw.${pipeline.langpair}
+      raw_data_dir: ${pipeline.raw_para_dir}
     - step: raw
-      step_label: raw.${global.src_lang}
-      src_lang: ${global.src_lang}
-      raw_data_dir: ${global.raw_mono_src_dir}
+      step_label: raw.${pipeline.src_lang}
+      tgt_lang: null
+      raw_data_dir: ${pipeline.raw_mono_src_dir}
     - step: raw
-      step_label: raw.${global.tgt_lang}
-      src_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.raw_mono_tgt_dir}
+      step_label: raw.${pipeline.tgt_lang}
+      src_lang: ${pipeline.tgt_lang}
+      tgt_lang: null
+      raw_data_dir: ${pipeline.raw_mono_tgt_dir}
     - step: raw
-      step_label: valid.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.valid_data_dir}
+      step_label: valid.${pipeline.langpair}
+      raw_data_dir: ${pipeline.valid_data_dir}
       compressed: false
     - step: raw
-      step_label: test.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.test_data_dir}
+      step_label: test.${pipeline.langpair}
+      raw_data_dir: ${pipeline.test_data_dir}
       compressed: false
 
     # Preprocessing
     - step: clean
-      step_label: clean.${global.src_lang}-${global.tgt_lang}
-      python_venv_dir: ${global.opuscleaner_python_venv_dir}
-      prev_corpus_step: raw.${global.src_lang}-${global.tgt_lang}
+      step_label: clean.${pipeline.langpair}
+      prev_corpus_step: raw.${pipeline.langpair}
     - step: decontaminate
-      step_label: decontaminate.${global.src_lang}-${global.tgt_lang}
-      prev_corpus_step: clean.${global.src_lang}-${global.tgt_lang}
-      valid_data_step: valid.${global.src_lang}-${global.tgt_lang}
-      test_data_step: test.${global.src_lang}-${global.tgt_lang}
-      min_length: ${global.decontaminate_min_length}
+      step_label: decontaminate.${pipeline.langpair}
+      prev_corpus_step: clean.${pipeline.langpair}
+      valid_data_step: valid.${pipeline.langpair}
+      test_data_step: test.${pipeline.langpair}
+      min_length: 25
     - step: gather
-      step_label: gather.${global.src_lang}-${global.tgt_lang}
-      prev_corpus_step: decontaminate.${global.src_lang}-${global.tgt_lang}
+      step_label: gather.${pipeline.langpair}
+      prev_corpus_step: decontaminate.${pipeline.langpair}
     - step: gather
-      step_label: gather.${global.src_lang}
-      prev_corpus_step: raw.${global.src_lang}
+      step_label: gather.${pipeline.src_lang}
+      src_lang: ${pipeline.src_lang}
+      tgt_lang: null
+      prev_corpus_step: raw.${pipeline.src_lang}
     - step: gather
-      step_label: gather.${global.tgt_lang}
-      prev_corpus_step: raw.${global.tgt_lang}
+      step_label: gather.${pipeline.tgt_lang}
+      src_lang: ${pipeline.tgt_lang}
+      tgt_lang: null
+      prev_corpus_step: raw.${pipeline.tgt_lang}
 
   targets:
-    - gather.${global.src_lang}-${global.tgt_lang}
-    - gather.${global.src_lang}
-    - gather.${global.tgt_lang}
-    - valid.${global.src_lang}-${global.tgt_lang}
-    - test.${global.src_lang}-${global.tgt_lang}
+    - gather.${pipeline.langpair}
+    - gather.${pipeline.src_lang}
+    - gather.${pipeline.tgt_lang}
+    - valid.${pipeline.langpair}
+    - test.${pipeline.langpair}
+
+runner:
+  runner: bash

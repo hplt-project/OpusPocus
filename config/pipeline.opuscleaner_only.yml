@@ -1,23 +1,24 @@
-global:
-  seed: 42
-  src_lang: en
-  tgt_lang: nn
-
-  raw_data_dir: data/${.src_lang}-${.tgt_lang}/raw
-
-  opuscleaner_python_venv_dir: opuscleaner-venv
-
 pipeline:
-  pipeline_dir: experiments/${global.src_lang}-${global.tgt_lang}/opuscleaner_only.example
+  pipeline_dir: experiments/${.langpair}/opuscleaner_only.example
+  seed: 42
+
+  src_lang: en
+  tgt_lang: eu
+  langpair: ${.src_lang}-${.tgt_lang}
+
+  raw_data_dir: data/${.langpair}/raw
+
+  # this is required due to opustrainer and opuscleaner having conflicting dependencies
+  python_venv_dir: opuscleaner-venv
+ 
   steps:
     - step: raw
-      step_label: raw.${global.src_lang}-${global.tgt_lang}
-      src_lang: ${global.src_lang}
-      tgt_lang: ${global.tgt_lang}
-      raw_data_dir: ${global.raw_data_dir}
+      step_label: raw.${pipeline.langpair}
     - step: clean
-      step_label: clean.${global.src_lang}-${global.tgt_lang}
-      python_venv_dir: ${global.opuscleaner_python_venv_dir}
-      prev_corpus_step: raw.${global.src_lang}-${global.tgt_lang}
+      step_label: clean.${pipeline.langpair}
+      prev_corpus_step: raw.${pipeline.langpair}
   targets:
-    - clean.${global.src_lang}-${global.tgt_lang}
+    - clean.${pipeline.langpair}
+
+runner:
+  runner: bash
