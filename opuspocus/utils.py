@@ -184,15 +184,14 @@ class RunnerResources:
         """List all represented parameters."""
         return [param for param in inspect.signature(cls.__init__).parameters if param != "self"]
 
-    def overwrite(self, resource_dict: Dict[str, Any]) -> "RunnerResources":
+    def overwrite(self, resources: "RunnerResources") -> "RunnerResources":
         """Overwrite the resources using a different RunnerResources object."""
-        params = {}
+        res_dict = {}
         for param in self.list_parameters():
-            val = getattr(self, param)
-            if param in resource_dict:
-                val = resource_dict[param]
-            params[param] = val
-        return RunnerResources(**params)
+            res_dict[param] = getattr(self, param)
+            if hasattr(resources, param):
+                res_dict[param] = getattr(resources, param)
+        return RunnerResources(**res_dict)
 
     @classmethod
     def get_env_name(cls: "RunnerResources", name: str) -> str:
