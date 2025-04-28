@@ -1,15 +1,16 @@
 import argparse
 import logging
 import sys
-from typing import Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runners import RUNNER_REGISTRY
-from opuspocus.utils import file_path
+from opuspocus.utils import NestedAction, file_path
 
 logger = logging.getLogger(__name__)
 
 GENERAL_DESCRIPTION = "OpusPocus NLP Pipeline Manager"
+
 
 
 class OpusPocusParser(argparse.ArgumentParser):
@@ -73,6 +74,8 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
         required=True,
         choices=RUNNER_REGISTRY.keys(),
         dest="runner.runner",
+        action=NestedAction,
+        default=argparse.SUPPRESS,
         help="Runner used for pipeline execution manipulation {" + ",".join(RUNNER_REGISTRY.keys()) + "}",
     )
     parser.add_argument(
@@ -84,7 +87,7 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     )
 
     args, unparsed = parser.parse_known_args(argv)
-    RUNNER_REGISTRY[args.runner].add_args(parser)
+    RUNNER_REGISTRY[args.runner.runner].add_args(parser)
 
     return parser.parse_args(argv)
 

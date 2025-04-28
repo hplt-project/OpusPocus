@@ -105,7 +105,7 @@ def foo_pipeline_done(foo_pipeline_inited):
     runner = build_runner(
         Namespace(
             **{
-                "runner": "bash",
+                "runner.runner": "bash",
                 "pipeline_dir": foo_pipeline_inited.pipeline_dir,
                 "runner.run_tasks_in_parallel": True,
                 "runner.default_resources": None,

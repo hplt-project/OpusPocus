@@ -23,7 +23,7 @@ RUNNER_CLASS_NAMES = set()
 
 def build_runner(args: Namespace) -> OpusPocusRunner:
     """Runner builder function. Use this to create runner objects."""
-    runner = args.runner
+    runner = args.runner.runner
     assert runner is not None
     pipeline_dir = args.pipeline_dir
     assert pipeline_dir is not None
