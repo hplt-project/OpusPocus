@@ -13,8 +13,9 @@ from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.generate_vocab import GenerateVocabStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+from opuspocus.runner_resources import RunnerResources
 from opuspocus.tools import opustrainer_trainer
-from opuspocus.utils import RunnerResources, paste_files
+from opuspocus.utils import paste_files
 
 logger = logging.getLogger(__name__)
 

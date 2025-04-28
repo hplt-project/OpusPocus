@@ -10,8 +10,9 @@ from typing import List, Optional
 from attrs import define, field, validators
 from psutil import NoSuchProcess, Process, wait_procs
 
+from opuspocus.runner_resources import RunnerResources
 from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
-from opuspocus.utils import RunnerResources, subprocess_wait
+from opuspocus.utils import subprocess_wait
 
 logger = logging.getLogger(__name__)
 

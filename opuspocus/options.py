@@ -70,9 +70,9 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--runner",
         type=str,
-        metavar="RUNNER",
         required=True,
         choices=RUNNER_REGISTRY.keys(),
+        dest="runner.runner",
         help="Runner used for pipeline execution manipulation {" + ",".join(RUNNER_REGISTRY.keys()) + "}",
     )
     parser.add_argument(

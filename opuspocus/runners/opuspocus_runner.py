@@ -1,3 +1,4 @@
+import json
 import logging
 import signal
 import time
@@ -5,14 +6,13 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import json
 import yaml
 from attrs import asdict, converters, define, field, fields, validators
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline
-from opuspocus.utils import RunnerResources
+from opuspocus.runner_resources import RunnerResources
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,9 @@ class OpusPocusRunner:
 
     runner: str = field(validator=validators.instance_of(str))
     pipeline_dir: Path = field(converter=Path)
-    default_resources: RunnerResources = field(converter=converters.optional(RunnerResources))
+    default_resources: RunnerResources = field(
+        converter=converters.optional(RunnerResources), default=RunnerResources()
+    )
 
     _parameter_filename = "runner.parameters"
     _info_filename = "runner.step_info"
@@ -49,7 +51,7 @@ class OpusPocusRunner:
             "default_resources",
             type=json.loads,
             default=None,
-            help="Global task execution resource assignmnet."
+            help="Global task execution resource assignmnet.",
         )
 
     @staticmethod

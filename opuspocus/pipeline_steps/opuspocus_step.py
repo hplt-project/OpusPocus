@@ -10,7 +10,8 @@ from typing import Any, Dict, List, Optional
 import yaml
 from attrs import asdict, define, field, fields
 
-from opuspocus.utils import RunnerResources, clean_dir, print_indented
+from opuspocus.runner_resources import RunnerResources
+from opuspocus.utils import clean_dir, print_indented
 
 logger = logging.getLogger(__name__)
 

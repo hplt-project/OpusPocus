@@ -12,8 +12,8 @@ from attrs import Attribute, define, field, validators
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.opuspocus_step import OpusPocusStep
+from opuspocus.runner_resources import RunnerResources
 from opuspocus.utils import (
-    RunnerResources,
     concat_files,
     decompress_file,
     subprocess_wait,

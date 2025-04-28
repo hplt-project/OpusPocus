@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import List, Optional
 
 from opuspocus.pipeline_steps import StepState, load_step
+from opuspocus.runner_resources import RunnerResources
 from opuspocus.runners import OpusPocusRunner, TaskInfo
-from opuspocus.utils import RunnerResources, clean_dir
+from opuspocus.utils import clean_dir
 
 logger = logging.getLogger(__name__)
 

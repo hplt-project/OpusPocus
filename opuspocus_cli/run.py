@@ -79,7 +79,7 @@ def main(args: Namespace) -> int:
     ## Run phase ##
     # Get default runner value from the config if not provided via CLI
     if args.runner is None:
-        args.runner = config.runner.runner
+        args.runner.runner = config.runner.runner
 
     runner = build_runner(args)
 
