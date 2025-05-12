@@ -1,11 +1,14 @@
 import inspect
 import logging
 import os
-from typing import Dict, List
+from typing import Any, Dict, List
+
+from attrs import converters, define, field, validators
 
 logger = logging.getLogger(__name__)
 
 
+@define(kw_only=True)
 class RunnerResources:
     """Runner-agnostic resources object.
 
@@ -15,15 +18,9 @@ class RunnerResources:
     TODO(varisd): add more resource attributes if necessary
     """
 
-    def __init__(
-        self,
-        cpus: int = 1,
-        gpus: int = 0,
-        mem: str = "1g",
-    ) -> None:
-        self.cpus = cpus
-        self.gpus = gpus
-        self.mem = mem
+    cpus: int = field(validator=validators.instance_of(int), default=1)
+    gpus: int = field(validator=validators.instance_of(int), default=0)
+    mem: str = field(converter=str, default="1g")
 
     @classmethod
     def list_parameters(cls: "RunnerResources") -> List[str]:
@@ -38,6 +35,13 @@ class RunnerResources:
             if hasattr(resources, param):
                 res_dict[param] = getattr(resources, param)
         return RunnerResources(**res_dict)
+
+    @property
+    def resource_dict(self) -> Dict[str, Any]:
+        return {
+            param: getattr(self, param)
+            for param in self.list_parameters()
+        }
 
     @classmethod
     def get_env_name(cls: "RunnerResources", name: str) -> str:
