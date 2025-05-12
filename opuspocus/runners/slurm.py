@@ -60,7 +60,7 @@ class SlurmRunner(OpusPocusRunner):
         cmd_path: Path,
         target_file: Optional[Path] = None,
         dependencies: Optional[List[SlurmTaskInfo]] = None,
-        step_resources: Optional[RunnerResources] = None,
+        task_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> SlurmTaskInfo:
@@ -70,7 +70,7 @@ class SlurmRunner(OpusPocusRunner):
             cmd_path (Path): location of the step's command to be executed
             target_file (Path): target_file to be created by a subtask (if not None)
             dependencies (List[SlurmTaskInfo]): list of task information about the running dependencies
-            step_resources (RunnerResources): resources to be allocated for the task
+            task_resources (RunnerResources): resources to be allocated for the task
             stdout_file (Path): location of the log file for task's stdout
             stderr_file (Path): location of the log file for task's stderr
 
@@ -88,8 +88,7 @@ class SlurmRunner(OpusPocusRunner):
             cmd.append("--dependency")
             cmd.append(",".join([f"afterok:{dep!s}" for dep in dependencies_ids]))
 
-        # TODO: fix this with resource config refactor
-        # cmd += self._convert_resources(step_resources)
+        cmd += self._convert_resources(task_resources)
 
         jobname = f"{self.runner}.{self.pipeline_dir.stem}{self.pipeline_dir.suffix}"
         if target_file is not None:
@@ -114,12 +113,12 @@ class SlurmRunner(OpusPocusRunner):
         if target_file is not None:
             cmd += [str(cmd_path), str(target_file)]
             proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=step_resources.get_env_dict()
+                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=task_resources.get_env_dict()
             )
         else:
             cmd += [str(cmd_path)]
             proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=step_resources.get_env_dict()
+                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=task_resources.get_env_dict()
             )
         logger.info("Submitted sbatch command: %s", " ".join(cmd))
 

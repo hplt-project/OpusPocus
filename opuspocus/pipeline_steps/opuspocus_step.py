@@ -419,7 +419,7 @@ class OpusPocusStep:
                 cmd_path=self.cmd_path,
                 target_file=target_file,
                 dependencies=None,
-                step_resources=runner.get_resources(self),
+                task_resources=runner.get_resources(self),
                 stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.{timestamp}.out"),
                 stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.{timestamp}.err"),
             )

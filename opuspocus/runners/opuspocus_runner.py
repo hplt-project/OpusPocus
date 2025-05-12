@@ -37,9 +37,7 @@ class OpusPocusRunner:
 
     runner: str = field(validator=validators.instance_of(str))
     pipeline_dir: Path = field(converter=Path)
-    default_resources: RunnerResources = field(
-        validator=validators.instance_of(RunnerResources), default=RunnerResources()
-    )
+    runner_resources: RunnerResources = field(validator=validators.instance_of(RunnerResources))
 
     _parameter_filename = "runner.parameters"
     _info_filename = "runner.step_info"
@@ -49,7 +47,7 @@ class OpusPocusRunner:
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_runner_argument(
             parser,
-            "default_resources",
+            "runner_resources",
             type=json.loads,
             default=None,
             help="Global task execution resource assignmnet.",
@@ -86,8 +84,8 @@ class OpusPocusRunner:
         Returns:
             An instance of the specified runner class.
         """
-        if "default_resources" in kwargs:
-            kwargs["default_resources"] = RunnerResources(**kwargs["default_resources"])
+        if "runner_resources" in kwargs:
+            kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
 
         return cls(runner=runner, pipeline_dir=pipeline_dir, **kwargs)
 
@@ -249,7 +247,7 @@ class OpusPocusRunner:
                 cmd_path=step.cmd_path,
                 target_file=None,
                 dependencies=[dep["main_task"] for dep in dep_sub_info_list],
-                step_resources=self.get_resources(step),
+                task_resources=self.get_resources(step),
                 stdout_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.out"),
                 stderr_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.err"),
             )
@@ -310,7 +308,7 @@ class OpusPocusRunner:
         cmd_path: Path,
         target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskInfo]] = None,
-        step_resources: Optional[RunnerResources] = None,
+        task_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> TaskInfo:
@@ -320,7 +318,7 @@ class OpusPocusRunner:
             cmd_path (Path): location of the step's command to execute
             target_file (Path): target_file to create by a subtask (if not None)
             dependencies (List[TaskInfo]): list of task information about the running dependencies
-            step_resources (RunnerResources): resources to allocate for the task
+            task_resources (RunnerResources): resources to allocate for the task
             stdout_file (Path): location of the log file for task's stdout
             stderr_file (Path): location of the log file for task's stderr
 
@@ -406,5 +404,8 @@ class OpusPocusRunner:
 
     def get_resources(self, step: OpusPocusStep) -> RunnerResources:
         """Get default runner resources."""
-        # TODO: expand the logic here
-        return step.default_resources
+        if step.resources is not None:
+            # Get step-specific resources if available
+            return step.resources
+        # Otherwise, use the global resources
+        return self.default_resources

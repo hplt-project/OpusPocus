@@ -49,7 +49,7 @@ class BashRunner(OpusPocusRunner):
         cmd_path: Path,
         target_file: Optional[Path] = None,
         dependencies: Optional[List[BashTaskInfo]] = None,
-        step_resources: Optional[RunnerResources] = None,
+        task_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> BashTaskInfo:
@@ -65,7 +65,7 @@ class BashRunner(OpusPocusRunner):
             cmd_path (Path): location of the step's command to be executed
             target_file (Path): target_file to be created by a subtask (if not None)
             dependencies (List[BashTaskInfo]): list of task information about the running dependencies
-            step_resources (RunnerResources): resources to be allocated for the task
+            task_resources (RunnerResources): resources to be allocated for the task
             stdout_file (Path): location of the log file for task's stdout
             stderr_file (Path): location of the log file for task's stderr
 
@@ -75,7 +75,7 @@ class BashRunner(OpusPocusRunner):
         dependencies_str = ""
         if dependencies is not None:
             dependencies_str = " ".join([str(dep["id"]) for dep in dependencies])
-        env_dict = step_resources.get_env_dict()
+        env_dict = task_resources.get_env_dict()
 
         stdout = sys.stdout
         if stdout_file is not None:
