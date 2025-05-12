@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
-from attrs import asdict, define, field, fields
+from attrs import asdict, define, field, fields, validators
 
 from opuspocus.runner_resources import RunnerResources
 from opuspocus.utils import clean_dir, print_indented
@@ -38,6 +38,9 @@ class OpusPocusStep:
     pipeline_dir: Path = field(
         converter=Path, eq=False
     )  # enables comparing pipelines/steps from different pipeline dirs
+    runner_resources: RunnerResources = field(
+        validator=validators.optional(validators.instance_of(RunnerResources)), default=None
+    )
 
     _cmd_filename = "step.command"
     _dependency_filename = "step.dependencies"
@@ -57,6 +60,9 @@ class OpusPocusStep:
         Returns:
             An instance of the specified pipeline class.
         """
+        if "runner_resources" in kwargs:
+            kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
+
         return cls(step=step, step_label=step_label, pipeline_dir=pipeline_dir, **kwargs)
 
     @classmethod
@@ -543,8 +549,3 @@ if __name__ == "__main__":
                 print_indented("+ None", level + 1)
                 continue
             dep.print_traceback(level + 1, full=full)
-
-    @property
-    def default_resources(self) -> RunnerResources:
-        """Definition of default runner resources for a specific step."""
-        return RunnerResources()
