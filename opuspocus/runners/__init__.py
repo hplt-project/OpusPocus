@@ -42,7 +42,8 @@ def build_runner(args: Namespace) -> OpusPocusRunner:
     for param in RUNNER_REGISTRY[runner].list_parameters():
         if param in {"runner", "pipeline_dir"}:
             continue
-        kwargs[param] = getattr(args, f"runner.{param}")
+        if hasattr(kwargs, param):
+            kwargs[param] = getattr(args.runner, param)
 
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **kwargs)
 

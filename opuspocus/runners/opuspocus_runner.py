@@ -38,7 +38,7 @@ class OpusPocusRunner:
     runner: str = field(validator=validators.instance_of(str))
     pipeline_dir: Path = field(converter=Path)
     default_resources: RunnerResources = field(
-        converter=converters.optional(RunnerResources), default=RunnerResources()
+        validator=validators.instance_of(RunnerResources), default=RunnerResources()
     )
 
     _parameter_filename = "runner.parameters"
@@ -86,6 +86,9 @@ class OpusPocusRunner:
         Returns:
             An instance of the specified runner class.
         """
+        if "default_resources" in kwargs:
+            kwargs["default_resources"] = RunnerResources(**kwargs["default_resources"])
+
         return cls(runner=runner, pipeline_dir=pipeline_dir, **kwargs)
 
     @classmethod
@@ -130,6 +133,8 @@ class OpusPocusRunner:
         for attr, value in asdict(self, filter=lambda attr, _: not attr.name.startswith("_")).items():
             if isinstance(value, Path):
                 param_dict[attr] = str(value)
+            elif isinstance(value, RunnerResources):
+                param_dict[attr] = value.resource_dict
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
                 param_dict[attr] = [str(v) for v in value]
             else:
