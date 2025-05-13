@@ -44,8 +44,7 @@ class TrainModelStep(OpusPocusStep):
     valid_dataset: str = field(default="flores200.dev")
 
     runner_resources: RunnerResources = field(
-        validator=validators.instance_of(RunnerResources),
-        default=RunnerResources(gpus=1)
+        validator=validators.instance_of(RunnerResources), default=RunnerResources(gpus=1)
     )
 
     _opustrainer_config_file = "opustrainer.config.yml"

@@ -46,14 +46,14 @@ class NestedAction(argparse.Action):
 class NestedActionStoreTrue(NestedAction):
     def __call__(
         self,
-        parser: argparse.ArgumentParser,
+        parser: argparse.ArgumentParser,  # noqa: ARG002
         namespace: argparse.Namespace,
-        values: Any,
-        option_string: Optional[str] = None
+        values: Any,  # noqa: ARG002,ANN401
+        option_string: Optional[str] = None,  # noqa: ARG002
     ) -> None:
         dest_split = self.dest.split(".")
         assert len(dest_split) > 1
-        self._group_actions(namespace, dest_split[0], dest_split[1:], True)
+        self._group_actions(namespace=namespace, group=dest_split[0], dest_arr=dest_split[1:], values=True)
 
 
 def open_file(file: Path, mode: str) -> TextIO:

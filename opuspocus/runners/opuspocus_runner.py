@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
-from attrs import asdict, converters, define, field, fields, validators
+from attrs import asdict, define, field, fields, validators
 from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
@@ -37,7 +37,9 @@ class OpusPocusRunner:
 
     runner: str = field(validator=validators.instance_of(str))
     pipeline_dir: Path = field(converter=Path)
-    runner_resources: RunnerResources = field(validator=validators.instance_of(RunnerResources))
+    runner_resources: RunnerResources = field(
+        validator=validators.instance_of(RunnerResources), default=RunnerResources()
+    )
 
     _parameter_filename = "runner.parameters"
     _info_filename = "runner.step_info"
@@ -86,6 +88,11 @@ class OpusPocusRunner:
         """
         if "runner_resources" in kwargs:
             kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
+        else:
+            logger.debug(
+                "[OpusPocusRunner] Global runner resources were not provided."
+                "Using the default RunnerResources values."
+            )
 
         return cls(runner=runner, pipeline_dir=pipeline_dir, **kwargs)
 
@@ -404,8 +411,8 @@ class OpusPocusRunner:
 
     def get_resources(self, step: OpusPocusStep) -> RunnerResources:
         """Get default runner resources."""
-        if step.resources is not None:
+        if step.runner_resources is not None:
             # Get step-specific resources if available
-            return step.resources
+            return step.runner_resources
         # Otherwise, use the global resources
-        return self.default_resources
+        return self.runner_resources

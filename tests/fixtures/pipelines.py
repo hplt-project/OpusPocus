@@ -86,14 +86,12 @@ def foo_pipeline_running(foo_pipeline_inited):
         s.sleep_time = 180
         s.save_parameters()
     runner = build_runner(
-        Namespace(**{
-            "runner": Namespace(**{
-                "runner": "bash",
-                "run_tasks_in_parallel": True,
-                "default_resources": None
-            }),
-            "pipeline_dir": foo_pipeline_inited.pipeline_dir,
-        })
+        Namespace(
+            **{
+                "runner": Namespace(**{"runner": "bash", "run_tasks_in_parallel": True, "runner_resources": None}),
+                "pipeline_dir": foo_pipeline_inited.pipeline_dir,
+            }
+        )
     )
     runner.run_pipeline(foo_pipeline_inited, None)
     return foo_pipeline_inited
@@ -103,14 +101,12 @@ def foo_pipeline_running(foo_pipeline_inited):
 def foo_pipeline_done(foo_pipeline_inited):
     """Basic mock pipeline (DONE)."""
     runner = build_runner(
-        Namespace(**{
-            "runner": Namespace(**{
-                "runner": "bash",
-                "run_tasks_in_parallel": True,
-                "default_resources": None
-            }),
-            "pipeline_dir": foo_pipeline_inited.pipeline_dir,
-        })
+        Namespace(
+            **{
+                "runner": Namespace(**{"runner": "bash", "run_tasks_in_parallel": True, "runner_resources": None}),
+                "pipeline_dir": foo_pipeline_inited.pipeline_dir,
+            }
+        )
     )
     runner.run_pipeline(foo_pipeline_inited)
     tasks = [runner.load_submission_info(s)["main_task"] for s in foo_pipeline_inited.steps]

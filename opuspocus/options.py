@@ -1,7 +1,7 @@
 import argparse
 import logging
 import sys
-from typing import Any, List, Optional, Sequence
+from typing import Optional, Sequence
 
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runners import RUNNER_REGISTRY
@@ -10,7 +10,6 @@ from opuspocus.utils import NestedAction, file_path
 logger = logging.getLogger(__name__)
 
 GENERAL_DESCRIPTION = "OpusPocus NLP Pipeline Manager"
-
 
 
 class OpusPocusParser(argparse.ArgumentParser):

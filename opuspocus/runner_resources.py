@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Any, Dict, List
 
-from attrs import converters, define, field, validators
+from attrs import define, field, validators
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,7 @@ class RunnerResources:
 
     @property
     def resource_dict(self) -> Dict[str, Any]:
-        return {
-            param: getattr(self, param)
-            for param in self.list_parameters()
-        }
+        return {param: getattr(self, param) for param in self.list_parameters()}
 
     @classmethod
     def get_env_name(cls: "RunnerResources", name: str) -> str:

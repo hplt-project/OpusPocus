@@ -60,7 +60,7 @@ class OpusPocusStep:
         Returns:
             An instance of the specified pipeline class.
         """
-        if "runner_resources" in kwargs:
+        if "runner_resources" in kwargs and kwargs["runner_resources"] is not None:
             kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
 
         return cls(step=step, step_label=step_label, pipeline_dir=pipeline_dir, **kwargs)
@@ -149,6 +149,8 @@ class OpusPocusStep:
                     param_dict[attr] = value["step_label"]
             elif isinstance(value, Path):
                 param_dict[attr] = str(value)
+            elif isinstance(value, RunnerResources):
+                param_dict[attr] = value.resource_dict
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
                 param_dict[attr] = [str(v) for v in value]
             else:
