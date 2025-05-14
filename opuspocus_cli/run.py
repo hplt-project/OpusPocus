@@ -42,8 +42,12 @@ def main(args: Namespace) -> int:
     using the specified runner (bash, slurm, ...) and executes the submitted
     runner tasks.
     """
+    # NOTE(varisd): temporary workaround (should be removed with proper config overwriting implementation)
+    if not hasattr(args, "pipeline"):
+        args.pipeline = Namespace()
+
     # One of the options has to be provided
-    if args.pipeline_config is None and args.pipeline_dir is None:
+    if args.pipeline_config is None and getattr(args.pipeline, "pipeline_dir", None) is None:
         logger.error(
             "--pipeline-config path with the pipeline configuration "
             "or a --pipeline-dir containing a valid pipeline must be provided."
@@ -52,13 +56,13 @@ def main(args: Namespace) -> int:
 
     # As a fallback, we can re-use config from the provided --pipeline-dir
     if args.pipeline_config is None:
-        args.pipeline_config = Path(args.pipeline_dir, OpusPocusPipeline._config_file)  # noqa: SLF001
+        args.pipeline_config = Path(getattr(args.pipeline, "pipeline_dir", None), OpusPocusPipeline._config_file)  # noqa: SLF001
         logger.info("No --pipeline-config was provided, reading pipeline configuration from %s", args.pipeline_config)
 
     # By default, we use the pipeline directory defined in the config file
     config = PipelineConfig.load(args.pipeline_config)
-    if args.pipeline_dir is None:
-        args.pipeline_dir = Path(config.pipeline.pipeline_dir)
+    if getattr(args.pipeline, "pipeline_dir", None) is None:
+        args.pipeline.pipeline_dir = Path(config.pipeline.pipeline_dir)
 
     # First, we try to load a pipeline if it was previously saved
     try:
@@ -80,6 +84,8 @@ def main(args: Namespace) -> int:
     # Get default runner value from the config if not provided via CLI
     if args.runner is None:
         args.runner.runner = config.runner.runner
+    if args.pipeline is None:
+        args.pipeline.target = config.pipeline.targets
 
     runner = build_runner(args)
 
@@ -110,9 +116,7 @@ def main(args: Namespace) -> int:
         )
         sys.exit(2)
 
-    runner.run_pipeline(
-        pipeline, target_labels=args.targets, resubmit_finished_subtasks=args.resubmit_finished_subtasks
-    )
+    runner.run_pipeline(pipeline, args)
     return 0
 
 

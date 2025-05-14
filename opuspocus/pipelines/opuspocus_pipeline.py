@@ -10,7 +10,7 @@ from omegaconf import OmegaConf
 from opuspocus.config import PipelineConfig
 from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step, list_step_parameters
 from opuspocus.pipelines.exceptions import PipelineInitError, PipelineStateError
-from opuspocus.utils import clean_dir, file_path
+from opuspocus.utils import NestedAction, clean_dir, file_path
 
 logger = logging.getLogger(__name__)
 
@@ -137,9 +137,20 @@ class OpusPocusPipeline:
         parser.add_argument(
             "--pipeline-dir",
             type=file_path,
-            default=None,
+            dest="pipeline.pipeline_dir",
+            action=NestedAction,
+            default=argparse.SUPPRESS,
             required=pipeline_dir_required,
             help="Pipeline root directory location.",
+        )
+        parser.add_argument(
+            "--targets",
+            type=str,
+            dest="pipeline.targets",
+            action=NestedAction,
+            default=argparse.SUPPRESS,
+            nargs="+",
+            help="List of step labels to be executed together with ther dependencies.",
         )
 
     @classmethod

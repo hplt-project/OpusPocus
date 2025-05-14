@@ -25,7 +25,7 @@ def build_runner(args: Namespace) -> OpusPocusRunner:
     """Runner builder function. Use this to create runner objects."""
     runner = args.runner.runner
     assert runner is not None
-    pipeline_dir = args.pipeline_dir
+    pipeline_dir = getattr(args.pipeline, "pipeline_dir", None)
     assert pipeline_dir is not None
 
     logger.info("Building runner (%s) based on config in (%s)", runner, pipeline_dir)
@@ -52,7 +52,7 @@ def load_runner(args: Namespace) -> OpusPocusRunner:
     """Recreate a previously used runner. Required for pipeline execution
     updates, i.e. execution termination.
     """
-    pipeline_dir = args.pipeline_dir
+    pipeline_dir = getattr(args.pipeline, "pipeline_dir", None)
     assert pipeline_dir is not None
 
     runner_params = OpusPocusRunner.load_parameters(pipeline_dir)
