@@ -16,4 +16,4 @@ def build_pipeline(args: argparse.Namespace) -> OpusPocusPipeline:
 
 def load_pipeline(args: argparse.Namespace) -> OpusPocusPipeline:
     logger.info("Loading pipeline...")
-    return OpusPocusPipeline.load_pipeline(args.pipeline_dir)
+    return OpusPocusPipeline.load_pipeline(args.pipeline.pipeline_dir)

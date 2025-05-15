@@ -177,7 +177,9 @@ class OpusPocusRunner:
     def run_pipeline(
         self,
         pipeline: OpusPocusPipeline,
-        args: argparse.Namespace,
+        target_labels: Optional[List[str]] = None,
+        *,
+        resubmit_done: bool = False,
     ) -> None:
         """Submit and execute pipeline steps with labels in target_labels and their dependencies.
 
@@ -187,8 +189,8 @@ class OpusPocusRunner:
             resubmit_done (bool): should we resubmit finished subtasks of a failed task
         """
         self.save_parameters()
-        for step in pipeline.get_targets(getattr(args.pipeline, "targets", None)):
-            self.submit_step(step, resubmit_finished_subtasks=args.resubmit_finished_subtasks)
+        for step in pipeline.get_targets(target_labels):
+            self.submit_step(step, resubmit_finished_subtasks=resubmit_done)
         logger.info("[%s] Pipeline tasks submitted successfully.", self.runner)
 
     def submit_step(self, step: OpusPocusStep, *, resubmit_finished_subtasks: bool = True) -> Optional[SubmissionInfo]:

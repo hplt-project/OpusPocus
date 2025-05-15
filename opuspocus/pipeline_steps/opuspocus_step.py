@@ -500,7 +500,11 @@ def main(argv):
             step.run_subtask(target_file)
         elif len(argv) == 1:
             # Main task
-            runner = load_runner(Namespace(**{{"pipeline_dir": Path("{self.pipeline_dir}")}}))
+            runner = load_runner(
+                Namespace(**{{
+                    "pipeline": Namespace(**{{"pipeline_dir": Path("{self.pipeline_dir}")}})
+                }})
+            )
             step.run_main_task(runner)
         else:
             ValueError("Wrong number of arguments.")

@@ -34,7 +34,7 @@ class SlurmRunner(OpusPocusRunner):
     commands.
     """
 
-    slurm_time: str = field()
+    slurm_time: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     slurm_other_options: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
 
     @slurm_time.validator

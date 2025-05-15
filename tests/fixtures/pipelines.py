@@ -88,8 +88,14 @@ def foo_pipeline_running(foo_pipeline_inited):
     runner = build_runner(
         Namespace(
             **{
-                "runner": Namespace(**{"runner": "bash", "run_tasks_in_parallel": True, "runner_resources": None}),
-                "pipeline_dir": foo_pipeline_inited.pipeline_dir,
+                "runner": Namespace(
+                    **{
+                        "runner": "bash",
+                        "run_tasks_in_parallel": True,
+                        "runner_resources": None,
+                    }
+                ),
+                "pipeline": Namespace(**{"pipeline_dir": foo_pipeline_inited.pipeline_dir}),
             }
         )
     )
@@ -104,7 +110,7 @@ def foo_pipeline_done(foo_pipeline_inited):
         Namespace(
             **{
                 "runner": Namespace(**{"runner": "bash", "run_tasks_in_parallel": True, "runner_resources": None}),
-                "pipeline_dir": foo_pipeline_inited.pipeline_dir,
+                "pipeline": Namespace(**{"pipeline_dir": foo_pipeline_inited.pipeline_dir}),
             }
         )
     )
@@ -133,7 +139,7 @@ def pipeline_preprocess_tiny(
     args = Namespace(
         **{
             "pipeline_config": pipeline_preprocess_tiny_config_file,
-            "pipeline_dir": pipeline_dir,
+            "pipeline": Namespace(**{"pipeline_dir": pipeline_dir}),
         }
     )
     pipeline = build_pipeline(args)
@@ -168,7 +174,7 @@ def pipeline_train_tiny(
     args = Namespace(
         **{
             "pipeline_config": pipeline_train_tiny_config_file,
-            "pipeline_dir": pipeline_dir,
+            "pipeline": Namespace(**{"pipeline_dir": pipeline_dir}),
         }
     )
     pipeline = build_pipeline(args)

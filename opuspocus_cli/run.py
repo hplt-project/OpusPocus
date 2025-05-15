@@ -29,7 +29,7 @@ def init_pipeline(pipeline: OpusPocusPipeline, args: Namespace) -> OpusPocusPipe
         logger.info("Re-initializing the pipeline...")
         if pipeline.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
             logger.info("Stopping the previous run...")
-            prev_runner = load_runner(Namespace(**{"pipeline_dir": pipeline.pipeline_dir}))
+            prev_runner = load_runner(Namespace(**{"pipeline": Namespace(**{"pipeline_dir": pipeline.pipeline_dir})}))
             prev_runner.stop_pipeline(pipeline)
         pipeline.reinit(ignore_finished=args.reinit_failed)
     return pipeline
@@ -116,7 +116,9 @@ def main(args: Namespace) -> int:
         )
         sys.exit(2)
 
-    runner.run_pipeline(pipeline, args)
+    runner.run_pipeline(
+        pipeline, target_labels=getattr(args.pipeline, "targets", None), resubmit_done=args.resubmit_finished_subtasks
+    )
     return 0
 
 
