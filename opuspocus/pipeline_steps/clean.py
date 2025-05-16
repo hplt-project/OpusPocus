@@ -12,7 +12,8 @@ from attrs import define, field
 
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
-from opuspocus.utils import RunnerResources, cut_filestream
+from opuspocus.runner_resources import RunnerResources
+from opuspocus.utils import cut_filestream
 
 logger = logging.getLogger(__name__)
 

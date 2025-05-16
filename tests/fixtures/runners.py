@@ -28,4 +28,4 @@ def parsed_runner_args(request, foo_step):
 @pytest.fixture()
 def foo_runner(parsed_runner_args):
     """Create a mock runner."""
-    return build_runner(parsed_runner_args.runner, parsed_runner_args.pipeline_dir, parsed_runner_args)
+    return build_runner(parsed_runner_args)

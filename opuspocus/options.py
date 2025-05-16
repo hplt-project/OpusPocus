@@ -5,7 +5,7 @@ from typing import Optional, Sequence
 
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runners import RUNNER_REGISTRY
-from opuspocus.utils import file_path
+from opuspocus.utils import NestedAction, file_path
 
 logger = logging.getLogger(__name__)
 
@@ -70,21 +70,16 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--runner",
         type=str,
-        metavar="RUNNER",
         required=True,
         choices=RUNNER_REGISTRY.keys(),
+        dest="runner.runner",
+        action=NestedAction,
+        default=argparse.SUPPRESS,
         help="Runner used for pipeline execution manipulation {" + ",".join(RUNNER_REGISTRY.keys()) + "}",
-    )
-    parser.add_argument(
-        "--targets",
-        type=str,
-        nargs="+",
-        default=None,
-        help="List of step labels to be executed together with their dependencies.",
     )
 
     args, unparsed = parser.parse_known_args(argv)
-    RUNNER_REGISTRY[args.runner].add_args(parser)
+    RUNNER_REGISTRY[args.runner.runner].add_args(parser)
 
     return parser.parse_args(argv)
 
@@ -109,13 +104,6 @@ def parse_traceback_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = OpusPocusParser(description=f"{GENERAL_DESCRIPTION}: Pipeline Graph Traceback")
 
     _add_general_arguments(parser, pipeline_dir_required=True)
-    parser.add_argument(
-        "--targets",
-        type=str,
-        nargs="+",
-        default=None,
-        help="Pipeline targets from which to traceback.",
-    )
     parser.add_argument(
         "--verbose",
         default=False,

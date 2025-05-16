@@ -29,7 +29,7 @@ def init_pipeline(pipeline: OpusPocusPipeline, args: Namespace) -> OpusPocusPipe
         logger.info("Re-initializing the pipeline...")
         if pipeline.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
             logger.info("Stopping the previous run...")
-            prev_runner = load_runner(pipeline.pipeline_dir)
+            prev_runner = load_runner(Namespace(**{"pipeline": Namespace(**{"pipeline_dir": pipeline.pipeline_dir})}))
             prev_runner.stop_pipeline(pipeline)
         pipeline.reinit(ignore_finished=args.reinit_failed)
     return pipeline
@@ -42,8 +42,12 @@ def main(args: Namespace) -> int:
     using the specified runner (bash, slurm, ...) and executes the submitted
     runner tasks.
     """
+    # NOTE(varisd): temporary workaround (should be removed with proper config overwriting implementation)
+    if not hasattr(args, "pipeline"):
+        args.pipeline = Namespace()
+
     # One of the options has to be provided
-    if args.pipeline_config is None and args.pipeline_dir is None:
+    if args.pipeline_config is None and getattr(args.pipeline, "pipeline_dir", None) is None:
         logger.error(
             "--pipeline-config path with the pipeline configuration "
             "or a --pipeline-dir containing a valid pipeline must be provided."
@@ -52,13 +56,13 @@ def main(args: Namespace) -> int:
 
     # As a fallback, we can re-use config from the provided --pipeline-dir
     if args.pipeline_config is None:
-        args.pipeline_config = Path(args.pipeline_dir, OpusPocusPipeline._config_file)  # noqa: SLF001
+        args.pipeline_config = Path(getattr(args.pipeline, "pipeline_dir", None), OpusPocusPipeline._config_file)  # noqa: SLF001
         logger.info("No --pipeline-config was provided, reading pipeline configuration from %s", args.pipeline_config)
 
     # By default, we use the pipeline directory defined in the config file
-    if args.pipeline_dir is None:
-        config = PipelineConfig.load(args.pipeline_config)
-        args.pipeline_dir = Path(config.pipeline.pipeline_dir)
+    config = PipelineConfig.load(args.pipeline_config)
+    if getattr(args.pipeline, "pipeline_dir", None) is None:
+        args.pipeline.pipeline_dir = Path(config.pipeline.pipeline_dir)
 
     # First, we try to load a pipeline if it was previously saved
     try:
@@ -77,7 +81,13 @@ def main(args: Namespace) -> int:
         sys.exit(2)
 
     ## Run phase ##
-    runner = build_runner(args.runner, args.pipeline_dir, args)
+    # Get default runner value from the config if not provided via CLI
+    if args.runner is None:
+        args.runner.runner = config.runner.runner
+    if args.pipeline is None:
+        args.pipeline.target = config.pipeline.targets
+
+    runner = build_runner(args)
 
     # Check the pipeline state and whether it requires --reinit or --rerun flags
     if args.stop_previous_run:
@@ -96,7 +106,7 @@ def main(args: Namespace) -> int:
                 stacklevel=1,
             )
         else:
-            prev_runner = load_runner(pipeline.pipeline_dir)
+            prev_runner = load_runner(args)
             prev_runner.stop_pipeline(pipeline)
     elif pipeline.state in [PipelineState.SUBMITTED, PipelineState.RUNNING]:
         logger.error(
@@ -107,7 +117,7 @@ def main(args: Namespace) -> int:
         sys.exit(2)
 
     runner.run_pipeline(
-        pipeline, target_labels=args.targets, resubmit_finished_subtasks=args.resubmit_finished_subtasks
+        pipeline, target_labels=getattr(args.pipeline, "targets", None), resubmit_done=args.resubmit_finished_subtasks
     )
     return 0
 

@@ -1,4 +1,5 @@
 import time
+from argparse import Namespace
 from pathlib import Path
 
 import pytest
@@ -29,14 +30,16 @@ def test_build_runner_method(foo_runner):
 def test_load_runner_before_save_fail(pipeline_preprocess_tiny_inited):
     """Fail loading runner that was not previously created."""
     with pytest.raises(FileNotFoundError):
-        load_runner(pipeline_preprocess_tiny_inited.pipeline_dir)
+        load_runner(
+            Namespace(**{"pipeline": Namespace(**{"pipeline_dir": pipeline_preprocess_tiny_inited.pipeline_dir})})
+        )
 
 
 def test_load_runner_method(foo_runner):
     """Reload runner for further pipeline execution manipulation."""
     foo_runner.save_parameters()
 
-    runner_loaded = load_runner(foo_runner.pipeline_dir)
+    runner_loaded = load_runner(Namespace(**{"pipeline": Namespace(**{"pipeline_dir": foo_runner.pipeline_dir})}))
     assert foo_runner == runner_loaded
 
 

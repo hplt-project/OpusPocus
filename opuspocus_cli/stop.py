@@ -45,7 +45,7 @@ def main(args: Namespace) -> int:
         )
 
     if pipeline.state not in [StepState.INITED, StepState.INIT_INCOMPLETE]:
-        runner = load_runner(args.pipeline_dir)
+        runner = load_runner(args)
         logger.info("Stopping pipeline...")
         runner.stop_pipeline(pipeline)
     return 0

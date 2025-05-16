@@ -12,7 +12,8 @@ from attrs import Attribute, define, field, validators
 from opuspocus.pipeline_steps import register_step
 from opuspocus.pipeline_steps.corpus_step import CorpusStep
 from opuspocus.pipeline_steps.train_model import TrainModelStep
-from opuspocus.utils import RunnerResources, open_file, read_shard, save_filestream
+from opuspocus.runner_resources import RunnerResources
+from opuspocus.utils import open_file, read_shard, save_filestream
 
 logger = logging.getLogger(__name__)
 

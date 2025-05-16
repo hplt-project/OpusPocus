@@ -8,9 +8,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
-from attrs import asdict, define, field, fields
+from attrs import asdict, define, field, fields, validators
 
-from opuspocus.utils import RunnerResources, clean_dir, print_indented
+from opuspocus.runner_resources import RunnerResources
+from opuspocus.utils import clean_dir, print_indented
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ class OpusPocusStep:
     pipeline_dir: Path = field(
         converter=Path, eq=False
     )  # enables comparing pipelines/steps from different pipeline dirs
+    runner_resources: RunnerResources = field(
+        validator=validators.optional(validators.instance_of(RunnerResources)), default=None
+    )
 
     _cmd_filename = "step.command"
     _dependency_filename = "step.dependencies"
@@ -56,6 +60,9 @@ class OpusPocusStep:
         Returns:
             An instance of the specified pipeline class.
         """
+        if "runner_resources" in kwargs and kwargs["runner_resources"] is not None:
+            kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
+
         return cls(step=step, step_label=step_label, pipeline_dir=pipeline_dir, **kwargs)
 
     @classmethod
@@ -142,6 +149,8 @@ class OpusPocusStep:
                     param_dict[attr] = value["step_label"]
             elif isinstance(value, Path):
                 param_dict[attr] = str(value)
+            elif isinstance(value, RunnerResources):
+                param_dict[attr] = value.resource_dict
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
                 param_dict[attr] = [str(v) for v in value]
             else:
@@ -412,7 +421,7 @@ class OpusPocusStep:
                 cmd_path=self.cmd_path,
                 target_file=target_file,
                 dependencies=None,
-                step_resources=runner.get_resources(self),
+                task_resources=runner.get_resources(self),
                 stdout_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.{timestamp}.out"),
                 stderr_file=Path(self.log_dir, f"{runner.runner}.{target_file.stem}.{timestamp}.err"),
             )
@@ -474,6 +483,7 @@ class OpusPocusStep:
         """Create the contents of the step's executable file."""
         return f"""#!/usr/bin/env python3
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 from opuspocus.runners import load_runner
@@ -490,7 +500,11 @@ def main(argv):
             step.run_subtask(target_file)
         elif len(argv) == 1:
             # Main task
-            runner = load_runner(Path("{self.pipeline_dir}"))
+            runner = load_runner(
+                Namespace(**{{
+                    "pipeline": Namespace(**{{"pipeline_dir": Path("{self.pipeline_dir}")}})
+                }})
+            )
             step.run_main_task(runner)
         else:
             ValueError("Wrong number of arguments.")
@@ -541,8 +555,3 @@ if __name__ == "__main__":
                 print_indented("+ None", level + 1)
                 continue
             dep.print_traceback(level + 1, full=full)
-
-    @property
-    def default_resources(self) -> RunnerResources:
-        """Definition of default runner resources for a specific step."""
-        return RunnerResources()

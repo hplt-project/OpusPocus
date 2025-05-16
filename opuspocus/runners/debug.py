@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import List, Optional
 
 from opuspocus.pipeline_steps import StepState, load_step
+from opuspocus.runner_resources import RunnerResources
 from opuspocus.runners import OpusPocusRunner, TaskInfo
-from opuspocus.utils import RunnerResources, clean_dir
+from opuspocus.utils import clean_dir
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class DebugRunner(OpusPocusRunner):
         cmd_path: Path,
         target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskInfo]] = None,  # noqa: ARG002
-        step_resources: Optional[RunnerResources] = None,
+        task_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,  # noqa: ARG002
         stderr_file: Optional[Path] = None,  # noqa: ARG002
     ) -> TaskInfo:
@@ -50,7 +51,7 @@ class DebugRunner(OpusPocusRunner):
 
         # Process a specific target file
         if target_file is not None:
-            os.environ = step_resources.get_env_dict()  # noqa: B003
+            os.environ = task_resources.get_env_dict()  # noqa: B003
             step.command(target_file)
             return TaskInfo(file_path=target_file, id=-1)
 
@@ -65,7 +66,7 @@ class DebugRunner(OpusPocusRunner):
                 cmd_path=cmd_path,
                 target_file=t_file,
                 dependencies=None,
-                step_resources=self.get_resources(step),
+                task_resources=self.get_resources(step),
             )
         step.main_task_postprocess()
         clean_dir(step.tmp_dir)

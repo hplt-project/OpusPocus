@@ -11,8 +11,9 @@ from attrs import Attribute, define, field, validators
 
 from opuspocus.pipeline_steps import OpusPocusStep
 from opuspocus.pipelines import OpusPocusPipeline
+from opuspocus.runner_resources import RunnerResources
 from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
-from opuspocus.utils import RunnerResources, subprocess_wait
+from opuspocus.utils import subprocess_wait
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class SlurmRunner(OpusPocusRunner):
     commands.
     """
 
-    slurm_time: str = field()
+    slurm_time: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     slurm_other_options: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
 
     @slurm_time.validator
@@ -50,13 +51,9 @@ class SlurmRunner(OpusPocusRunner):
     def add_args(parser):  # noqa: ANN001, ANN205
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
-        parser.add_argument("--slurm-time", type=str, default=None, help="Slurm job time limit.")
-        parser.add_argument(
-            "--slurm-other-options",
-            type=str,
-            metavar="RUNNER",
-            default=None,
-            help="Additional Slurm CLI options (catchall for less frequent options).",
+        OpusPocusRunner.add_runner_argument(parser, "slurm_time", type=str, default=None, help="Slurm job time limit.")
+        OpusPocusRunner.add_runner_argument(
+            parser, "slurm_other_options", type=str, default=None, help="Additional Slurm CLI options."
         )
 
     def submit_task(
@@ -64,7 +61,7 @@ class SlurmRunner(OpusPocusRunner):
         cmd_path: Path,
         target_file: Optional[Path] = None,
         dependencies: Optional[List[SlurmTaskInfo]] = None,
-        step_resources: Optional[RunnerResources] = None,
+        task_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> SlurmTaskInfo:
@@ -74,7 +71,7 @@ class SlurmRunner(OpusPocusRunner):
             cmd_path (Path): location of the step's command to be executed
             target_file (Path): target_file to be created by a subtask (if not None)
             dependencies (List[SlurmTaskInfo]): list of task information about the running dependencies
-            step_resources (RunnerResources): resources to be allocated for the task
+            task_resources (RunnerResources): resources to be allocated for the task
             stdout_file (Path): location of the log file for task's stdout
             stderr_file (Path): location of the log file for task's stderr
 
@@ -92,8 +89,7 @@ class SlurmRunner(OpusPocusRunner):
             cmd.append("--dependency")
             cmd.append(",".join([f"afterok:{dep!s}" for dep in dependencies_ids]))
 
-        # TODO: fix this with resource config refactor
-        # cmd += self._convert_resources(step_resources)
+        cmd += self._convert_resources(task_resources)
 
         jobname = f"{self.runner}.{self.pipeline_dir.stem}{self.pipeline_dir.suffix}"
         if target_file is not None:
@@ -118,12 +114,12 @@ class SlurmRunner(OpusPocusRunner):
         if target_file is not None:
             cmd += [str(cmd_path), str(target_file)]
             proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=step_resources.get_env_dict()
+                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=task_resources.get_env_dict()
             )
         else:
             cmd += [str(cmd_path)]
             proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=step_resources.get_env_dict()
+                cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=task_resources.get_env_dict()
             )
         logger.info("Submitted sbatch command: %s", " ".join(cmd))
 

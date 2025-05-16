@@ -1,7 +1,8 @@
+import argparse
+import json
 import logging
 import signal
 import time
-from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,7 +12,8 @@ from typing_extensions import TypedDict
 
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline
-from opuspocus.utils import RunnerResources
+from opuspocus.runner_resources import RunnerResources
+from opuspocus.utils import NestedAction, NestedActionStoreTrue
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +37,42 @@ class OpusPocusRunner:
 
     runner: str = field(validator=validators.instance_of(str))
     pipeline_dir: Path = field(converter=Path)
+    runner_resources: RunnerResources = field(
+        validator=validators.instance_of(RunnerResources), default=RunnerResources()
+    )
 
     _parameter_filename = "runner.parameters"
     _info_filename = "runner.step_info"
 
     @staticmethod
-    def add_args(parser: ArgumentParser) -> None:
+    def add_args(parser: argparse.ArgumentParser) -> None:
         """Add runner-specific arguments to the parser."""
-        pass
+        OpusPocusRunner.add_runner_argument(
+            parser,
+            "runner_resources",
+            type=json.loads,
+            default=None,
+            help="Global task execution resource assignmnet.",
+        )
+
+    @staticmethod
+    def add_runner_argument(parser: argparse.ArgumentParser, arg_name: str, **kwargs) -> None:  # noqa: ANN003
+        """Wrapper for adding runner arguments that get stored in the proper OmegaConf destination.
+
+        To guarantee backwards compatibility, we still support the `--runner_arg` syntax.
+        However, the new syntax using `runner.runner_arg` should be preferred.
+        """
+        arg_name_hyphens = "-".join(arg_name.split("_"))
+        action = NestedAction
+        if "action" in kwargs and kwargs["action"] == "store_true":
+            action = NestedActionStoreTrue
+            del kwargs["action"]
+        parser.add_argument(
+            f"--{arg_name_hyphens}",
+            dest=f"runner.{arg_name}",
+            action=action,
+            **kwargs,
+        )
 
     @classmethod
     def build_runner(cls: "OpusPocusRunner", runner: str, pipeline_dir: Path, **kwargs) -> "OpusPocusRunner":  # noqa: ANN003
@@ -56,6 +86,14 @@ class OpusPocusRunner:
         Returns:
             An instance of the specified runner class.
         """
+        if "runner_resources" in kwargs:
+            kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
+        else:
+            logger.debug(
+                "[OpusPocusRunner] Global runner resources were not provided."
+                "Using the default RunnerResources values."
+            )
+
         return cls(runner=runner, pipeline_dir=pipeline_dir, **kwargs)
 
     @classmethod
@@ -100,6 +138,8 @@ class OpusPocusRunner:
         for attr, value in asdict(self, filter=lambda attr, _: not attr.name.startswith("_")).items():
             if isinstance(value, Path):
                 param_dict[attr] = str(value)
+            elif isinstance(value, RunnerResources):
+                param_dict[attr] = value.resource_dict
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
                 param_dict[attr] = [str(v) for v in value]
             else:
@@ -139,7 +179,7 @@ class OpusPocusRunner:
         pipeline: OpusPocusPipeline,
         target_labels: Optional[List[str]] = None,
         *,
-        resubmit_finished_subtasks: bool = False,
+        resubmit_done: bool = False,
     ) -> None:
         """Submit and execute pipeline steps with labels in target_labels and their dependencies.
 
@@ -150,7 +190,7 @@ class OpusPocusRunner:
         """
         self.save_parameters()
         for step in pipeline.get_targets(target_labels):
-            self.submit_step(step, resubmit_finished_subtasks=resubmit_finished_subtasks)
+            self.submit_step(step, resubmit_finished_subtasks=resubmit_done)
         logger.info("[%s] Pipeline tasks submitted successfully.", self.runner)
 
     def submit_step(self, step: OpusPocusStep, *, resubmit_finished_subtasks: bool = True) -> Optional[SubmissionInfo]:
@@ -214,7 +254,7 @@ class OpusPocusRunner:
                 cmd_path=step.cmd_path,
                 target_file=None,
                 dependencies=[dep["main_task"] for dep in dep_sub_info_list],
-                step_resources=self.get_resources(step),
+                task_resources=self.get_resources(step),
                 stdout_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.out"),
                 stderr_file=Path(step.log_dir, f"{self.runner}.main.{timestamp}.err"),
             )
@@ -275,7 +315,7 @@ class OpusPocusRunner:
         cmd_path: Path,
         target_file: Optional[Path] = None,
         dependencies: Optional[List[TaskInfo]] = None,
-        step_resources: Optional[RunnerResources] = None,
+        task_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> TaskInfo:
@@ -285,7 +325,7 @@ class OpusPocusRunner:
             cmd_path (Path): location of the step's command to execute
             target_file (Path): target_file to create by a subtask (if not None)
             dependencies (List[TaskInfo]): list of task information about the running dependencies
-            step_resources (RunnerResources): resources to allocate for the task
+            task_resources (RunnerResources): resources to allocate for the task
             stdout_file (Path): location of the log file for task's stdout
             stderr_file (Path): location of the log file for task's stderr
 
@@ -371,5 +411,8 @@ class OpusPocusRunner:
 
     def get_resources(self, step: OpusPocusStep) -> RunnerResources:
         """Get default runner resources."""
-        # TODO: expand the logic here
-        return step.default_resources
+        if step.runner_resources is not None:
+            # Get step-specific resources if available
+            return step.runner_resources
+        # Otherwise, use the global resources
+        return self.runner_resources

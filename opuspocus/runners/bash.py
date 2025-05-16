@@ -10,8 +10,9 @@ from typing import List, Optional
 from attrs import define, field, validators
 from psutil import NoSuchProcess, Process, wait_procs
 
+from opuspocus.runner_resources import RunnerResources
 from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
-from opuspocus.utils import RunnerResources, subprocess_wait
+from opuspocus.utils import subprocess_wait
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,9 @@ class BashRunner(OpusPocusRunner):
     def add_args(parser: ArgumentParser) -> None:
         """Add runner-specific arguments to the parser."""
         OpusPocusRunner.add_args(parser)
-        parser.add_argument(
-            "--run-tasks-in-parallel",
+        OpusPocusRunner.add_runner_argument(
+            parser,
+            "run_tasks_in_parallel",
             default=False,
             action="store_true",
             help="Submit tasks as processes running in parallel wherever possible.",
@@ -47,7 +49,7 @@ class BashRunner(OpusPocusRunner):
         cmd_path: Path,
         target_file: Optional[Path] = None,
         dependencies: Optional[List[BashTaskInfo]] = None,
-        step_resources: Optional[RunnerResources] = None,
+        task_resources: Optional[RunnerResources] = None,
         stdout_file: Optional[Path] = None,
         stderr_file: Optional[Path] = None,
     ) -> BashTaskInfo:
@@ -63,7 +65,7 @@ class BashRunner(OpusPocusRunner):
             cmd_path (Path): location of the step's command to be executed
             target_file (Path): target_file to be created by a subtask (if not None)
             dependencies (List[BashTaskInfo]): list of task information about the running dependencies
-            step_resources (RunnerResources): resources to be allocated for the task
+            task_resources (RunnerResources): resources to be allocated for the task
             stdout_file (Path): location of the log file for task's stdout
             stderr_file (Path): location of the log file for task's stderr
 
@@ -73,7 +75,7 @@ class BashRunner(OpusPocusRunner):
         dependencies_str = ""
         if dependencies is not None:
             dependencies_str = " ".join([str(dep["id"]) for dep in dependencies])
-        env_dict = step_resources.get_env_dict()
+        env_dict = task_resources.get_env_dict()
 
         stdout = sys.stdout
         if stdout_file is not None:

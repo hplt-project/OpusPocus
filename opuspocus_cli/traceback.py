@@ -18,7 +18,7 @@ def main(args: Namespace) -> int:
     with their current status.
     """
     pipeline = load_pipeline(args)
-    pipeline.print_traceback(target_labels=args.targets)
+    pipeline.print_traceback(target_labels=getattr(args.pipeline, "targets", None))
     return 0
 
 

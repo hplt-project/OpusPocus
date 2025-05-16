@@ -4,6 +4,9 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Callable
 
+from opuspocus.config import PipelineConfig
+from opuspocus.pipelines import OpusPocusPipeline
+
 from .opuspocus_runner import OpusPocusRunner, SubmissionInfo, TaskInfo
 
 __all__ = [
@@ -18,24 +21,40 @@ RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()
 
 
-def build_runner(runner: str, pipeline_dir: Path, args: Namespace) -> OpusPocusRunner:
+def build_runner(args: Namespace) -> OpusPocusRunner:
     """Runner builder function. Use this to create runner objects."""
-    logger.info("Building runner (%s)...", runner)
+    runner = args.runner.runner
+    assert runner is not None
+    pipeline_dir = getattr(args.pipeline, "pipeline_dir", None)
+    assert pipeline_dir is not None
 
+    logger.info("Building runner (%s) based on config in (%s)", runner, pipeline_dir)
     kwargs = {}
+
+    config_path = Path(pipeline_dir, OpusPocusPipeline.get_config_file())
+    if config_path.exists():
+        config = PipelineConfig.load(Path(pipeline_dir, OpusPocusPipeline.get_config_file()))
+
+        kwargs = dict(config.runner)
+        del kwargs["runner"]
+
+    # NOTE(varisd): the following override should become obsolete after reimplementing CLI config override support
     for param in RUNNER_REGISTRY[runner].list_parameters():
         if param in {"runner", "pipeline_dir"}:
             continue
-        kwargs[param] = getattr(args, param)
+        if hasattr(kwargs, param):
+            kwargs[param] = getattr(args.runner, param)
 
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **kwargs)
 
 
-def load_runner(pipeline_dir: Path) -> OpusPocusRunner:
+def load_runner(args: Namespace) -> OpusPocusRunner:
     """Recreate a previously used runner. Required for pipeline execution
     updates, i.e. execution termination.
-
     """
+    pipeline_dir = getattr(args.pipeline, "pipeline_dir", None)
+    assert pipeline_dir is not None
+
     runner_params = OpusPocusRunner.load_parameters(pipeline_dir)
 
     runner = runner_params["runner"]

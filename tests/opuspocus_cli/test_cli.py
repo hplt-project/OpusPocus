@@ -67,4 +67,4 @@ def test_required_pipeline_dir_option(cmd_name, capsys):
     assert err.value.code != 0
 
     output = capsys.readouterr()
-    assert " --pipeline-dir PIPELINE_DIR" in output.out
+    assert " --pipeline-dir PIPELINE.PIPELINE_DIR" in output.out

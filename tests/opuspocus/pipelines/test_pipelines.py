@@ -20,7 +20,7 @@ def test_build_pipeline_method(
     args = Namespace(
         **{
             "pipeline_config": pipeline_preprocess_tiny_config_file,
-            "pipeline_dir": pipeline_dir,
+            "pipeline": Namespace(**{"pipeline_dir": pipeline_dir}),
         }
     )
     pipeline = build_pipeline(args)
@@ -30,14 +30,14 @@ def test_build_pipeline_method(
 
 def test_load_pipeline_method(pipeline_preprocess_tiny_inited):
     """Load previously created pipeline and compare the two instances."""
-    args = Namespace(**{"pipeline_dir": Path(pipeline_preprocess_tiny_inited.pipeline_dir)})
+    args = Namespace(**{"pipeline": Namespace(**{"pipeline_dir": Path(pipeline_preprocess_tiny_inited.pipeline_dir)})})
     pipeline = load_pipeline(args)
     assert pipeline.pipeline_graph == pipeline_preprocess_tiny_inited.pipeline_graph
 
 
 def test_load_pipeline_dir_not_exist():
     """Fail when trying to load pipeline not previously inited."""
-    args = Namespace(**{"pipeline_dir": Path("nonexistent", "directory")})
+    args = Namespace(**{"pipeline": Namespace(**{"pipeline_dir": Path("nonexistent", "directory")})})
     with pytest.raises(FileNotFoundError):
         load_pipeline(args)
 
@@ -46,10 +46,14 @@ def test_load_pipeline_dir_not_directory(pipeline_preprocess_tiny_inited):
     """Fail when trying to load pipeline from invalid directory."""
     args = Namespace(
         **{
-            "pipeline_dir": Path(
-                pipeline_preprocess_tiny_inited.pipeline_dir,
-                pipeline_preprocess_tiny_inited._config_file,  # noqa: SLF001
-            ),
+            "pipeline": Namespace(
+                **{
+                    "pipeline_dir": Path(
+                        pipeline_preprocess_tiny_inited.pipeline_dir,
+                        pipeline_preprocess_tiny_inited._config_file,  # noqa: SLF001
+                    ),
+                }
+            )
         }
     )
     with pytest.raises(NotADirectoryError):
