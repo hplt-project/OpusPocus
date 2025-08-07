@@ -1,3 +1,4 @@
+from argparse import Namespace
 from pathlib import Path
 from typing import Any, Dict, Union
 
@@ -29,9 +30,22 @@ class PipelineConfig:
                 raise ValueError(err_msg)
 
     @classmethod
-    def load(cls: "PipelineConfig", config_file: Path) -> "PipelineConfig":
+    def load(cls: "PipelineConfig", config_file: Path, args: Namespace = None) -> "PipelineConfig":
         """Load the config from a file."""
-        return cls(config=OmegaConf.load(config_file))
+        config = OmegaConf.load(config_file)
+        # overwrite runner config with command-line arguments
+        for k, v in dict(args.runner).items():
+            setattr(config.runner, k, v)
+        # overwrite general pipeline config with command-line arguments
+        for k, v in dict(args.pipeline).items():
+            setattr(config.pipeline, k, v)
+        # overwrite the configs of individual pipeline steps with command-line arguments
+        label2idx = {config.pipeline.steps[idx].step_label: idx for idx in range(config.pipeline.steps)}
+        for step_label in dict(args.steps).keys():
+            for k, v in args.steps[step_label].items():
+                idx = label2idx[step_label]
+                setattr(config.pipeline.steps[idx], k, v)
+        return cls(config=config)
 
     @classmethod
     def create(cls: "PipelineConfig", config_dict: Union[Dict[str, Any], DictConfig]) -> "PipelineConfig":

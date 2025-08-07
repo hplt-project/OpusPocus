@@ -31,7 +31,15 @@ class OpusPocusParser(argparse.ArgumentParser):
         if namespace is None and (args is None or not args):
             self.print_usage()
             sys.exit(1)
-        return super().parse_args(args=args, namespace=namespace)
+        args = super().parse_args(args=args, namespace=namespace)
+        # Set default values for runner and pipeline argument overwrite
+        for key in ["runner", "pipeline"]:
+            if not hasattr(args, key):
+                setattr(args, key, Namespace())
+        # Set default value for overwriting config of pipeline steps
+        if not hasattr(args, "steps"):
+            setattr(args, "steps", {})
+        return args
 
 
 def _add_general_arguments(
@@ -70,7 +78,6 @@ def parse_run_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--runner",
         type=str,
-        required=True,
         choices=RUNNER_REGISTRY.keys(),
         dest="runner.runner",
         action=NestedAction,

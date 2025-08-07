@@ -42,10 +42,6 @@ def main(args: Namespace) -> int:
     using the specified runner (bash, slurm, ...) and executes the submitted
     runner tasks.
     """
-    # NOTE(varisd): temporary workaround (should be removed with proper config overwriting implementation)
-    if not hasattr(args, "pipeline"):
-        args.pipeline = Namespace()
-
     # One of the options has to be provided
     if args.pipeline_config is None and getattr(args.pipeline, "pipeline_dir", None) is None:
         logger.error(
@@ -60,7 +56,7 @@ def main(args: Namespace) -> int:
         logger.info("No --pipeline-config was provided, reading pipeline configuration from %s", args.pipeline_config)
 
     # By default, we use the pipeline directory defined in the config file
-    config = PipelineConfig.load(args.pipeline_config)
+    config = PipelineConfig.load(args.pipeline_config, cli_override=args)
     if getattr(args.pipeline, "pipeline_dir", None) is None:
         args.pipeline.pipeline_dir = Path(config.pipeline.pipeline_dir)
 
