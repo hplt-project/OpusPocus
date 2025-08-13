@@ -1,6 +1,6 @@
 from argparse import Namespace
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 from attrs import Attribute, define, field
 from omegaconf import DictConfig, OmegaConf
@@ -30,7 +30,7 @@ class PipelineConfig:
                 raise ValueError(err_msg)
 
     @classmethod
-    def load(cls: "PipelineConfig", config_file: Path, args: Namespace = None) -> "PipelineConfig":
+    def load(cls: "PipelineConfig", config_file: Path, args: Optional[Namespace] = None) -> "PipelineConfig":
         """Load the config from a file."""
         config = OmegaConf.load(config_file)
         # overwrite runner config with command-line arguments
@@ -41,7 +41,7 @@ class PipelineConfig:
             setattr(config.pipeline, k, v)
         # overwrite the configs of individual pipeline steps with command-line arguments
         label2idx = {config.pipeline.steps[idx].step_label: idx for idx in range(config.pipeline.steps)}
-        for step_label in dict(args.steps).keys():
+        for step_label in dict(args.steps):
             for k, v in args.steps[step_label].items():
                 idx = label2idx[step_label]
                 setattr(config.pipeline.steps[idx], k, v)
