@@ -1,59 +1,11 @@
-import argparse
 import gzip
 import logging
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, List, Optional, TextIO
+from typing import List, TextIO
 
 logger = logging.getLogger(__name__)
-
-
-class NestedAction(argparse.Action):
-    """Implements a support for creating nested argparse.Namespace.
-
-    The nested structure is indicated by a dot (".") notation in the action destination,
-    e.g. `dest=group.argument` creates a nested Namespace
-    Namespace(group=Namespace(argument=argument_value)).
-
-    NOTE(varisd): This class is currently in the opuspocus.utils instead of opuspocus.options to avoid circural
-    imports.
-    """
-
-    def _group_actions(self, namespace: argparse.Namespace, group: str, dest_arr: List[str], values: Any) -> None:  # noqa: ANN401
-        """Process the dest_arr separated destination array, depth-first."""
-        groupspace = getattr(namespace, group, argparse.Namespace())
-        if len(dest_arr) > 1:
-            # Call the method recursively if not at the final level of recursion
-            self._group_actions(groupspace, dest_arr[0], dest_arr[1:], values)
-        else:
-            # Otherwise assign the values at the final level under the given key
-            setattr(groupspace, dest_arr[0], values)
-        setattr(namespace, group, groupspace)
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,  # noqa: ARG002
-        namespace: argparse.Namespace,
-        values: Any,  # noqa: ANN401
-        option_string: Optional[str] = None,  # noqa: ARG002
-    ) -> None:
-        dest_split = self.dest.split(".")
-        assert len(dest_split) > 1
-        self._group_actions(namespace, dest_split[0], dest_split[1:], values)
-
-
-class NestedActionStoreTrue(NestedAction):
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,  # noqa: ARG002
-        namespace: argparse.Namespace,
-        values: Any,  # noqa: ARG002,ANN401
-        option_string: Optional[str] = None,  # noqa: ARG002
-    ) -> None:
-        dest_split = self.dest.split(".")
-        assert len(dest_split) > 1
-        self._group_actions(namespace=namespace, group=dest_split[0], dest_arr=dest_split[1:], values=True)
 
 
 def open_file(file: Path, mode: str) -> TextIO:

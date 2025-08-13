@@ -13,7 +13,6 @@ from typing_extensions import TypedDict
 from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runner_resources import RunnerResources
-from opuspocus.utils import NestedAction, NestedActionStoreTrue
 
 logger = logging.getLogger(__name__)
 
@@ -63,14 +62,9 @@ class OpusPocusRunner:
         However, the new syntax using `runner.runner_arg` should be preferred.
         """
         arg_name_hyphens = "-".join(arg_name.split("_"))
-        action = NestedAction
-        if "action" in kwargs and kwargs["action"] == "store_true":
-            action = NestedActionStoreTrue
-            del kwargs["action"]
         parser.add_argument(
             f"--{arg_name_hyphens}",
             dest=f"runner.{arg_name}",
-            action=action,
             **kwargs,
         )
 
