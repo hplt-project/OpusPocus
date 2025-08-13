@@ -16,9 +16,3 @@ def marian_dir(request):
     if not marian_dir.exists():
         pytest.skip(reason=("A compiled CPU version of Marian NMT in 'marian_cpu_dir' must be available."))
     return marian_dir
-
-
-@pytest.fixture(scope="session")
-def opuspocus_hq_server_dir(tmp_path_factory):
-    """Temporary directory to store HQ server information during tests."""
-    return Path(tmp_path_factory.mktemp("opuspocus_hq_server"))
