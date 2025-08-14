@@ -7,7 +7,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runners import RUNNER_REGISTRY
-from opuspocus.utils import file_path
+from opuspocus.utils import file_path, flatten_dict_config
 
 logger = logging.getLogger(__name__)
 
@@ -34,30 +34,47 @@ class OpusPocusParser(argparse.ArgumentParser):
         return super().parse_args(args=args, namespace=namespace)
 
 
-def _add_general_arguments(
-    parser: argparse.ArgumentParser,
-    *,
-    pipeline_dir_required: bool = True,
-) -> None:
-    parser.add_argument(
-        "--log-level",
-        type=str,
-        choices=["info", "debug"],
-        default="info",
-        help="Current logging level.",
-    )
-    parser.add_argument("unparsed", nargs=argparse.REMAINDER)
-    OpusPocusPipeline.add_args(parser, pipeline_dir_required=pipeline_dir_required)
-
-
 def parse2config(parser: argparse.ArgumentParser, argv: Sequence[str]) -> DictConfig:
-    """TODO"""
+    """Parse the CLI arguments and convert them into the OpusPocusConfig compatible format for later merge.
+
+    General configuration options and runner/pipeline configuration options should be directly parsed due
+    to the arguments added to the parser.
+    Other arguments (related to overwriting individual pipeline steps) are first stored in the args.unparsed
+    parameter and later converted to `steps.step_name.step_attr=value` format.
+
+    The resulting config is used to configure the OpusPocus execution and later merged with the optional
+    pipeline-config file contents.
+    """
     args = parser.parse_args(argv)
     config = DictConfig({})
-    config.unparsed = OmegaConf.from_cli(args.unparsed)
+
+    config_unparsed = OmegaConf.from_cli(args.unparsed)
+    if any([not isinstance(v, DictConfig) for v in config_unparsed.values()]):
+        err_msg = (
+            "Extra CLI arguments for config override must be nested attribute definitions (e.g. obj.attr=value).\n"
+            f"Parsed extra parameters: {args.unparsed}"
+        )
+        raise AttributeError(err_msg)
+    if "pipeline" in config_unparsed:
+        if "steps" in config_unparsed.pipeline:
+            err_msg = "Cannot set pipeline.steps via CLI. Used pipeline configuration to define pipeline steps."
+            raise AttributeError(err_msg)
+        setattr(config, "pipeline", config_unparsed.pipeline)
+        del config_unparsed.pipeline
+    if "runner" in config_unparsed:
+        setattr(config, "runner", config_unparsed.runner)
+
+    # config.steps contains the step-specific overwrites, if the step name contains dot ("."), we flatten
+    # the OmegaConf generated structure `step.name.xy.attr` to the `<step.name.xy>`.attr format.
+    setattr(config, "steps", flatten_dict_config(config_unparsed, 1))
 
     def set_nested(config: DictConfig, name: str, value: Any) -> None:  # noqa: ANN401
-        """TODO"""
+        """Sets the values of the nested CLI options (defined by runner.*, pipeline.*, etc.
+
+        These arguments are originally stored with the "." notation (e.g. `config["pipeline.pipeline_dir"]`).
+        We want to convert them into the nexted format (e.g. `config["pipeline"]["pipeline_dir"]) which is compatible
+        with the OpusPocusConfig configuration structre.
+        """
         name_arr = name.split(".")
         assert len(name_arr) == NESTED_ATTR_LEN
 
@@ -75,6 +92,22 @@ def parse2config(parser: argparse.ArgumentParser, argv: Sequence[str]) -> DictCo
             setattr(config.cli_options, arg, getattr(args, arg))
 
     return config
+
+
+def _add_general_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    pipeline_dir_required: bool = True,
+) -> None:
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["info", "debug"],
+        default="info",
+        help="Current logging level.",
+    )
+    parser.add_argument("unparsed", nargs=argparse.REMAINDER)
+    OpusPocusPipeline.add_args(parser, pipeline_dir_required=pipeline_dir_required)
 
 
 def parse_run_args(argv: Sequence[str]) -> DictConfig:
@@ -105,7 +138,9 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     )
 
     args, _ = parser.parse_known_args(argv)
-    RUNNER_REGISTRY[getattr(args, "runner.runner")].add_args(parser)
+    runner = getattr(args, "runner.runner", None)
+    if runner is not None:
+        RUNNER_REGISTRY[runner].add_args(parser)
 
     return parse2config(parser, argv)
 
