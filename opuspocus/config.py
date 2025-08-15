@@ -1,4 +1,3 @@
-from argparse import Namespace
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -30,21 +29,20 @@ class PipelineConfig:
                 raise ValueError(err_msg)
 
     @classmethod
-    def load(cls: "PipelineConfig", config_file: Path, args: Optional[Namespace] = None) -> "PipelineConfig":
+    def load(cls: "PipelineConfig", config_file: Path, args: Optional[DictConfig] = None) -> "PipelineConfig":
         """Load the config from a file."""
         config = OmegaConf.load(config_file)
-        # overwrite runner config with command-line arguments
-        for k, v in dict(args.runner).items():
-            setattr(config.runner, k, v)
-        # overwrite general pipeline config with command-line arguments
-        for k, v in dict(args.pipeline).items():
-            setattr(config.pipeline, k, v)
-        # overwrite the configs of individual pipeline steps with command-line arguments
-        label2idx = {config.pipeline.steps[idx].step_label: idx for idx in range(config.pipeline.steps)}
-        for step_label in dict(args.steps):
-            for k, v in args.steps[step_label].items():
-                idx = label2idx[step_label]
-                setattr(config.pipeline.steps[idx], k, v)
+        if args is not None:
+            # merge the config_file contents with the CLI arguments
+            config = OmegaConf.merge(config, args)
+            del config.steps
+
+            # overwrite the configs of individual pipeline steps with command-line arguments
+            label2idx = {config.pipeline.steps[idx].step_label: idx for idx in range(len(config.pipeline.steps))}
+            for step_label in dict(args.steps):
+                for k, v in args.steps[step_label].items():
+                    idx = label2idx[step_label]
+                    setattr(config.pipeline.steps[idx], k, v)
         return cls(config=config)
 
     @classmethod
