@@ -63,6 +63,7 @@ def parse2config(parser: argparse.ArgumentParser, argv: Sequence[str]) -> DictCo
         del config_unparsed.pipeline
     if "runner" in config_unparsed:
         setattr(config, "runner", config_unparsed.runner)
+        del config_unparsed.runner
 
     # config.steps contains the step-specific overwrites, if the step name contains dot ("."), we flatten
     # the OmegaConf generated structure `step.name.xy.attr` to the `<step.name.xy>`.attr format.
