@@ -59,15 +59,15 @@ def parse2config(parser: argparse.ArgumentParser, argv: Sequence[str]) -> DictCo
         if "steps" in config_unparsed.pipeline:
             err_msg = "Cannot set pipeline.steps via CLI. Used pipeline configuration to define pipeline steps."
             raise AttributeError(err_msg)
-        setattr(config, "pipeline", config_unparsed.pipeline)
+        config.pipeline = config_unparsed.pipeline
         del config_unparsed.pipeline
     if "runner" in config_unparsed:
-        setattr(config, "runner", config_unparsed.runner)
+        config.runner = config_unparsed.runner
         del config_unparsed.runner
 
     # config.steps contains the step-specific overwrites, if the step name contains dot ("."), we flatten
     # the OmegaConf generated structure `step.name.xy.attr` to the `<step.name.xy>`.attr format.
-    setattr(config, "steps", flatten_dict_config(config_unparsed, 1))
+    config.steps = flatten_dict_config(config_unparsed, 1)
 
     def set_nested(config: DictConfig, name: str, value: Any) -> None:  # noqa: ANN401
         """Sets the values of the nested CLI options (defined by runner.*, pipeline.*, etc.
@@ -128,7 +128,12 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     parser.add_argument(
         "--resubmit-finished-subtasks", default=False, action="store_true", help="Re-run finished steps."
     )
-    parser.add_argument("--pipeline-config", type=file_path, default=None, help="Pipeline configuration YAML file.")
+    parser.add_argument(
+        "--pipeline-config",
+        type=file_path,
+        default=None,
+        help="Pipeline configuration YAML file."
+    )
     parser.add_argument(
         "--runner",
         type=str,
@@ -139,7 +144,7 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     )
 
     args, _ = parser.parse_known_args(argv)
-    runner = getattr(args, "runner.runner", None)
+    runner = args.runner.runner
     if runner is not None:
         RUNNER_REGISTRY[runner].add_args(parser)
 

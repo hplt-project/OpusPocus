@@ -1,7 +1,7 @@
 import importlib
 import logging
 import sys
-from argparse import Namespace
+from omegaconf import DictConfig
 from pathlib import Path
 from typing import Sequence
 
@@ -14,7 +14,7 @@ def _print_usage() -> None:
     )
 
 
-def parse_args(argv: Sequence[str]) -> Namespace:
+def parse_args(argv: Sequence[str]) -> DictConfig:
     """Call the correct subcommand parser, given the subcommand."""
     if not argv:
         _print_usage()

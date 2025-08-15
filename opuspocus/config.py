@@ -29,6 +29,12 @@ class PipelineConfig:
                 raise ValueError(err_msg)
 
     @classmethod
+    def load_from_directory(
+        cls: "PipelineConfig", pipeline_dir: Path, args: Optional[DictConfig] = None
+    ) -> "PipelineConfig":
+        return cls.load(Path(pipeline_dir, OpusPocusPipeline._config_file), args)  # noqa: 
+
+    @classmethod
     def load(cls: "PipelineConfig", config_file: Path, args: Optional[DictConfig] = None) -> "PipelineConfig":
         """Load the config from a file."""
         config = OmegaConf.load(config_file)
@@ -54,8 +60,10 @@ class PipelineConfig:
         return cls(config=config)
 
     def save(self, config_path: Path) -> None:
-        """Save the existing pipeline config."""
-        OmegaConf.save(self.config, f=config_path)
+        """Save the existing pipeline config. Exclude the CLI arguments."""
+        conf = DictConfig(self.config)
+        del conf["cli_options"]
+        OmegaConf.save(conf, f=config_path)
 
     def select(self, key: str) -> Any:  # noqa: ANN401
         """Wrapper of the OmegaConf.select() method.
