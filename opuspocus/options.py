@@ -11,6 +11,7 @@ from opuspocus.utils import file_path, flatten_dict_config
 
 logger = logging.getLogger(__name__)
 
+ERR_RETURN_CODE = 1
 GENERAL_DESCRIPTION = "OpusPocus NLP Pipeline Manager"
 NESTED_ATTR_LEN = 2
 
@@ -21,7 +22,7 @@ class OpusPocusParser(argparse.ArgumentParser):
     def error(self, message: str) -> None:
         logger.error("Error: %s\n", message)
         self.print_help()
-        sys.exit(2)
+        sys.exit(ERR_RETURN_CODE)
 
     def parse_args(
         self,
@@ -30,7 +31,7 @@ class OpusPocusParser(argparse.ArgumentParser):
     ) -> argparse.Namespace:
         if namespace is None and (args is None or not args):
             self.print_usage()
-            sys.exit(1)
+            sys.exit(ERR_RETURN_CODE)
         return super().parse_args(args=args, namespace=namespace)
 
 
@@ -49,7 +50,7 @@ def parse2config(parser: argparse.ArgumentParser, argv: Sequence[str]) -> DictCo
     config = DictConfig({})
 
     config_unparsed = OmegaConf.from_cli(args.unparsed)
-    if any([not isinstance(v, DictConfig) for v in config_unparsed.values()]):
+    if any(not isinstance(v, DictConfig) for v in config_unparsed.values()):
         err_msg = (
             "Extra CLI arguments for config override must be nested attribute definitions (e.g. obj.attr=value).\n"
             f"Parsed extra parameters: {args.unparsed}"
@@ -128,12 +129,7 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     parser.add_argument(
         "--resubmit-finished-subtasks", default=False, action="store_true", help="Re-run finished steps."
     )
-    parser.add_argument(
-        "--pipeline-config",
-        type=file_path,
-        default=None,
-        help="Pipeline configuration YAML file."
-    )
+    parser.add_argument("--pipeline-config", type=file_path, default=None, help="Pipeline configuration YAML file.")
     parser.add_argument(
         "--runner",
         type=str,
@@ -144,9 +140,8 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     )
 
     args, _ = parser.parse_known_args(argv)
-    runner = args.runner.runner
-    if runner is not None:
-        RUNNER_REGISTRY[runner].add_args(parser)
+    if hasattr(args, "runner") and getattr(args.runner, "runner", None) is not None:
+        RUNNER_REGISTRY[args.runner.runner].add_args(parser)
 
     return parse2config(parser, argv)
 

@@ -2,9 +2,10 @@ import gzip
 import logging
 import subprocess
 import time
-from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 from typing import Any, List, TextIO
+
+from omegaconf import DictConfig, OmegaConf
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,8 @@ def flatten_dict_config(config: DictConfig, max_depth: int) -> DictConfig:
         config (DictConfig): config to be flattened
         max_level (int): maximum allowed depth of the flattened config (0 implies non-nested dictionary)
     """
-    def flatten(config) -> DictConfig:
+
+    def flatten(config: DictConfig) -> DictConfig:
         new_config = DictConfig({})
         for key, value in config.items():
             if not isinstance(value, DictConfig):
@@ -178,7 +180,7 @@ def flatten_dict_config(config: DictConfig, max_depth: int) -> DictConfig:
                     setattr(new_config, f"{key}.{k}", v)
         return new_config
 
-    def nest(top_key: str, value: Any, keys: List[str]) -> DictConfig:
+    def nest(top_key: str, value: Any, keys: List[str]) -> DictConfig:  # noqa: ANN401
         if not keys:
             return DictConfig({top_key: value})
         return DictConfig({top_key: nest(keys[0], value, keys[1:])})
@@ -188,9 +190,9 @@ def flatten_dict_config(config: DictConfig, max_depth: int) -> DictConfig:
     for key, value in config_flat.items():
         key_split = key.split(".")
         nested_entry = nest(
-            top_key=".".join(key_split[:len(key_split)-max_depth]),
+            top_key=".".join(key_split[: len(key_split) - max_depth]),
             value=value,
-            keys=key_split[len(key_split)-max_depth:]
+            keys=key_split[len(key_split) - max_depth :],
         )
         new_config = OmegaConf.merge(new_config, nested_entry)
     return new_config

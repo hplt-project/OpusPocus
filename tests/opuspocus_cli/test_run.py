@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from opuspocus.config import PipelineConfig
-from opuspocus.pipelines import PipelineInitError
+from opuspocus.options import ERR_RETURN_CODE
+from opuspocus.pipelines import PipelineInitError, PipelineStateError
 from opuspocus_cli import main
 
 
@@ -13,17 +14,10 @@ def test_run_default_values(foo_pipeline_config_file):
     assert rc == 0
 
 
-@pytest.mark.parametrize("values", [("config"), ("runner"), ("")])
-def test_run_missing_required_values_fail(values, foo_pipeline_config_file):
-    """Fail 'run' execution when required values are missing."""
-    cmd = ["run"]
-    values_arr = values.split(",")
-    if "config" in values_arr:
-        cmd += ["--pipeline-config", str(foo_pipeline_config_file)]
-    if "runner" in values_arr:
-        cmd += ["--runner", "bash"]
-    with pytest.raises(SystemExit):
-        main(cmd)
+def test_run_missing_config_fail():
+    """Fail 'run' execution when pipeline-config option is missing."""
+    rc = main(["run", "--run", "bash"])
+    assert rc == ERR_RETURN_CODE
 
 
 def test_run_nonempty_directory_exists_fail(foo_pipeline):
@@ -59,8 +53,6 @@ def test_run_pipeline_in_state(pipeline_in_state, request):
             "run",
             "--pipeline-dir",
             str(pipeline.pipeline_dir),
-            "--pipeline-config",
-            str(pipeline.pipeline_config_path),
             "--runner",
             "bash",
         ]
@@ -75,7 +67,7 @@ def test_run_pipeline_in_state(pipeline_in_state, request):
 def test_run_pipeline_in_state_fail(pipeline_in_state, request):
     """Fail running a pipeline in running or done states without the rerun flag."""
     pipeline = request.getfixturevalue(pipeline_in_state)
-    with pytest.raises(SystemExit):
+    with pytest.raises(PipelineStateError):
         main(
             [
                 "run",
@@ -107,8 +99,6 @@ def test_run_pipeline_in_state_reinit(pipeline_in_state, request):
             "run",
             "--pipeline-dir",
             str(pipeline.pipeline_dir),
-            "--pipeline-config",
-            str(pipeline.pipeline_config_path),
             "--runner",
             "bash",
             "--reinit",
@@ -134,8 +124,6 @@ def test_run_pipeline_in_state_stop(pipeline_in_state, warn, request):
         "run",
         "--pipeline-dir",
         str(pipeline.pipeline_dir),
-        "--pipeline-config",
-        str(pipeline.pipeline_config_path),
         "--runner",
         "bash",
         "--stop-previous-run",

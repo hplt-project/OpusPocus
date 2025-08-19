@@ -2,8 +2,9 @@
 import logging
 import sys
 import warnings
-from omegaconf import DictConfig
 from typing import Sequence
+
+from omegaconf import DictConfig
 
 from opuspocus.config import PipelineConfig
 from opuspocus.options import parse_stop_args

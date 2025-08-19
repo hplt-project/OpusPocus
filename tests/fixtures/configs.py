@@ -67,7 +67,7 @@ def pipeline_preprocess_tiny_config_file(
     config["pipeline"]["test_data_dir"] = data_dir_decompressed
 
     config_file = Path(config_dir, "pipeline.preprocess.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115
+    yaml.dump(config, config_file.open("w"))
     return config_file
 
 
@@ -108,5 +108,5 @@ def pipeline_train_tiny_config_file(
         config["pipeline"]["shard_size"] = 2
 
     config_file = Path(config_dir, "pipeline.train.tiny.yml")
-    yaml.dump(config, open(config_file, "w"))  # noqa: PTH123, SIM115
+    yaml.dump(config, config_file.open("w"))
     return config_file

@@ -55,9 +55,7 @@ def test_parse_general_args(argv, parser_fn, foo_pipeline_dir):
     assert hasattr(args.cli_options, attr_name)
 
 
-@pytest.mark.parametrize(
-    "argv", ["--targets foo_target", "--targets foo_target_1 foo_target_2"]
-)
+@pytest.mark.parametrize("argv", ["--targets foo_target", "--targets foo_target_1 foo_target_2"])
 def test_parse_pipeline_args(argv, parser_fn, foo_pipeline_dir):
     """Test parsing of pipeline-specific CLI options."""
     attr_name = "_".join(argv.split(" ")[0].split("-")[2:])
@@ -66,7 +64,7 @@ def test_parse_pipeline_args(argv, parser_fn, foo_pipeline_dir):
     assert hasattr(args.pipeline, attr_name)
 
 
-def test_parse_run_runner_name(runner, foo_pipeline_dir):
+def test_parse_run_runner_name(runner):
     """Test parsing of runner name from CLI."""
     args = parse_run_args(["--runner", runner])
     assert hasattr(args.runner, "runner")

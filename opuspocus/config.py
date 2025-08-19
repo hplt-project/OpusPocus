@@ -6,6 +6,8 @@ from omegaconf import DictConfig, OmegaConf
 
 from opuspocus.pipeline_steps import OpusPocusStep
 
+PIPELINE_CONFIG_FILE = "pipeline.config"
+
 
 @define(kw_only=True)
 class PipelineConfig:
@@ -32,7 +34,7 @@ class PipelineConfig:
     def load_from_directory(
         cls: "PipelineConfig", pipeline_dir: Path, args: Optional[DictConfig] = None
     ) -> "PipelineConfig":
-        return cls.load(Path(pipeline_dir, OpusPocusPipeline._config_file), args)  # noqa: 
+        return cls.load(Path(pipeline_dir, PIPELINE_CONFIG_FILE), args)
 
     @classmethod
     def load(cls: "PipelineConfig", config_file: Path, args: Optional[DictConfig] = None) -> "PipelineConfig":
@@ -40,8 +42,15 @@ class PipelineConfig:
         config = OmegaConf.load(config_file)
         if args is not None:
             # merge the config_file contents with the CLI arguments
+            for cat in ["runner", "pipeline"]:
+                sub_dict = getattr(args, cat)
+                # we remove all NoneType entries to avoid overwriting actual entries in the config
+                for arg in list(sub_dict.keys()):
+                    if getattr(sub_dict, arg, None) is None:
+                        del sub_dict[arg]
             config = OmegaConf.merge(config, args)
-            del config.steps
+            if "steps" in config:
+                del config.steps
 
             # overwrite the configs of individual pipeline steps with command-line arguments
             label2idx = {config.pipeline.steps[idx].step_label: idx for idx in range(len(config.pipeline.steps))}
@@ -62,7 +71,8 @@ class PipelineConfig:
     def save(self, config_path: Path) -> None:
         """Save the existing pipeline config. Exclude the CLI arguments."""
         conf = DictConfig(self.config)
-        del conf["cli_options"]
+        if "cli_options" in conf:
+            del conf["cli_options"]
         OmegaConf.save(conf, f=config_path)
 
     def select(self, key: str) -> Any:  # noqa: ANN401
@@ -123,7 +133,9 @@ class PipelineConfig:
         return {k: v for k, v in self.pipeline.items() if k not in ["steps", "targets"]}
 
     @property
-    def pipeline_dir(self) -> Path:
+    def pipeline_dir(self) -> Optional[Path]:
+        if self.pipeline.pipeline_dir is None:
+            return None
         return Path(self.pipeline.pipeline_dir)
 
     @property
@@ -133,3 +145,7 @@ class PipelineConfig:
     @property
     def runner(self) -> DictConfig:
         return self.config.runner
+
+    @property
+    def cli_options(self) -> DictConfig:
+        return self.config.cli_options

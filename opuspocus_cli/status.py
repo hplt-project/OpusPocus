@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import sys
-from omegaconf import DictConfig
 from typing import Sequence
+
+from omegaconf import DictConfig
 
 from opuspocus.config import PipelineConfig
 from opuspocus.options import parse_status_args

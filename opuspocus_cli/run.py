@@ -2,12 +2,12 @@
 import logging
 import sys
 import warnings
-from omegaconf import DictConfig
-from pathlib import Path
 from typing import Sequence
 
+from omegaconf import DictConfig
+
 from opuspocus.config import PipelineConfig
-from opuspocus.options import parse_run_args
+from opuspocus.options import ERR_RETURN_CODE, parse_run_args
 from opuspocus.pipelines import OpusPocusPipeline, PipelineState, build_pipeline, load_pipeline
 from opuspocus.runners import build_runner, load_runner
 
@@ -29,7 +29,7 @@ def init_pipeline(pipeline: OpusPocusPipeline, config: PipelineConfig) -> OpusPo
         logger.info("Re-initializing the pipeline...")
         if pipeline.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
             logger.info("Stopping the previous run...")
-            prev_runner = load_runner(PipelineConfig.create({"pipeline": {"pipeline_dir": pipeline.pipeline_dir}}))
+            prev_runner = load_runner(config)
             prev_runner.stop_pipeline(pipeline)
         pipeline.reinit(ignore_finished=config.cli_options.reinit_failed)
     return pipeline
@@ -51,23 +51,21 @@ def main(args: DictConfig) -> int:
         config = PipelineConfig.load_from_directory(args.pipeline.pipeline_dir, args)
         logger.info(
             "No --pipeline-config was provided, reading pipeline configuration from pipeline at %s",
-            args.pipeline.pipeline_dir
+            args.pipeline.pipeline_dir,
         )
     else:
         logger.error(
             "--pipeline-config path with the pipeline configuration "
             "or a --pipeline-dir containing a valid pipeline must be provided."
         )
-        return 2
+        return ERR_RETURN_CODE
 
-    # First, we try to load a pipeline if it was previously saved
-    try:
+    # Not providing --pipeline-config but providing --pipeline-dir implies existing pipeline
+    pipeline = None
+    if args.cli_options.pipeline_config is None and args.pipeline.pipeline_dir is not None:
         pipeline = load_pipeline(config)
         logger.info("An existing pipeline located at %s was loaded.", pipeline.pipeline_dir)
         # TODO(varisd): existing pipeline overwrite logic
-    except Exception:  # noqa: BLE001
-        pipeline = None
-
 
     ## Initialization phase ##
     pipeline = init_pipeline(pipeline, config)
@@ -75,8 +73,7 @@ def main(args: DictConfig) -> int:
     # The pipeline must be at least INITED at this point
     if pipeline.state is None or pipeline.state == PipelineState.INIT_INCOMPLETE:
         logger.error("Something went wrong with pipeline initialization (Current pipeline state: %s)", pipeline.state)
-        return 2
-
+        return ERR_RETURN_CODE
 
     ## Run phase ##
     runner = build_runner(config)
@@ -106,7 +103,7 @@ def main(args: DictConfig) -> int:
             "the previous execution.",
             pipeline.state,
         )
-        return 2
+        return ERR_RETURN_CODE
 
     runner.run_pipeline(
         pipeline, target_labels=config.pipeline.targets, resubmit_done=config.cli_options.resubmit_finished_subtasks
