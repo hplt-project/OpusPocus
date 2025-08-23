@@ -1,7 +1,7 @@
-from argparse import Namespace
 from pathlib import Path
 
 import pytest
+from omegaconf import DictConfig
 
 from opuspocus.config import PipelineConfig
 from opuspocus.pipelines import build_pipeline, load_pipeline
@@ -17,47 +17,39 @@ def test_build_pipeline_method(
 ):
     """Build pipeline and compare it to a direct contructor call result."""
     pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_preprocess_tiny"))
-    args = Namespace(
-        **{
-            "pipeline_config": pipeline_preprocess_tiny_config_file,
-            "pipeline": Namespace(**{"pipeline_dir": pipeline_dir}),
-        }
+    config = PipelineConfig.load(
+        pipeline_preprocess_tiny_config_file, DictConfig({"pipeline": {"pipeline_dir": pipeline_dir}, "steps": []})
     )
-    pipeline = build_pipeline(args)
+    pipeline = build_pipeline(config)
     pipeline.init()
     assert pipeline.pipeline_graph == pipeline_preprocess_tiny_inited.pipeline_graph
 
 
 def test_load_pipeline_method(pipeline_preprocess_tiny_inited):
     """Load previously created pipeline and compare the two instances."""
-    args = Namespace(**{"pipeline": Namespace(**{"pipeline_dir": Path(pipeline_preprocess_tiny_inited.pipeline_dir)})})
-    pipeline = load_pipeline(args)
+    pipeline = load_pipeline(PipelineConfig.load_from_directory(pipeline_preprocess_tiny_inited.pipeline_dir))
     assert pipeline.pipeline_graph == pipeline_preprocess_tiny_inited.pipeline_graph
 
 
 def test_load_pipeline_dir_not_exist():
     """Fail when trying to load pipeline not previously inited."""
-    args = Namespace(**{"pipeline": Namespace(**{"pipeline_dir": Path("nonexistent", "directory")})})
+    pipeline_dir = Path("nonexistent", "directory")
     with pytest.raises(FileNotFoundError):
-        load_pipeline(args)
+        load_pipeline(PipelineConfig.load_from_directory(pipeline_dir))
 
 
 def test_load_pipeline_dir_not_directory(pipeline_preprocess_tiny_inited):
     """Fail when trying to load pipeline from invalid directory."""
-    args = Namespace(
-        **{
-            "pipeline": Namespace(
-                **{
-                    "pipeline_dir": Path(
-                        pipeline_preprocess_tiny_inited.pipeline_dir,
-                        pipeline_preprocess_tiny_inited._config_file,  # noqa: SLF001
-                    ),
-                }
-            )
-        }
+    non_dir_pipeline_dir = Path(
+        pipeline_preprocess_tiny_inited.pipeline_dir,
+        pipeline_preprocess_tiny_inited._config_file,  # noqa: SLF001
+    )
+    config = PipelineConfig.load_from_directory(
+        pipeline_preprocess_tiny_inited.pipeline_dir,
+        DictConfig({"pipeline": {"pipeline_dir": non_dir_pipeline_dir}, "steps": []}),
     )
     with pytest.raises(NotADirectoryError):
-        load_pipeline(args)
+        load_pipeline(config)
 
 
 def test_pipeline_class_init_graph(pipeline_preprocess_tiny_config_file, pipeline_preprocess_tiny_inited):

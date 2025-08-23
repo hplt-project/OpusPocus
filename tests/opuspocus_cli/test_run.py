@@ -16,7 +16,7 @@ def test_run_default_values(foo_pipeline_config_file):
 
 def test_run_missing_config_fail():
     """Fail 'run' execution when pipeline-config option is missing."""
-    rc = main(["run", "--run", "bash"])
+    rc = main(["run", "--runner", "bash"])
     assert rc == ERR_RETURN_CODE
 
 

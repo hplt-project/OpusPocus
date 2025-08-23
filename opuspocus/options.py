@@ -140,8 +140,8 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     )
 
     args, _ = parser.parse_known_args(argv)
-    if hasattr(args, "runner") and getattr(args.runner, "runner", None) is not None:
-        RUNNER_REGISTRY[args.runner.runner].add_args(parser)
+    if getattr(args, "runner.runner", None) is not None:
+        RUNNER_REGISTRY[getattr(args, "runner.runner")].add_args(parser)
 
     return parse2config(parser, argv)
 

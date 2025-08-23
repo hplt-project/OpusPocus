@@ -43,11 +43,12 @@ class PipelineConfig:
         if args is not None:
             # merge the config_file contents with the CLI arguments
             for cat in ["runner", "pipeline"]:
-                sub_dict = getattr(args, cat)
-                # we remove all NoneType entries to avoid overwriting actual entries in the config
-                for arg in list(sub_dict.keys()):
-                    if getattr(sub_dict, arg, None) is None:
-                        del sub_dict[arg]
+                sub_dict = getattr(args, cat, None)
+                if sub_dict is not None:
+                    # we remove all NoneType entries to avoid overwriting actual entries in the config
+                    for arg in list(sub_dict.keys()):
+                        if getattr(sub_dict, arg, None) is None:
+                            del sub_dict[arg]
             config = OmegaConf.merge(config, args)
             if "steps" in config:
                 del config.steps
