@@ -1,9 +1,12 @@
 import importlib
 import logging
 import sys
-from argparse import Namespace
 from pathlib import Path
 from typing import Sequence
+
+from omegaconf import DictConfig
+
+from opuspocus.options import ERR_RETURN_CODE
 
 CMD_MODULES = {}
 
@@ -14,18 +17,23 @@ def _print_usage() -> None:
     )
 
 
-def parse_args(argv: Sequence[str]) -> Namespace:
+def parse_args(argv: Sequence[str]) -> DictConfig:
     """Call the correct subcommand parser, given the subcommand."""
     if not argv:
         _print_usage()
-        sys.exit(1)
+        sys.exit(ERR_RETURN_CODE)
 
     cmd = argv[0]
     if cmd not in CMD_MODULES:
         _print_usage()
-        sys.exit(1)
+        sys.exit(ERR_RETURN_CODE)
 
-    args = CMD_MODULES[cmd].parse_args(argv[1:])
+    try:
+        args = CMD_MODULES[cmd].parse_args(argv[1:])
+    except AttributeError as exc:
+        _print_usage()
+        err_msg = "Error parsing CLI arguments."
+        raise AttributeError(err_msg) from exc
     assert not hasattr(args, "command")
 
     args.command = cmd
@@ -35,9 +43,9 @@ def parse_args(argv: Sequence[str]) -> Namespace:
 def main(argv: Sequence[str]) -> int:
     """Process the CLI arguments and call a specific CLI main method."""
     args = parse_args(argv)
-    if args.log_level == "info":
+    if args.cli_options.log_level == "info":
         logging.basicConfig(level=logging.INFO)
-    elif args.log_level == "debug":
+    elif args.cli_options.log_level == "debug":
         logging.basicConfig(level=logging.DEBUG)
     return CMD_MODULES[args.command].main(args)
 

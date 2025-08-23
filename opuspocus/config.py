@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 from attrs import Attribute, define, field
 from omegaconf import DictConfig, OmegaConf
 
 from opuspocus.pipeline_steps import OpusPocusStep
+
+PIPELINE_CONFIG_FILE = "pipeline.config"
 
 
 @define(kw_only=True)
@@ -29,9 +31,35 @@ class PipelineConfig:
                 raise ValueError(err_msg)
 
     @classmethod
-    def load(cls: "PipelineConfig", config_file: Path) -> "PipelineConfig":
+    def load_from_directory(
+        cls: "PipelineConfig", pipeline_dir: Path, args: Optional[DictConfig] = None
+    ) -> "PipelineConfig":
+        return cls.load(Path(pipeline_dir, PIPELINE_CONFIG_FILE), args)
+
+    @classmethod
+    def load(cls: "PipelineConfig", config_file: Path, args: Optional[DictConfig] = None) -> "PipelineConfig":
         """Load the config from a file."""
-        return cls(config=OmegaConf.load(config_file))
+        config = OmegaConf.load(config_file)
+        if args is not None:
+            # merge the config_file contents with the CLI arguments
+            for cat in ["runner", "pipeline"]:
+                sub_dict = getattr(args, cat, None)
+                if sub_dict is not None:
+                    # we remove all NoneType entries to avoid overwriting actual entries in the config
+                    for arg in list(sub_dict.keys()):
+                        if getattr(sub_dict, arg, None) is None:
+                            del sub_dict[arg]
+            config = OmegaConf.merge(config, args)
+            if "steps" in config:
+                del config.steps
+
+            # overwrite the configs of individual pipeline steps with command-line arguments
+            label2idx = {config.pipeline.steps[idx].step_label: idx for idx in range(len(config.pipeline.steps))}
+            for step_label in dict(args.steps):
+                for k, v in args.steps[step_label].items():
+                    idx = label2idx[step_label]
+                    setattr(config.pipeline.steps[idx], k, v)
+        return cls(config=config)
 
     @classmethod
     def create(cls: "PipelineConfig", config_dict: Union[Dict[str, Any], DictConfig]) -> "PipelineConfig":
@@ -42,8 +70,11 @@ class PipelineConfig:
         return cls(config=config)
 
     def save(self, config_path: Path) -> None:
-        """Save the existing pipeline config."""
-        OmegaConf.save(self.config, f=config_path)
+        """Save the existing pipeline config. Exclude the CLI arguments."""
+        conf = DictConfig(self.config)
+        if "cli_options" in conf:
+            del conf["cli_options"]
+        OmegaConf.save(conf, f=config_path)
 
     def select(self, key: str) -> Any:  # noqa: ANN401
         """Wrapper of the OmegaConf.select() method.
@@ -103,7 +134,9 @@ class PipelineConfig:
         return {k: v for k, v in self.pipeline.items() if k not in ["steps", "targets"]}
 
     @property
-    def pipeline_dir(self) -> Path:
+    def pipeline_dir(self) -> Optional[Path]:
+        if self.pipeline.pipeline_dir is None:
+            return None
         return Path(self.pipeline.pipeline_dir)
 
     @property
@@ -113,3 +146,7 @@ class PipelineConfig:
     @property
     def runner(self) -> DictConfig:
         return self.config.runner
+
+    @property
+    def cli_options(self) -> DictConfig:
+        return self.config.cli_options

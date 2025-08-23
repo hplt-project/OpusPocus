@@ -1,8 +1,8 @@
-from argparse import Namespace
 from pathlib import Path
 
 import pytest
 from attrs import define, field, validators
+from omegaconf import DictConfig
 
 from opuspocus import pipeline_steps
 from opuspocus.config import PipelineConfig
@@ -86,16 +86,14 @@ def foo_pipeline_running(foo_pipeline_inited):
         s.sleep_time = 180
         s.save_parameters()
     runner = build_runner(
-        Namespace(
-            **{
-                "runner": Namespace(
-                    **{
-                        "runner": "bash",
-                        "run_tasks_in_parallel": True,
-                        "runner_resources": None,
-                    }
-                ),
-                "pipeline": Namespace(**{"pipeline_dir": foo_pipeline_inited.pipeline_dir}),
+        PipelineConfig.create(
+            {
+                "runner": {
+                    "runner": "bash",
+                    "run_tasks_in_parallel": True,
+                    "runner_resources": None,
+                },
+                "pipeline": {"pipeline_dir": foo_pipeline_inited.pipeline_dir, "steps": []},
             }
         )
     )
@@ -107,10 +105,10 @@ def foo_pipeline_running(foo_pipeline_inited):
 def foo_pipeline_done(foo_pipeline_inited):
     """Basic mock pipeline (DONE)."""
     runner = build_runner(
-        Namespace(
-            **{
-                "runner": Namespace(**{"runner": "bash", "run_tasks_in_parallel": True, "runner_resources": None}),
-                "pipeline": Namespace(**{"pipeline_dir": foo_pipeline_inited.pipeline_dir}),
+        PipelineConfig.create(
+            {
+                "runner": {"runner": "bash", "run_tasks_in_parallel": True, "runner_resources": None},
+                "pipeline": {"pipeline_dir": foo_pipeline_inited.pipeline_dir, "steps": []},
             }
         )
     )
@@ -136,13 +134,11 @@ def pipeline_preprocess_tiny(
     """Mock Dataset Preprocessing pipeline."""
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_preprocess_tiny"))
-    args = Namespace(
-        **{
-            "pipeline_config": pipeline_preprocess_tiny_config_file,
-            "pipeline": Namespace(**{"pipeline_dir": pipeline_dir}),
-        }
+    config = PipelineConfig.load(
+        pipeline_preprocess_tiny_config_file,
+        DictConfig({"pipeline": {"pipeline_dir": pipeline_dir}, "runner": {"runner": "bash"}, "steps": []}),
     )
-    pipeline = build_pipeline(args)
+    pipeline = build_pipeline(config)
     yield pipeline
 
     teardown_pipeline(pipeline)
@@ -171,13 +167,10 @@ def pipeline_train_tiny(
     """Mock Training pipeline."""
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = Path(tmp_path_factory.mktemp("pipeline_train_tiny"))
-    args = Namespace(
-        **{
-            "pipeline_config": pipeline_train_tiny_config_file,
-            "pipeline": Namespace(**{"pipeline_dir": pipeline_dir}),
-        }
+    config = PipelineConfig.load(
+        pipeline_train_tiny_config_file, DictConfig({"pipeline": {"pipeline_dir": pipeline_dir}, "steps": []})
     )
-    pipeline = build_pipeline(args)
+    pipeline = build_pipeline(config)
     yield pipeline
 
     teardown_pipeline(pipeline)

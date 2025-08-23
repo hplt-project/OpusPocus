@@ -1,6 +1,5 @@
 import importlib
 import logging
-from argparse import Namespace
 from pathlib import Path
 from typing import Callable
 
@@ -21,11 +20,11 @@ RUNNER_REGISTRY = {}
 RUNNER_CLASS_NAMES = set()
 
 
-def build_runner(args: Namespace) -> OpusPocusRunner:
+def build_runner(config: PipelineConfig) -> OpusPocusRunner:
     """Runner builder function. Use this to create runner objects."""
-    runner = args.runner.runner
+    runner = config.runner.runner
     assert runner is not None
-    pipeline_dir = getattr(args.pipeline, "pipeline_dir", None)
+    pipeline_dir = config.pipeline.pipeline_dir
     assert pipeline_dir is not None
 
     logger.info("Building runner (%s) based on config in (%s)", runner, pipeline_dir)
@@ -43,18 +42,13 @@ def build_runner(args: Namespace) -> OpusPocusRunner:
         if param in {"runner", "pipeline_dir"}:
             continue
         if hasattr(kwargs, param):
-            kwargs[param] = getattr(args.runner, param)
+            kwargs[param] = getattr(config.runner, param)
 
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **kwargs)
 
 
-def load_runner(args: Namespace) -> OpusPocusRunner:
-    """Recreate a previously used runner. Required for pipeline execution
-    updates, i.e. execution termination.
-    """
-    pipeline_dir = getattr(args.pipeline, "pipeline_dir", None)
-    assert pipeline_dir is not None
-
+def load_runner_from_directory(pipeline_dir: Path) -> OpusPocusRunner:
+    """Load a previously used runner from the configuration stored in a pipeline directory."""
     runner_params = OpusPocusRunner.load_parameters(pipeline_dir)
 
     runner = runner_params["runner"]
@@ -63,6 +57,14 @@ def load_runner(args: Namespace) -> OpusPocusRunner:
 
     logger.info("Loading runner (%s)...", runner)
     return RUNNER_REGISTRY[runner].build_runner(runner, pipeline_dir, **runner_params)
+
+
+def load_runner(config: PipelineConfig) -> OpusPocusRunner:
+    """Load a previously used runner. Required for pipeline execution updates, i.e. execution termination."""
+    pipeline_dir = config.pipeline.pipeline_dir
+    assert pipeline_dir is not None
+
+    return load_runner_from_directory(pipeline_dir)
 
 
 def register_runner(name: str) -> Callable:

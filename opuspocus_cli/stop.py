@@ -2,9 +2,11 @@
 import logging
 import sys
 import warnings
-from argparse import Namespace
 from typing import Sequence
 
+from omegaconf import DictConfig
+
+from opuspocus.config import PipelineConfig
 from opuspocus.options import parse_stop_args
 from opuspocus.pipeline_steps import StepState
 from opuspocus.pipelines import load_pipeline
@@ -13,11 +15,11 @@ from opuspocus.runners import load_runner
 logger = logging.getLogger(__name__)
 
 
-def parse_args(argv: Sequence[str]) -> Namespace:
+def parse_args(argv: Sequence[str]) -> DictConfig:
     return parse_stop_args(argv)
 
 
-def main(args: Namespace) -> int:
+def main(args: DictConfig) -> int:
     """Pipeline execution termination command.
 
     Each submitted or running pipeline step is terminated and its state
@@ -26,8 +28,9 @@ def main(args: Namespace) -> int:
     The runner command line argument must be identical to the runner used
     to execute the pipeline.
     """
+    config = PipelineConfig.load_from_directory(args.pipeline.pipeline_dir, args)
     try:
-        pipeline = load_pipeline(args)
+        pipeline = load_pipeline(config)
         logger.info("An existing pipeline located at %s was loaded.", pipeline.pipeline_dir)
     except Exception:  # noqa: BLE001
         warnings.warn(
@@ -35,7 +38,7 @@ def main(args: Namespace) -> int:
             UserWarning,
             stacklevel=1,
         )
-        return 0
+        return 2
 
     if pipeline.state not in [StepState.SUBMITTED, StepState.RUNNING]:
         warnings.warn(
@@ -45,7 +48,7 @@ def main(args: Namespace) -> int:
         )
 
     if pipeline.state not in [StepState.INITED, StepState.INIT_INCOMPLETE]:
-        runner = load_runner(args)
+        runner = load_runner(config)
         logger.info("Stopping pipeline...")
         runner.stop_pipeline(pipeline)
     return 0

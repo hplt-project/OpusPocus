@@ -9,7 +9,7 @@ from opuspocus.pipelines import PipelineState
 from opuspocus.runners import OpusPocusRunner, load_runner
 from opuspocus.utils import open_file
 
-SLEEP_TIME_WAIT = 2  # wait after submitting a job
+SLEEP_TIME_WAIT = 1  # wait after submitting a job
 SLEEP_TIME_SHORT = 15  # shorter waiting time
 SLEEP_TIME_LONG = 120  # long waiting time (for job cancel, manipulation, etc.)
 
@@ -107,9 +107,13 @@ def test_cancel_main_task(foo_runner_for_step_submit, foo_step_inited):
 
     sub_info = foo_runner_for_step_submit.submit_step(foo_step_inited)
     time.sleep(SLEEP_TIME_WAIT)
+    while foo_step_inited.state == StepState.SUBMITTED:
+        time.sleep(SLEEP_TIME_WAIT)
 
     foo_runner_for_step_submit.cancel_task(sub_info["main_task"])
     time.sleep(SLEEP_TIME_WAIT)
+    while foo_step_inited.state == StepState.RUNNING:
+        time.sleep(SLEEP_TIME_WAIT)
 
     assert foo_step_inited.state == StepState.FAILED
     for t_info in sub_info["subtasks"]:

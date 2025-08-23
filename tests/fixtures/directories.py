@@ -19,6 +19,6 @@ def marian_dir(request):
 
 
 @pytest.fixture(scope="session")
-def opuspocus_hq_server_dir(tmp_path_factory):
-    """Temporary directory to store HQ server information during tests."""
-    return Path(tmp_path_factory.mktemp("opuspocus_hq_server"))
+def foo_pipeline_dir(tmp_path_factory):
+    """Empty pipeline directory for dummy testing."""
+    return Path(tmp_path_factory.mktemp("foo_pipeline_dir"))

@@ -483,10 +483,10 @@ class OpusPocusStep:
         """Create the contents of the step's executable file."""
         return f"""#!/usr/bin/env python3
 import sys
-from argparse import Namespace
 from pathlib import Path
 
-from opuspocus.runners import load_runner
+from opuspocus.config import PipelineConfig
+from opuspocus.runners import load_runner_from_directory
 from opuspocus.pipeline_steps import StepState, load_step
 
 
@@ -500,11 +500,7 @@ def main(argv):
             step.run_subtask(target_file)
         elif len(argv) == 1:
             # Main task
-            runner = load_runner(
-                Namespace(**{{
-                    "pipeline": Namespace(**{{"pipeline_dir": Path("{self.pipeline_dir}")}})
-                }})
-            )
+            runner = load_runner_from_directory(Path("{self.pipeline_dir}"))
             step.run_main_task(runner)
         else:
             ValueError("Wrong number of arguments.")

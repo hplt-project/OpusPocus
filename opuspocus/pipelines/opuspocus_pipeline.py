@@ -4,13 +4,13 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from attrs import converters, define, field, validators
+from attrs import define, field, validators
 from omegaconf import OmegaConf
 
-from opuspocus.config import PipelineConfig
+from opuspocus.config import PIPELINE_CONFIG_FILE, PipelineConfig
 from opuspocus.pipeline_steps import OpusPocusStep, StepState, build_step, list_step_parameters
 from opuspocus.pipelines.exceptions import PipelineInitError, PipelineStateError
-from opuspocus.utils import NestedAction, clean_dir, file_path
+from opuspocus.utils import clean_dir, file_path
 
 logger = logging.getLogger(__name__)
 
@@ -104,13 +104,11 @@ class PipelineGraph:
 class OpusPocusPipeline:
     """Base class for OpusPocus pipelines."""
 
-    pipeline_dir: Path = field(converter=converters.optional(Path), default=None)
-    pipeline_config: PipelineConfig = field(
-        validator=validators.optional(validators.instance_of(PipelineConfig)), default=None, eq=False
-    )
+    pipeline_config: PipelineConfig = field(validator=validators.instance_of(PipelineConfig), eq=False)
+    pipeline_dir: Path = field(init=False, default=None)
     pipeline_graph: PipelineGraph = field(init=False, default=None)
 
-    _config_file = "pipeline.config"
+    _config_file = PIPELINE_CONFIG_FILE
 
     def __attrs_post_init__(self) -> None:
         """Finish the initialization.
@@ -118,17 +116,10 @@ class OpusPocusPipeline:
         Either the pipeline_dir or pipeline_config can be NoneType. Initialize the NoneTypes using the other value.
         Also build the pipeline graph.
         """
-        if self.pipeline_config is None and self.pipeline_dir is None:
-            err_msg = (
-                "Either the pipeline_config or the pipeline_dir containing a pipeline config file must be provided"
-            )
+        if self.pipeline_config.pipeline_dir is None:
+            err_msg = "The provided pipeline config does not contain pipeline_dir entry."
             raise ValueError(err_msg)
-        if self.pipeline_dir is None:
-            self.pipeline_dir = Path(self.pipeline_config.pipeline.pipeline_dir)
-        elif self.pipeline_config is None:
-            self.pipeline_config = PipelineConfig.load(Path(self.pipeline_dir, self._config_file))
-        else:
-            self.pipeline_config.pipeline.pipeline_dir = self.pipeline_dir
+        self.pipeline_dir = self.pipeline_config.pipeline_dir
         self.pipeline_graph = PipelineGraph(config=self.pipeline_config)
 
     @staticmethod
@@ -138,8 +129,7 @@ class OpusPocusPipeline:
             "--pipeline-dir",
             type=file_path,
             dest="pipeline.pipeline_dir",
-            action=NestedAction,
-            default=argparse.SUPPRESS,
+            default=None,
             required=pipeline_dir_required,
             help="Pipeline root directory location.",
         )
@@ -147,8 +137,7 @@ class OpusPocusPipeline:
             "--targets",
             type=str,
             dest="pipeline.targets",
-            action=NestedAction,
-            default=argparse.SUPPRESS,
+            default=[],
             nargs="+",
             help="List of step labels to be executed together with ther dependencies.",
         )
@@ -194,36 +183,29 @@ class OpusPocusPipeline:
         return None
 
     @classmethod
-    def build_pipeline(cls: "OpusPocusPipeline", pipeline_config_path: Path, pipeline_dir: Path) -> "OpusPocusPipeline":
+    def build_pipeline(cls: "OpusPocusPipeline", config: PipelineConfig) -> "OpusPocusPipeline":
         """Build a specified pipeline instance.
 
         Args:
-            pipeline_config_path (Path): Location of the config file
-            pipeline_dir (Path): Location of the pipeline directory
+            config (PipelineConfig): User-provided pipeline configuration.
 
         Returns:
             An instance of the pipeline.
         """
-        pipeline_config = None
-        if pipeline_config_path is not None:
-            pipeline_config = PipelineConfig.load(pipeline_config_path)
-        return cls(pipeline_config=pipeline_config, pipeline_dir=pipeline_dir)
+        return cls(pipeline_config=config)
 
     @classmethod
-    def load_pipeline(cls: "OpusPocusPipeline", pipeline_dir: Path) -> "OpusPocusPipeline":
-        """Load the existing pipeline."""
-        if not pipeline_dir.exists():
-            err_msg = f"Pipeline directory ({pipeline_dir}) does not exist."
+    def load_pipeline(cls: "OpusPocusPipeline", config: Path) -> "OpusPocusPipeline":
+        """Load the existing pipeline using the pipeline dir provided via pipeline config."""
+        if not config.pipeline_dir.exists():
+            err_msg = f"Pipeline directory ({config.pipeline_dir}) does not exist."
             raise FileNotFoundError(err_msg)
-        if not pipeline_dir.is_dir():
-            err_msg = f"{pipeline_dir} is not a directory."
+        if not config.pipeline_dir.is_dir():
+            err_msg = f"{config.pipeline_dir} is not a directory."
             raise NotADirectoryError(err_msg)
 
-        pipeline_config_path = Path(pipeline_dir, cls._config_file)
-        pipeline_config = None
-        if pipeline_config_path is not None:
-            pipeline_config = PipelineConfig.load(pipeline_config_path)
-        return cls(pipeline_config=pipeline_config, pipeline_dir=pipeline_dir)
+        pipeline_config = PipelineConfig.load_from_directory(config.pipeline_dir)
+        return cls(pipeline_config=pipeline_config)
 
     def save_pipeline(self) -> None:
         """Save the pipeline information.
