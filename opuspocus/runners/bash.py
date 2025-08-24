@@ -152,9 +152,6 @@ class BashRunner(OpusPocusRunner):
                     if file_path.exists():
                         file_path.unlink()
                 err_msg = f"Process {pid} exited with non-zero value."
-                import pdb
-
-                pdb.set_trace()
                 raise subprocess.SubprocessError(err_msg)
 
     def is_task_running(self, task_info: BashTaskInfo) -> bool:
