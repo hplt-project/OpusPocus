@@ -89,18 +89,18 @@ def get_test_data(data_dir, other_lang):
     LOG.debug(f"Downloading dev/test data in {data_dir}")
     lang3 = LANG_MAP.get(other_lang)
     assert(lang3 != None)
-  
+
     test_dir = data_dir / "test"
     test_dir.mkdir(exist_ok=True)
     get_flores_data(other_lang, lang3[0], "devtest", data_dir.name, test_dir)
     if lang3[1] is not None:
         get_ntrex_data(other_lang, lang3[1], "devtest", data_dir.name, test_dir)
-  
+
     dev_dir = data_dir / "valid"
     dev_dir.mkdir(exist_ok=True)
     get_flores_data(other_lang, lang3[0], "dev", data_dir.name, dev_dir)
 
-  
+
 def add_reverse_link(path):
     name = path.name
     components = name.split(".")
@@ -111,9 +111,9 @@ def add_reverse_link(path):
     rev_path = path.parent / rev_name
     if not rev_path.is_symlink():
         print(rev_path)
-        rev_path.symlink_to(path)
+        rev_path.symlink_to(path.absolute())
 
-  
+
 def get_flores_data(lang2, lang3, segment, pair, dest_dir):
     flores_path = get_cache_dir() / "flores200_dataset.tar.gz"
     if not flores_path.exists():
@@ -129,8 +129,8 @@ def get_flores_data(lang2, lang3, segment, pair, dest_dir):
                 for line in flores_tar.extractfile(flores_path):
                     print(line.decode('utf-8'), file=ofh, end="")
             add_reverse_link(my_path)
-    
-      
+
+
 def get_ntrex_data(lang2, lang3, segment, pair, dest_dir):
     ntrex_path = get_cache_dir() / "ntrex"
     if not ntrex_path.exists():
@@ -143,11 +143,11 @@ def get_ntrex_data(lang2, lang3, segment, pair, dest_dir):
     ntrex_for = dest_dir / f"ntrex.{pair}.{lang2}"
     shutil.copy(ntrex_path / f"newstest2019-ref.{lang3}.txt", ntrex_for)
     add_reverse_link(ntrex_for)
-        
-  
+
+
 def get_train_data(data_dir, pair):
     LOG.debug(f"Downloading training data in {data_dir}")
-    
+
     # v0 (HPLT v2 only)
     v0_data_dir = data_dir / Path("v0")
     if not v0_data_dir.is_dir():
@@ -239,7 +239,7 @@ def main(args):
         LOG.info("Downloading data for all languages")
     else:
         LOG.info(f"Downloading data for selected languages: {args.languages}")
- 
+
     data_dir = Path(__file__).parent.resolve()
     if args.data_dir is not None:
         data_dir = Path(args.data_dir)
@@ -250,7 +250,7 @@ def main(args):
         if unk_langs != []:
             raise RuntimeError(f"The following languages are unknown: {unk_langs}")
         languages = args.languages
-    
+
     for language in languages:
         pair = "-".join(sorted(("en", language)))
         pair_data_dir = data_dir / pair
