@@ -47,7 +47,7 @@ class PipelineConfig:
                 if sub_dict is not None:
                     # we remove all NoneType entries to avoid overwriting actual entries in the config
                     for arg in list(sub_dict.keys()):
-                        if getattr(sub_dict, arg, None) is None:
+                        if getattr(sub_dict, arg, None) is None or not getattr(sub_dict, arg):
                             del sub_dict[arg]
             config = OmegaConf.merge(config, args)
             if "steps" in config:
