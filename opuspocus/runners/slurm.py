@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from attrs import Attribute, define, field, validators
 
@@ -84,33 +84,37 @@ class SlurmRunner(OpusPocusRunner):
 
         # TODO: can we replace this with a proper Python API?
         cmd = ["sbatch"]
+        cmd_options = {}
 
         if dependencies_ids:
-            cmd.append("--dependency")
-            cmd.append(",".join([f"afterok:{dep!s}" for dep in dependencies_ids]))
+            cmd_options["--dependency"] = ",".join([f"afterok:{dep!s}" for dep in dependencies_ids])
 
-        cmd += self._convert_resources(task_resources)
+        cmd_options = {**cmd_options, **self._convert_resources(task_resources)}
 
         jobname = f"{self.runner}.{self.pipeline_dir.stem}{self.pipeline_dir.suffix}"
         if target_file is not None:
             jobname += f".{target_file.stem}"
-        cmd += ["--job-name", jobname]
+        cmd_options["--job-name"] = jobname
 
         if stdout_file is not None:
-            cmd += ["-o", str(stdout_file)]
+            cmd_options["-o"] = str(stdout_file)
         if stderr_file is not None:
-            cmd += ["-e", str(stderr_file)]
+            cmd_options["-e"] = str(stderr_file)
 
         if self.slurm_time is not None:
-            cmd += ["--time", str(self.slurm_time)]
-            cmd += ["--signal", "10@600"]  # send SIGTERM 10m before time-limit
+            cmd_options["--time"] = str(self.slurm_time)
+            cmd_options["--signal"] = "10@600"  # send SIGTERM 10m before time-limit
         if self.slurm_other_options is not None:
-            cmd += self.slurm_other_options.split(",")
+            cmd_options = {
+                **cmd_options,
+                **{entry.split("=")[0]: entry.split("=")[1] for entry in self.slurm_other_options.split(",")}
+            }
 
         t_file_str = None
         if target_file is not None:
             t_file_str = str(target_file)
 
+        cmd += [str(opt) for option in cmd_options.items() for opt in option]
         if target_file is not None:
             cmd += [str(cmd_path), str(target_file)]
             proc = subprocess.Popen(
@@ -308,19 +312,19 @@ class SlurmRunner(OpusPocusRunner):
         err_msg = f"[{self.runner}._get_job_status] Sacct could not retrieve job {jid}. Command output:\n{cmd_out}"
         raise subprocess.SubprocessError(err_msg)
 
-    def _convert_resources(self, resources: RunnerResources) -> List[str]:
+    def _convert_resources(self, resources: RunnerResources) -> Dict[str, str]:
         """Convert the runner resources to the Slurm CLI arguments."""
-        converted = []
+        converted = {}
         if resources.cpus is not None:
-            converted += ["--cpus-per-task", str(resources.cpus)]
+            converted["--cpus-per-task"] = str(resources.cpus)
 
         if resources.gpus is not None:
-            converted += ["--gpus", str(resources.gpus)]
-            converted += ["--gpus-per-node", str(resources.gpus)]
-            converted += ["--nodes", "1"]
-            converted += ["--ntasks-per-node", "1"]
+            converted["--gpus"] = str(resources.gpus)
+            converted["--gpus-per-node"] = str(resources.gpus)
+            converted["--nodes"] = "1"
+            converted["--ntasks-per-node"] = "1"
 
         if resources.mem is not None:
-            converted += ["--mem", str(resources.mem)]
+            converted["--mem"] = str(resources.mem)
 
         return converted
