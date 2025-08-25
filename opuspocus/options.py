@@ -142,6 +142,10 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     args, _ = parser.parse_known_args(argv)
     if getattr(args, "runner.runner", None) is not None:
         RUNNER_REGISTRY[getattr(args, "runner.runner")].add_args(parser)
+    elif getattr(args, "pipeline_config", None) is not None:
+        config = OmegaConf.load(args.pipeline_config)
+        if "runner" in config and "runner" in config.runner:
+            RUNNER_REGISTRY[config.runner.runner].add_args(parser)
 
     return parse2config(parser, argv)
 
