@@ -37,7 +37,7 @@ class OpusPocusRunner:
     runner: str = field(validator=validators.instance_of(str))
     pipeline_dir: Path = field(converter=Path)
     runner_resources: RunnerResources = field(
-        validator=validators.instance_of(RunnerResources), default=RunnerResources()
+        validator=validators.optional(validators.instance_of(RunnerResources)), default=None
     )
 
     _parameter_filename = "runner.parameters"
@@ -408,5 +408,8 @@ class OpusPocusRunner:
         if step.runner_resources is not None:
             # Get step-specific resources if available
             return step.runner_resources
-        # Otherwise, use the global resources
-        return self.runner_resources
+        if self.runner_resources is not None:
+            # Next, try using the user-specified global resources
+            return self.runner_resources
+        # If no resources were specified, use the default step-specific resources
+        return step.default_resources

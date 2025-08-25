@@ -43,10 +43,6 @@ class TrainModelStep(OpusPocusStep):
     train_modifiers: List[Dict[str, Any]] = field(default=Factory(lambda: [{"UpperCase": 0.01}, {"TitleCase": 0.01}]))
     valid_dataset: str = field(default="flores200.dev")
 
-    runner_resources: RunnerResources = field(
-        validator=validators.instance_of(RunnerResources), default=RunnerResources(gpus=1)
-    )
-
     _opustrainer_config_file = "opustrainer.config.yml"
     _marian_config_file = "marian.config.yml"
 
@@ -344,3 +340,7 @@ class TrainModelStep(OpusPocusStep):
             raise subprocess.SubprocessError(err_msg)
 
         target_file.touch()  # touch target file so we know that the training finished
+
+    @property
+    def default_resources(self) -> RunnerResources:
+        return RunnerResources(gpus=1, mem="11g")

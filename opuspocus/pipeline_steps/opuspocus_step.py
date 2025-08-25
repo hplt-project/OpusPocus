@@ -4,12 +4,12 @@ import logging
 import signal
 import sys
 import time
-from omegaconf import ListConfig
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
 from attrs import asdict, define, field, fields, validators
+from omegaconf import ListConfig
 
 from opuspocus.runner_resources import RunnerResources
 from opuspocus.utils import clean_dir, print_indented
@@ -555,3 +555,7 @@ if __name__ == "__main__":
                 print_indented("+ None", level + 1)
                 continue
             dep.print_traceback(level + 1, full=full)
+
+    @property
+    def default_resources(self) -> RunnerResources:
+        return RunnerResources(gpus=0, cpus=1, mem="5g")
