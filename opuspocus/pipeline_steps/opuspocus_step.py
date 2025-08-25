@@ -4,6 +4,7 @@ import logging
 import signal
 import sys
 import time
+from omegaconf import ListConfig
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -153,6 +154,9 @@ class OpusPocusStep:
                 param_dict[attr] = value.resource_dict
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
                 param_dict[attr] = [str(v) for v in value]
+            elif isinstance(value, (ListConfig)):
+                # NOTE(varisd): workaround due to ListConfig objects sometimes leading to yaml.dump errors
+                param_dict[attr] = list(value)
             else:
                 param_dict[attr] = value
         return param_dict
