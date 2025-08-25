@@ -143,4 +143,4 @@ class GenerateVocabStep(OpusPocusStep):
 
     @property
     def default_resources(self) -> RunnerResources:
-        return RunnerResources(mem="70g")
+        return RunnerResources(mem="50g")
