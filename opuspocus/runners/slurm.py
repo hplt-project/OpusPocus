@@ -107,7 +107,7 @@ class SlurmRunner(OpusPocusRunner):
         if self.slurm_other_options is not None:
             cmd_options = {
                 **cmd_options,
-                **{entry.split("=")[0]: entry.split("=")[1] for entry in self.slurm_other_options.split(",")}
+                **{entry.split("=")[0]: entry.split("=")[1] for entry in self.slurm_other_options.split(",")},
             }
 
         t_file_str = None
@@ -125,7 +125,7 @@ class SlurmRunner(OpusPocusRunner):
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=sys.stderr, shell=False, env=task_resources.get_env_dict()
             )
-        logger.info("Submitted sbatch command: %s", " ".join(cmd))
+        logger.info("Submitted SLURM command: %s", " ".join(cmd))
 
         subprocess_wait(proc)
         cmd_out = proc.stdout.readline().decode().strip("\n")

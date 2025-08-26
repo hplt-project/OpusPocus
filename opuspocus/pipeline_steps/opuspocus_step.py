@@ -364,7 +364,7 @@ class OpusPocusStep:
             """Handler for task cancellation signals."""
             logger.info("[%s] Received signal %s. Terminating subtasks...", self.step_label, signum)
             self.state = StepState.FAILED
-            logger.info("[%s] Current subtask list: %s", self.step_label, " ".join(task_info_list))
+            logger.info("[%s] Current subtask list: %s", self.step_label, " ".join([t["id"] for t in task_info_list]))
             for task_info in task_info_list:
                 runner.send_signal(task_info, signum)
             sys.exit(signum)
