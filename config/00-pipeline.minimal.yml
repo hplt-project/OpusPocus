@@ -1,0 +1,64 @@
+pipeline:
+  seed: 42
+
+  src_lang: en
+  tgt_lang: eu
+  langpair: ${.src_lang}-${.tgt_lang}
+
+  pipeline_dir: experiments/${.langpair}/pipeline.minimal.X
+  data_root_dir: data/${.langpair}
+
+  steps:
+    # Load Datasets
+    - step: raw
+      step_label: train.${pipeline.langpair}
+      raw_data_dir: ${pipeline.data_root_dir}/raw/v0
+
+    - step: raw
+      step_label: valid.${pipeline.langpair}
+      raw_data_dir: ${pipeline.data_root_dir}/valid
+      compressed: False
+
+    - step: raw
+      step_label: test.${pipeline.langpair}
+      raw_data_dir: ${pipeline.data_root_dir}/test
+      compressed: False
+
+    # Train FWD
+    - step: generate_vocab
+      step_label: generate_vocab.${pipeline.langpair}
+      corpus_step: train.${pipeline.langpair}
+      vocab_size: 64000
+      marian_dir: marian
+
+    - step: train_model
+      step_label: train_model.${pipeline.langpair}
+      opustrainer_config: null
+      vocab_step: generate_vocab.${pipeline.langpair}
+      train_corpus_step: train.${pipeline.langpair}
+      valid_corpus_step: valid.${pipeline.langpair}
+      max_epochs: null
+      marian_dir: marian
+      marian_config: config/marian.train.teacher.base.yml
+      valid_dataset: "flores200.dev.${pipeline.langpair}"
+      train_categories:
+        - "clean"
+      train_category_ratios:
+        - 1.0
+
+    # Evaluation FWD
+    - step: translate
+      step_label: translate_test.${pipeline.langpair}
+      prev_corpus_step: test.${pipeline.langpair}
+      model_step: train_model.${pipeline.langpair}
+
+    - step: evaluate
+      step_label: evaluate_test.${pipeline.langpair}
+      translated_corpus_step: translate_test.${pipeline.langpair}
+      reference_corpus_step: test.${pipeline.langpair}
+
+  targets:
+    - evaluate_test.${pipeline.langpair}
+
+runner:
+  runner: bash
