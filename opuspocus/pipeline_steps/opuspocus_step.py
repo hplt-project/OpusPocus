@@ -367,7 +367,7 @@ class OpusPocusStep:
             logger.info(
                 "[%s] Current subtask list: %s",
                 self.step_label,
-                " ".join([task_info["id"] for task_info in task_info_list])
+                " ".join([task_info["id"] for task_info in task_info_list]),
             )
             for task_info in task_info_list:
                 runner.send_signal(task_info, signum)
