@@ -69,11 +69,17 @@ class PipelineConfig:
             config = OmegaConf.create(config_dict)
         return cls(config=config)
 
+    def save_to_directory(self, pipeline_dir: Path) -> None:
+        """Save the existing config into a pipeline directory."""
+        self.save(Path(pipeline_dir, PIPELINE_CONFIG_FILE))
+
     def save(self, config_path: Path) -> None:
         """Save the existing pipeline config. Exclude the CLI arguments."""
         conf = DictConfig(self.config)
         if "cli_options" in conf:
             del conf["cli_options"]
+        if "command" in conf:
+            del conf["command"]
         OmegaConf.save(conf, f=config_path)
 
     def select(self, key: str) -> Any:  # noqa: ANN401

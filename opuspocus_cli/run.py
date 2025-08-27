@@ -49,6 +49,8 @@ def main(args: DictConfig) -> int:
     elif args.pipeline.pipeline_dir is not None:
         # If the --config-file was not provided, try to load the pipeline's config_file from the --pipeline-dir
         config = PipelineConfig.load_from_directory(args.pipeline.pipeline_dir, args)
+        # Save the overwritten config file
+        config.save_to_directory(args.pipeline.pipeline_dir)
         logger.info(
             "No --pipeline-config was provided, reading pipeline configuration from pipeline at %s",
             args.pipeline.pipeline_dir,
