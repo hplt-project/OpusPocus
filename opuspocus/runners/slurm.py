@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from attrs import Attribute, define, field, validators
 
 from opuspocus.pipeline_steps import OpusPocusStep
-from opuspocus.pipelines import OpusPocusPipeline
+from opuspocus.pipelines import load_pipeline_from_directory
 from opuspocus.runner_resources import RunnerResources
 from opuspocus.runners import OpusPocusRunner, TaskInfo, register_runner
 from opuspocus.utils import subprocess_wait
@@ -103,7 +103,9 @@ class SlurmRunner(OpusPocusRunner):
 
         if self.slurm_time is not None:
             cmd_options["--time"] = str(self.slurm_time)
-            cmd_options["--signal"] = "10@600"  # send SIGTERM 10m before time-limit
+            # send SIGUSR1 10m before time-limit to let the step know it should resubmit itself
+            sig = int(signal.SIGUSR1)
+            cmd_options["--signal"] = f"B:{sig}@600"
         if self.slurm_other_options is not None:
             cmd_options = {
                 **cmd_options,
@@ -157,7 +159,7 @@ class SlurmRunner(OpusPocusRunner):
             remove_task_list = []
         if add_task_list is None:
             add_task_list = []
-        pipeline = OpusPocusPipeline.load_pipeline(self.pipeline_dir)
+        pipeline = load_pipeline_from_directory(self.pipeline_dir)
         dependant_list = pipeline.get_dependants(step)
         dependant_sub_info_list = [self.load_submission_info(dep) for dep in dependant_list]
 
