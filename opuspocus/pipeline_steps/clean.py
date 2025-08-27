@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 class CleanCorpusStep(CorpusStep):
     """Class implementing dataset cleaning using OpusCleaner."""
 
-    python_venv_dir: Path = field(converter=Path)
     opuscleaner_cmd: str = field(default="opuscleaner-clean")
 
     def register_categories(self) -> None:
@@ -48,7 +47,7 @@ class CleanCorpusStep(CorpusStep):
         dataset = ".".join(str(target_filename).split(".")[:-2])
         input_file = Path(self.input_dir, f"{dataset}.filters.json")
 
-        opuscleaner_bin_path = Path(self.python_venv_dir, "bin", self.opuscleaner_cmd)
+        opuscleaner_cmd = "opuscleaner-clean"
         if not input_file.exists():
             logger.info("%s file not found. Copying input corpora to output.", input_file)
             for lang in self.languages:
@@ -58,7 +57,7 @@ class CleanCorpusStep(CorpusStep):
         # Run OpusCleaner
         proc = subprocess.Popen(
             [
-                str(opuscleaner_bin_path),
+                str(opuscleaner_cmd),
                 str(input_file),
                 "--parallel",
                 os.environ[RunnerResources.get_env_name("cpus")],
