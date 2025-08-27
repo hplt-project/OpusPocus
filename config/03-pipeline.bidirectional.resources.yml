@@ -49,7 +49,7 @@ pipeline:
       valid_corpus_step: valid.${...langpair}
       runner_resources:
         mem: 20g
-        gpus: 4
+        gpus: 2
 
     # Train BWD
     - step: train_model
@@ -61,7 +61,7 @@ pipeline:
       tgt_lang: ${...src_lang}
       runner_resources:
         mem: 20g
-        gpus: 4
+        gpus: 2
 
     # Evaluation FWD
     - step: translate
@@ -102,7 +102,7 @@ pipeline:
 
 runner:
   runner: slurm
-  slurm_time: "0:15:00"
+  slurm_time: "0:30:00"
   runner_resources:
     mem: 10g
     cpus: 4

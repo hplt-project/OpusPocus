@@ -10,8 +10,8 @@ type: transformer
 task: transformer-base
 
 # Training
-disp-freq: 1000u
-save-freq: 5000u
+disp-freq: 100u
+save-freq: 1000u
 max-length: 250
 max-length-crop: false
 shuffle: batches

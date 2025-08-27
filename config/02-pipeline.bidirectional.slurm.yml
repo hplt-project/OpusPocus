@@ -9,9 +9,12 @@ pipeline:
   pipeline_dir: experiments/${.langpair}/pipeline.bidirectional.slurm
   data_root_dir: data/${.langpair}
 
+  # Vocabulary and model training globals
   vocab_size: 64000
   marian_dir: marian
   marian_config: config/marian.train.teacher.base.yml
+
+  # Model training globals
   opustrainer_config: null
   max_epochs: null
   valid_dataset: flores200.dev.${.langpair}
@@ -87,7 +90,7 @@ pipeline:
 
 runner:
   runner: slurm
-  slurm_time: "0:15:00"
+  slurm_time: "0:30:00"
   runner_resources:
     mem: 50g
-    gpus: 4
+    gpus: 2

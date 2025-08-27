@@ -1,0 +1,67 @@
+pipeline:
+  seed: 42
+
+  src_lang: en
+  tgt_lang: eu
+  langpair: ${.src_lang}-${.tgt_lang}
+
+  pipeline_dir: experiments/${.langpair}/pipeline.data_preprocess
+  data_root_dir: data/${.langpair}
+
+  steps:
+    # Load Datasets
+    - step: raw
+      step_label: raw.${...langpair}
+      raw_data_dir: ${...data_root_dir}/raw/v2
+
+    - step: raw
+      step_label: valid.${...langpair}
+      raw_data_dir: ${...data_root_dir}/valid
+      compressed: False
+
+    - step: raw
+      step_label: test.${...langpair}
+      raw_data_dir: ${...data_root_dir}/test
+      compressed: False
+
+    # Prerprocessing
+    - step: clean
+      step_label: clean.${...langpair}
+      prev_corpus_step: raw.${...langpair}
+
+    - step: decontaminate
+      step_label: decontaminate.${...langpair}
+      prev_corpus_step: clean.${...langpair}
+      valid_data_step: valid.${...langpair}
+      test_data_step: test.${...langpair}
+      min_length: 25
+
+    # Merge corpora based on their category
+    - step: gather
+      step_label: gather.${...langpair}
+      prev_corpus_step: decontaminate.${...langpair}
+
+    # "Extract" monolingual corpora (for the following example)
+    - step: gather
+      step_label: gather.${...src_lang}
+      src_lang: ${...src_lang}
+      tgt_lang: null
+      prev_corpus_step: decontaminate.${...langpair}
+    - step: gather
+      step_label: gather.${...tgt_lang}
+      src_lang: ${...tgt_lang}
+      tgt_lang: null
+      prev_corpus_step: decontaminate.${...langpair}
+
+  targets:
+    - gather.${..langpair}
+    - gather.${..src_lang}
+    - gather.${..tgt_lang}
+    - valid.${..langpair}
+    - test.${..langpair}
+
+runner:
+  runner: slurm
+  runner_resources:
+    mem: 10g
+    cpus: 8
