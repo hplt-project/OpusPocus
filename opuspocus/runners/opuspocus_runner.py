@@ -80,7 +80,7 @@ class OpusPocusRunner:
         Returns:
             An instance of the specified runner class.
         """
-        if "runner_resources" in kwargs:
+        if "runner_resources" in kwargs and kwargs["runner_resources"] is not None:
             kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
         else:
             logger.debug(
