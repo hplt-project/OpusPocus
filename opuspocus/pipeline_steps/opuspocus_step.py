@@ -43,7 +43,7 @@ class OpusPocusStep:
         validator=validators.optional(validators.instance_of(RunnerResources)), default=None
     )
 
-    _cmd_filename = "step.command"
+    _cmd_filename = "command.py"
     _dependency_filename = "step.dependencies"
     _state_filename = "step.state"
     _parameter_filename = "step.parameters"
@@ -367,7 +367,7 @@ class OpusPocusStep:
             logger.info(
                 "[%s] Current subtask list: %s",
                 self.step_label,
-                " ".join([task_info["id"] for task_info in task_info_list]),
+                " ".join([str(task_info["id"]) for task_info in task_info_list]),
             )
             for task_info in task_info_list:
                 runner.send_signal(task_info, signum)
@@ -440,8 +440,6 @@ class OpusPocusStep:
             submission_info["subtasks"] = task_info_list
             runner.save_submission_info(self, submission_info)
 
-            time.sleep(0.5)
-
         self.state = StepState.RUNNING
         runner.wait_for_tasks(task_info_list)
         self.main_task_postprocess()
@@ -481,6 +479,8 @@ class OpusPocusStep:
         Calls the self.command(target_file) with the give target_file and handles runtime exceptions.
         """
         try:
+            if not self.has_state(StepState.RUNNING):
+                self.state = StepState.RUNNING
             self.command(target_file)
         except Exception:
             if target_file is not None and target_file.exists():
