@@ -77,12 +77,8 @@ class BashRunner(OpusPocusRunner):
             dependencies_str = " ".join([str(dep["id"]) for dep in dependencies])
         env_dict = task_resources.get_env_dict()
 
-        stdout = sys.stdout
-        if stdout_file is not None:
-            stdout = stdout_file.open("w")
-        stderr = sys.stderr
-        if stderr_file is not None:
-            stderr = stderr_file.open("w")
+        stdout = stdout_file.open("w") if stdout_file is not None else sys.stdout
+        stderr = stderr_file.open("w") if stderr_file is not None else sys.stderr
 
         # Subtasks do not have dependencies - no need for the wrapper
         if target_file is not None:
