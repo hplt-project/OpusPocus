@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,11 @@ from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline, build_pipeline
 from opuspocus.runners import build_runner
 from opuspocus.runners.debug import DebugRunner
-from tests.utils import teardown_pipeline
+
+# NOTE(varisd): we wait a bit at the end of each fixture to avoid
+#       possible race conditions, e.g. task submission, state update
+#       (is there a better solution)?
+WAIT_TIME = 1
 
 
 @define(kw_only=True)
@@ -51,10 +56,7 @@ class FooPipeline(OpusPocusPipeline):
 def foo_pipeline(bar_step):
     """Basic (two-step) mock pipeline."""
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
-    pipeline = FooPipeline(bar_step=bar_step)
-    yield pipeline
-
-    teardown_pipeline(pipeline)
+    return FooPipeline(bar_step=bar_step)
 
 
 @pytest.fixture()
@@ -69,6 +71,7 @@ def foo_pipeline_config_file(foo_pipeline, tmp_path_factory):
 def foo_pipeline_inited(foo_pipeline):
     """Basic mock pipeline (INITED)."""
     foo_pipeline.init()
+    time.sleep(WAIT_TIME)
     return foo_pipeline
 
 
@@ -76,6 +79,7 @@ def foo_pipeline_inited(foo_pipeline):
 def foo_pipeline_partially_inited(foo_pipeline_inited):
     """Basic mock pipeline (INIT_INCOMPLETE)."""
     foo_pipeline_inited.steps[0].state = StepState.INIT_INCOMPLETE
+    time.sleep(WAIT_TIME)
     return foo_pipeline_inited
 
 
@@ -98,6 +102,7 @@ def foo_pipeline_running(foo_pipeline_inited):
         )
     )
     runner.run_pipeline(foo_pipeline_inited, None)
+    time.sleep(WAIT_TIME)
     return foo_pipeline_inited
 
 
@@ -113,6 +118,7 @@ def foo_pipeline_done(foo_pipeline_inited):
         )
     )
     runner.run_pipeline(foo_pipeline_inited)
+    time.sleep(WAIT_TIME)
     tasks = [runner.load_submission_info(s)["main_task"] for s in foo_pipeline_inited.steps]
     runner.wait_for_tasks(tasks)
     return foo_pipeline_inited
@@ -123,6 +129,7 @@ def foo_pipeline_failed(foo_pipeline_done):
     """Basic mock pipeline (FAILED)."""
     for s in foo_pipeline_done.steps:
         s.state = StepState.FAILED
+    time.sleep(WAIT_TIME)
     return foo_pipeline_done
 
 
@@ -138,10 +145,7 @@ def pipeline_preprocess_tiny(
         pipeline_preprocess_tiny_config_file,
         DictConfig({"pipeline": {"pipeline_dir": pipeline_dir}, "runner": {"runner": "bash"}, "steps": []}),
     )
-    pipeline = build_pipeline(config)
-    yield pipeline
-
-    teardown_pipeline(pipeline)
+    return build_pipeline(config)
 
 
 @pytest.fixture()
@@ -170,10 +174,7 @@ def pipeline_train_tiny(
     config = PipelineConfig.load(
         pipeline_train_tiny_config_file, DictConfig({"pipeline": {"pipeline_dir": pipeline_dir}, "steps": []})
     )
-    pipeline = build_pipeline(config)
-    yield pipeline
-
-    teardown_pipeline(pipeline)
+    return build_pipeline(config)
 
 
 @pytest.fixture()

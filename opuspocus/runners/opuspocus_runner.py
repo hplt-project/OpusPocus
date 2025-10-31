@@ -143,7 +143,7 @@ class OpusPocusRunner:
     def save_parameters(self) -> None:
         """Save the runner instance parameters."""
         with Path(self.pipeline_dir, self._parameter_filename).open("w") as fh:
-            yaml.dump(self.get_parameters_dict(), fh)
+            yaml.safe_dump(self.get_parameters_dict(), fh)
 
     def stop_pipeline(self, pipeline: OpusPocusPipeline) -> None:
         """Stop a running pipeline execution."""
@@ -389,7 +389,10 @@ class OpusPocusRunner:
             sub_info (SubmissionInfo): submission information for the given step execution submission
         """
         with Path(step.step_dir, self._info_filename).open("w") as fh:
-            yaml.dump(sub_info, fh)
+            yaml.safe_dump(sub_info, fh, sort_keys=False)
+        while sub_info != self.load_submission_info(step):
+            time.sleep(SLEEP_TIME)
+        return None
 
     def load_submission_info(self, step: OpusPocusStep) -> Optional[SubmissionInfo]:
         """Load the submission information for a given pipeline step.

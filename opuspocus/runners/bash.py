@@ -107,7 +107,8 @@ class BashRunner(OpusPocusRunner):
             t_file_str = str(target_file)
         task_info = BashTaskInfo(file_path=t_file_str, id=proc.pid)
         logger.info("Submitted command: '%s %s', pid: %i", cmd_path, t_file_str, proc.pid)
-        time.sleep(SLEEP_TIME)  # We do not want to start proccess too quickly
+        while not self.is_task_running(task_info):
+            time.sleep(SLEEP_TIME)  # We do not want to start proccess too quickly
 
         # If executing serially, we wait for each process to finish before submitting next
         if target_file is not None and not self.run_tasks_in_parallel:

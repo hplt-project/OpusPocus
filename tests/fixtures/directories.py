@@ -14,7 +14,7 @@ def marian_dir(request):
     """Location of the compiled Marian NMT."""
     marian_dir = Path(f"marian_{request.param}")
     if not marian_dir.exists():
-        pytest.skip(reason=("A compiled CPU version of Marian NMT in 'marian_cpu_dir' must be available."))
+        pytest.skip(reason=(f"A compiled '{request.param}' version of Marian NMT in '{marian_dir}' must be available."))
     return marian_dir
 
 
