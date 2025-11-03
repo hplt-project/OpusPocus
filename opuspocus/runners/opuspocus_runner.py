@@ -392,7 +392,6 @@ class OpusPocusRunner:
             yaml.safe_dump(sub_info, fh, sort_keys=False)
         while sub_info != self.load_submission_info(step):
             time.sleep(SLEEP_TIME)
-        return None
 
     def load_submission_info(self, step: OpusPocusStep) -> Optional[SubmissionInfo]:
         """Load the submission information for a given pipeline step.

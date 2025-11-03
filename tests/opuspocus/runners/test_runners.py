@@ -9,7 +9,7 @@ from opuspocus.pipelines import PipelineState
 from opuspocus.runners import OpusPocusRunner, load_runner
 from opuspocus.utils import open_file
 
-SLEEP_TIME_WAIT = 2  # wait after submitting a job
+SLEEP_TIME_WAIT = 2  # general waiting time (waiting for state change, etc.)
 SLEEP_TIME_SHORT = 15  # shorter waiting time
 SLEEP_TIME_LONG = 120  # long waiting time (for job cancel, manipulation, etc.)
 
@@ -30,7 +30,9 @@ def test_load_runner_before_save_fail(pipeline_preprocess_tiny_inited):
 def test_load_runner_method(foo_pipeline_runner):
     """Reload runner for further pipeline execution manipulation."""
     foo_pipeline_runner.save_parameters()
-    runner_loaded = load_runner(Namespace(**{"pipeline": Namespace(**{"pipeline_dir": foo_pipeline_runner.pipeline_dir})}))
+    runner_loaded = load_runner(
+        Namespace(**{"pipeline": Namespace(**{"pipeline_dir": foo_pipeline_runner.pipeline_dir})})
+    )
     assert foo_pipeline_runner == runner_loaded
 
 
@@ -41,16 +43,21 @@ def test_run_pipeline(foo_pipeline_runner, foo_pipeline_inited):
     assert foo_pipeline_inited.state in (PipelineState.SUBMITTED, PipelineState.RUNNING)
 
 
+@pytest.mark.timeout(15)
 def test_stop_pipeline(foo_pipeline_runner, foo_pipeline_inited):
     """Stop a running pipeline."""
     for s in foo_pipeline_inited.steps:
         s.sleep_time = SLEEP_TIME_LONG
         s.save_parameters()
     foo_pipeline_runner.run_pipeline(foo_pipeline_inited)
-    time.sleep(SLEEP_TIME_WAIT)
+    while foo_pipeline_inited.state != StepState.RUNNING:
+        # Wait for state change
+        time.sleep(SLEEP_TIME_WAIT)
 
     foo_pipeline_runner.stop_pipeline(foo_pipeline_inited)
-    time.sleep(SLEEP_TIME_WAIT)
+    while foo_pipeline_inited.state == StepState.RUNNING:
+        # Wait for state change
+        time.sleep(SLEEP_TIME_WAIT)
     assert foo_pipeline_inited.state == PipelineState.FAILED
 
 
@@ -70,8 +77,7 @@ def test_submit_step(foo_step_runner, foo_step_inited):
     assert foo_step_inited.state in (PipelineState.SUBMITTED, PipelineState.RUNNING)
 
 
-
-# TODO: split this into a Bash test and Slurm test
+@pytest.mark.timeout(15)
 def test_submitted_step_running(foo_step_runner, foo_step_inited):
     """The running step should submit subtasks for each target file."""
     foo_step_runner.submit_step(foo_step_inited)
@@ -85,8 +91,7 @@ def test_submitted_step_running(foo_step_runner, foo_step_inited):
             assert True
             break
         if foo_step_inited.state != StepState.RUNNING:
-            assert False
-            break
+            pytest.fail("Step execution finished before correctly saving submission info (subtask targets).")
         time.sleep(SLEEP_TIME_WAIT)
 
 
@@ -187,7 +192,9 @@ def test_resubmit_step(foo_pipeline_runner, foo_pipeline_inited, resubmit_finish
     bar_sub_info = foo_pipeline_runner.submit_step(bar_step_inited)
     time.sleep(SLEEP_TIME_WAIT)
 
-    new_foo_sub_info = foo_pipeline_runner.resubmit_step(bar_step_inited.dep_step, resubmit_finished_subtasks=resubmit_finished)
+    new_foo_sub_info = foo_pipeline_runner.resubmit_step(
+        bar_step_inited.dep_step, resubmit_finished_subtasks=resubmit_finished
+    )
     time.sleep(SLEEP_TIME_WAIT)
     assert foo_sub_info["main_task"]["id"] != new_foo_sub_info["main_task"]["id"]
 

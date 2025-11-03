@@ -5,7 +5,8 @@ from typing import List
 import pytest
 from attrs import define, field
 
-from opuspocus.pipeline_steps import OpusPocusStep, build_step, register_step
+from opuspocus import pipeline_steps
+from opuspocus.pipeline_steps import OpusPocusStep, register_step
 from tests.utils import teardown_step
 
 
@@ -45,8 +46,9 @@ class FooStep(OpusPocusStep):
 @pytest.fixture()
 def foo_step(tmp_path_factory):
     """Basic mock step without dependencies."""
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
     pipeline_dir = tmp_path_factory.mktemp("foo.pipeline")
-    step = build_step(step="foo", step_label="foo.test", pipeline_dir=pipeline_dir)
+    step = FooStep.build_step(step="foo", step_label="foo.test", pipeline_dir=pipeline_dir)
     yield step
 
     teardown_step(step)
@@ -62,7 +64,8 @@ def foo_step_inited(foo_step):
 @pytest.fixture()
 def bar_step(foo_step):
     """Basic mock step with a single dependency."""
-    step = build_step(
+    pipeline_steps.STEP_INSTANCE_REGISTRY = {}
+    step = FooStep.build_step(
         step="foo",
         step_label="bar.test",
         pipeline_dir=foo_step.pipeline_dir,
