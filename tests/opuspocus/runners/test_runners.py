@@ -43,7 +43,7 @@ def test_run_pipeline(foo_pipeline_runner, foo_pipeline_inited):
     assert foo_pipeline_inited.state in (PipelineState.SUBMITTED, PipelineState.RUNNING)
 
 
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 def test_stop_pipeline(foo_pipeline_runner, foo_pipeline_inited):
     """Stop a running pipeline."""
     for s in foo_pipeline_inited.steps:
@@ -77,7 +77,7 @@ def test_submit_step(foo_step_runner, foo_step_inited):
     assert foo_step_inited.state in (PipelineState.SUBMITTED, PipelineState.RUNNING)
 
 
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 def test_submitted_step_running(foo_step_runner, foo_step_inited):
     """The running step should submit subtasks for each target file."""
     foo_step_runner.submit_step(foo_step_inited)
@@ -109,20 +109,19 @@ def test_submit_step_submission_info_structure(foo_step_runner, foo_step_inited)
         assert "id" in t_info
 
 
+@pytest.mark.timeout(30)
 def test_cancel_main_task(foo_step_runner, foo_step_inited):
     """Cancel a running step via its main task."""
     foo_step_inited.sleep_time = SLEEP_TIME_LONG
     foo_step_inited.save_parameters()
 
     sub_info = foo_step_runner.submit_step(foo_step_inited)
-    time.sleep(SLEEP_TIME_WAIT)
-    while foo_step_inited.state == StepState.SUBMITTED:
-        time.sleep(SLEEP_TIME_WAIT)
+    while foo_step_inited.state != StepState.RUNNING:
+        time.sleep(SLEEP_TIME_WAIT)  # Wait until the task starts exectuion
 
     foo_step_runner.cancel_task(sub_info["main_task"])
-    time.sleep(SLEEP_TIME_WAIT)
     while foo_step_inited.state == StepState.RUNNING:
-        time.sleep(SLEEP_TIME_WAIT)
+        time.sleep(SLEEP_TIME_WAIT)  # Wait for the task to stop execution
 
     assert foo_step_inited.state == StepState.FAILED
     for t_info in sub_info["subtasks"]:

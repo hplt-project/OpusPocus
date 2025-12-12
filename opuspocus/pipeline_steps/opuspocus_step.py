@@ -499,6 +499,7 @@ from opuspocus.pipeline_steps import StepState, load_step
 
 
 def main(argv):
+    step = None
     try:
         step = load_step("{self.step_label}", Path("{self.pipeline_dir}"))
         target_file = None
@@ -513,6 +514,8 @@ def main(argv):
         else:
             ValueError("Wrong number of arguments.")
     except Exception as err:
+        if step is None:
+            raise err
         if len(argv) == 1:
             step.state = StepState.FAILED
         raise err

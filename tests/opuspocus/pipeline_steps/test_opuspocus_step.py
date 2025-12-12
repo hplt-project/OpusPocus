@@ -1,5 +1,7 @@
 import importlib
 import py_compile
+import sys
+import time
 
 import pytest
 
@@ -7,6 +9,8 @@ from opuspocus import pipeline_steps
 from opuspocus.pipeline_steps import StepState, load_step
 from opuspocus.runners import SubmissionInfo
 from opuspocus.utils import open_file
+
+WAIT_TIME = 5
 
 
 def test_state_update_two_instances(foo_step_inited, monkeypatch):
@@ -23,6 +27,7 @@ def test_state_update_two_instances(foo_step_inited, monkeypatch):
 @pytest.fixture()
 def step_command_module(foo_step_inited, monkeypatch):
     """Reset the step registry and classes before each unit test run."""
+    # Reset registries
     monkeypatch.setattr(
         pipeline_steps, "STEP_REGISTRY", {k: v for k, v in pipeline_steps.STEP_REGISTRY.items() if "foo" not in k}
     )
@@ -30,6 +35,11 @@ def step_command_module(foo_step_inited, monkeypatch):
         pipeline_steps, "STEP_CLASS_NAMES", {v for v in pipeline_steps.STEP_CLASS_NAMES if "Foo" not in v}
     )
 
+    # Reload step fixture module
+    if "tests.fixtures.steps" in sys.modules:
+        importlib.reload(sys.modules["tests.fixtures.steps"])
+
+    # Load module
     loader = importlib.machinery.SourceFileLoader("step_command", str(foo_step_inited.cmd_path))
     spec = importlib.util.spec_from_loader("step_command", loader)
     module = importlib.util.module_from_spec(spec)
@@ -49,9 +59,9 @@ def test_cmd_file_syntax_valid(foo_step_inited):
 
 
 @pytest.mark.parametrize("partially_done", [False, True])
-def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner, partially_done):
+def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_step_runner, partially_done):
     """Command file's main task method executes correctly without issues (standalone, no runner)."""
-    foo_runner.save_parameters()
+    foo_step_runner.save_parameters()
     foo_step_inited.sleep_time = 1
 
     finished_target = None
@@ -60,8 +70,8 @@ def test_cmd_file_execute_main(step_command_module, foo_step_inited, foo_runner,
         finished_target_str = "PREVIOUSLY_FINISHED"
         print(finished_target_str, file=open_file(finished_target, "w"))
 
-    foo_runner.save_submission_info(
-        foo_step_inited, SubmissionInfo(runner=foo_runner.runner, main_task=None, subtasks=[])
+    foo_step_runner.save_submission_info(
+        foo_step_inited, SubmissionInfo(runner=foo_step_runner.runner, main_task=None, subtasks=[])
     )
     step_command_module.main(["foo_cmd"])
     assert foo_step_inited.state == StepState.DONE
@@ -78,9 +88,9 @@ def test_cmd_file_execute_sub(step_command_module, foo_step_inited):
     """Command file's subtask method executes correctly without issues (standalone, no runner)."""
     foo_step_inited.sleep_time = 1
 
-    target_file = foo_step_inited.get_command_targets()[0]
-    assert not target_file.exists()
-
-    step_command_module.main(["foo_cmd", str(target_file)])
-    assert target_file.exists()
-    assert open_file(target_file, "r").readline().rstrip("\n") == foo_step_inited.get_output_str(target_file)
+    for target_file in foo_step_inited.get_command_targets():
+        assert not target_file.exists()
+        step_command_module.main(["foo_cmd", str(target_file)])
+        assert target_file.exists()
+        assert open_file(target_file, "r").readline().rstrip("\n") == foo_step_inited.get_output_str(target_file)
+    foo_step_inited.state = StepState.DONE

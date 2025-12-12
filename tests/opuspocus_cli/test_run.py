@@ -10,6 +10,7 @@ from opuspocus.pipelines import PipelineInitError, PipelineStateError
 from opuspocus_cli import main
 
 SLEEP_TIME_WAIT = 2
+TIMEOUT_TIME = 40
 
 
 def test_run_default_values(foo_pipeline_config_file):
@@ -45,7 +46,7 @@ def test_run_nonempty_directory_exists_fail(foo_pipeline):
         )
 
 
-@pytest.mark.timeout(40)
+@pytest.mark.timeout(TIMEOUT_TIME)
 @pytest.mark.parametrize(
     "pipeline_in_state",
     ["foo_pipeline_partially_inited", "foo_pipeline_inited", "foo_pipeline_failed", "foo_pipeline_done"],
@@ -63,9 +64,8 @@ def test_run_pipeline_in_state(pipeline_in_state, request):
         ]
     )
     assert rc == 0
-    # Wait for the execution to finish to avoid problems during the cleanup
     while pipeline.state == StepState.RUNNING:
-        time.sleep(SLEEP_TIME_WAIT)
+        time.sleep(SLEEP_TIME_WAIT)  # Wait for the execution to finish to avoid problems during the cleanup
 
 
 @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ def test_run_pipeline_in_state_fail(pipeline_in_state, request):
         )
 
 
-@pytest.mark.timeout(40)
+@pytest.mark.timeout(TIMEOUT_TIME)
 @pytest.mark.parametrize(
     "pipeline_in_state",
     [
@@ -118,9 +118,10 @@ def test_run_pipeline_in_state_reinit(pipeline_in_state, request):
     rc = main(argv)
     assert rc == 0
     while pipeline.state == StepState.RUNNING:
-        time.sleep(SLEEP_TIME_WAIT)
+        time.sleep(SLEEP_TIME_WAIT)  # Wait for the execution to finish to avoid problems during the cleanup
 
 
+@pytest.mark.timeout(TIMEOUT_TIME)
 @pytest.mark.parametrize(
     ("pipeline_in_state", "warn"),
     [
@@ -148,3 +149,5 @@ def test_run_pipeline_in_state_stop(pipeline_in_state, warn, request):
     else:
         rc = main(cmd)
     assert rc == 0
+    while pipeline.state == StepState.RUNNING:
+        time.sleep(SLEEP_TIME_WAIT)  # Wait for the execution to finish to avoid problems during the cleanup

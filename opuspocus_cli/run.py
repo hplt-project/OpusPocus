@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 import sys
+import time
 import warnings
 from typing import Sequence
 
@@ -12,6 +13,8 @@ from opuspocus.pipelines import OpusPocusPipeline, PipelineState, build_pipeline
 from opuspocus.runners import build_runner, load_runner
 
 logger = logging.getLogger(__name__)
+
+WAIT_TIME = 15
 
 
 def parse_args(argv: Sequence[str]) -> DictConfig:
@@ -31,7 +34,10 @@ def init_pipeline(pipeline: OpusPocusPipeline, config: PipelineConfig) -> OpusPo
             logger.info("Stopping the previous run...")
             prev_runner = load_runner(config)
             prev_runner.stop_pipeline(pipeline)
+            while pipeline.state in [PipelineState.RUNNING, PipelineState.SUBMITTED]:
+                time.sleep(WAIT_TIME)  # wait for state change
         pipeline.reinit(ignore_finished=config.cli_options.reinit_failed)
+        assert pipeline.state == PipelineState.INITED
     return pipeline
 
 
@@ -81,7 +87,7 @@ def main(args: DictConfig) -> int:
     runner = build_runner(config)
 
     # Check the pipeline state and whether it requires --reinit or --rerun flags
-    if config.cli_options.stop_previous_run:
+    if config.cli_options.stop_previous_run and (not config.cli_options.reinit or config.cli_options.reinit_failed):
         stopped_states = [
             PipelineState.INIT_INCOMPLETE,
             PipelineState.INITED,
