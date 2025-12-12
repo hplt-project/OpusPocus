@@ -148,25 +148,30 @@ class OpusPocusRunner:
     def stop_pipeline(self, pipeline: OpusPocusPipeline) -> None:
         """Stop a running pipeline execution."""
         for step in pipeline.steps:
-            if not step.is_running_or_submitted:
-                continue
-            sub_info = self.load_submission_info(step)
-            sub_runner = sub_info["runner"]
-            if sub_runner != self.runner:
-                err_msg = (
-                    f"Step {step.step_label} cannot be cancelled using {self.runner} runner because it "
-                    f"was submitted by a different runner type ({sub_runner})."
-                )
-                raise ValueError(err_msg)
+            while step.is_running_or_submitted:
+                logger.info("[%s] Attempting to stop step %s...", self.runner, step.step_label)
+                self.stop_step(step)
+                time.sleep(SLEEP_TIME)
 
-            logger.info("[%s] Stopping step %s and setting the step state to FAILED.", self.runner, step.step_label)
-            task_info = sub_info["main_task"]
+    def stop_step(self, step: OpusPocusStep) -> None:
+        """Stop a running step execution."""
+        sub_info = self.load_submission_info(step)
+        sub_runner = sub_info["runner"]
+        if sub_runner != self.runner:
+            err_msg = (
+                f"Step {step.step_label} cannot be cancelled using {self.runner} runner because it "
+                f"was submitted by a different runner type ({sub_runner})."
+            )
+            raise ValueError(err_msg)
 
-            # TODO(varisd): the main task should take care of cancelling / cleaning up its subtasks after receiving a
-            #   SIGTERM/SIGUSR1 signal, however, we should probably take care of situations where the main task dies
-            #   before finishing the cleanup
-            self.cancel_task(task_info)
-            step.state = StepState.FAILED
+        logger.info("[%s] Stopping step %s and setting the step state to FAILED.", self.runner, step.step_label)
+        task_info = sub_info["main_task"]
+
+        # TODO(varisd): the main task should take care of cancelling / cleaning up its subtasks after receiving a
+        #   SIGTERM/SIGUSR1 signal, however, we should probably take care of situations where the main task dies
+        #   before finishing the cleanup
+        self.cancel_task(task_info)
+        step.state = StepState.FAILED
 
     def run_pipeline(
         self,
