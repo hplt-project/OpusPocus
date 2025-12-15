@@ -43,10 +43,15 @@ def parse_args(argv: Sequence[str]) -> DictConfig:
 def main(argv: Sequence[str]) -> int:
     """Process the CLI arguments and call a specific CLI main method."""
     args = parse_args(argv)
+    log_level = None
     if args.cli_options.log_level == "info":
-        logging.basicConfig(level=logging.INFO)
+        log_level = logging.INFO
     elif args.cli_options.log_level == "debug":
-        logging.basicConfig(level=logging.DEBUG)
+        log_level = logging.DEBUG
+    else:
+        err_msg = f"Unkown logging level: {log_level}."
+        raise ValueError(err_msg)
+    logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=log_level, datefmt="%Y-%m-%d %H:%M:%S")
     return CMD_MODULES[args.command].main(args)
 
 

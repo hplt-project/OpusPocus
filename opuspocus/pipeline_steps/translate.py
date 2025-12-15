@@ -169,4 +169,4 @@ class TranslateCorpusStep(CorpusStep):
 
     @property
     def default_resources(self) -> RunnerResources:
-        return RunnerResources(gpus=1, mem="20g")
+        return RunnerResources(gpus=1, mem="10g")

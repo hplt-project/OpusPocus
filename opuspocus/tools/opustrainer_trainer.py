@@ -85,6 +85,15 @@ def main(args: argparse.Namespace) -> int:
         preexec_fn=ignore_sigint,  # noqa: PLW1509
     )  # ignore_sigint makes marian ignore Ctrl-C. We'll stop it from here.
 
+    # Propagate the termination signal to the opustraine
+    def opustrainer_terminate_handler(signum, _) -> None:  # noqa: ANN001
+        logger.debug("Received signal %i, gracefully terminating OpusTrainer child process...", signum)
+        model_trainer.stdin.close()
+        err_msg = f"OpusTrainer process received signal {signum}. Terminating..."
+        raise InterruptedError(err_msg)
+
+    signal.signal(signal.SIGTERM, opustrainer_terminate_handler)
+
     assert model_trainer.stdin is not None
 
     # TODO: This logic looks complicated, should be able to do this simpler. Three scenarios:

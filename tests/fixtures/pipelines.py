@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,11 @@ from opuspocus.pipeline_steps import OpusPocusStep, StepState
 from opuspocus.pipelines import OpusPocusPipeline, build_pipeline
 from opuspocus.runners import build_runner
 from opuspocus.runners.debug import DebugRunner
-from tests.utils import teardown_pipeline
+
+# NOTE(varisd): we wait a bit at the end of each fixture to avoid
+#       possible race conditions, e.g. task submission, state update
+#       (is there a better solution)?
+WAIT_TIME = 1
 
 
 @define(kw_only=True)
@@ -51,10 +56,7 @@ class FooPipeline(OpusPocusPipeline):
 def foo_pipeline(bar_step):
     """Basic (two-step) mock pipeline."""
     pipeline_steps.STEP_INSTANCE_REGISTRY = {}
-    pipeline = FooPipeline(bar_step=bar_step)
-    yield pipeline
-
-    teardown_pipeline(pipeline)
+    return FooPipeline(bar_step=bar_step)
 
 
 @pytest.fixture()
@@ -69,6 +71,8 @@ def foo_pipeline_config_file(foo_pipeline, tmp_path_factory):
 def foo_pipeline_inited(foo_pipeline):
     """Basic mock pipeline (INITED)."""
     foo_pipeline.init()
+    time.sleep(WAIT_TIME)
+    assert foo_pipeline.state == StepState.INITED
     return foo_pipeline
 
 
@@ -76,6 +80,8 @@ def foo_pipeline_inited(foo_pipeline):
 def foo_pipeline_partially_inited(foo_pipeline_inited):
     """Basic mock pipeline (INIT_INCOMPLETE)."""
     foo_pipeline_inited.steps[0].state = StepState.INIT_INCOMPLETE
+    time.sleep(WAIT_TIME)
+    assert foo_pipeline_inited.state == StepState.INIT_INCOMPLETE
     return foo_pipeline_inited
 
 
@@ -88,16 +94,18 @@ def foo_pipeline_running(foo_pipeline_inited):
     runner = build_runner(
         PipelineConfig.create(
             {
-                "runner": {
-                    "runner": "bash",
-                    "run_tasks_in_parallel": True,
-                    "runner_resources": None,
+                "runner": {"runner": "bash", "run_tasks_in_parallel": True, "runner_resources": None},
+                "pipeline": {
+                    "pipeline_dir": str(foo_pipeline_inited.pipeline_dir),
+                    "steps": [s.get_parameters_dict(exclude_dependencies=False) for s in foo_pipeline_inited.steps],
+                    "targets": [s.step_label for s in foo_pipeline_inited.targets],
                 },
-                "pipeline": {"pipeline_dir": foo_pipeline_inited.pipeline_dir, "steps": []},
             }
         )
     )
-    runner.run_pipeline(foo_pipeline_inited, None)
+    runner.run_pipeline(foo_pipeline_inited)
+    time.sleep(WAIT_TIME)
+    assert foo_pipeline_inited.state in [StepState.SUBMITTED, StepState.RUNNING]
     return foo_pipeline_inited
 
 
@@ -112,17 +120,25 @@ def foo_pipeline_done(foo_pipeline_inited):
             }
         )
     )
-    runner.run_pipeline(foo_pipeline_inited)
+    runner.run_pipeline(foo_pipeline_inited, None)
+    time.sleep(WAIT_TIME)
     tasks = [runner.load_submission_info(s)["main_task"] for s in foo_pipeline_inited.steps]
     runner.wait_for_tasks(tasks)
+    assert foo_pipeline_inited.state == StepState.DONE
     return foo_pipeline_inited
 
 
 @pytest.fixture()
 def foo_pipeline_failed(foo_pipeline_done):
-    """Basic mock pipeline (FAILED)."""
+    """Basic mock pipeline (FAILED).
+
+    We derive a failed pipelien from a finished pipeline since we expect failing to be a consequence of a pipeline
+    execution.
+    """
     for s in foo_pipeline_done.steps:
         s.state = StepState.FAILED
+    time.sleep(WAIT_TIME)
+    assert foo_pipeline_done.state == StepState.FAILED
     return foo_pipeline_done
 
 
@@ -138,10 +154,7 @@ def pipeline_preprocess_tiny(
         pipeline_preprocess_tiny_config_file,
         DictConfig({"pipeline": {"pipeline_dir": pipeline_dir}, "runner": {"runner": "bash"}, "steps": []}),
     )
-    pipeline = build_pipeline(config)
-    yield pipeline
-
-    teardown_pipeline(pipeline)
+    return build_pipeline(config)
 
 
 @pytest.fixture()
@@ -155,7 +168,7 @@ def pipeline_preprocess_tiny_inited(pipeline_preprocess_tiny):
 def pipeline_preprocess_tiny_done(pipeline_preprocess_tiny_inited):
     """Mock Dataset Preprocessing pipeline (DONE)."""
     runner = DebugRunner("debug", pipeline_preprocess_tiny_inited.pipeline_dir)
-    runner.run_pipeline(pipeline_preprocess_tiny_inited)
+    runner.run_pipeline(pipeline_preprocess_tiny_inited, None)
     return pipeline_preprocess_tiny_inited
 
 
@@ -170,10 +183,7 @@ def pipeline_train_tiny(
     config = PipelineConfig.load(
         pipeline_train_tiny_config_file, DictConfig({"pipeline": {"pipeline_dir": pipeline_dir}, "steps": []})
     )
-    pipeline = build_pipeline(config)
-    yield pipeline
-
-    teardown_pipeline(pipeline)
+    return build_pipeline(config)
 
 
 @pytest.fixture()
@@ -187,5 +197,5 @@ def pipeline_train_tiny_inited(pipeline_train_tiny):
 def pipeline_train_tiny_done(pipeline_train_tiny_inited):
     """Mock Training pipeline (DONE)."""
     runner = DebugRunner("debug", pipeline_train_tiny_inited.pipeline_dir)
-    runner.run_pipeline(pipeline_train_tiny_inited)
+    runner.run_pipeline(pipeline_train_tiny_inited, None)
     return pipeline_train_tiny_inited

@@ -77,12 +77,8 @@ class BashRunner(OpusPocusRunner):
             dependencies_str = " ".join([str(dep["id"]) for dep in dependencies])
         env_dict = task_resources.get_env_dict()
 
-        stdout = sys.stdout
-        if stdout_file is not None:
-            stdout = stdout_file.open("w")
-        stderr = sys.stderr
-        if stderr_file is not None:
-            stderr = stderr_file.open("w")
+        stdout = stdout_file.open("w") if stdout_file is not None else sys.stdout
+        stderr = stderr_file.open("w") if stderr_file is not None else sys.stderr
 
         # Subtasks do not have dependencies - no need for the wrapper
         if target_file is not None:
@@ -111,7 +107,8 @@ class BashRunner(OpusPocusRunner):
             t_file_str = str(target_file)
         task_info = BashTaskInfo(file_path=t_file_str, id=proc.pid)
         logger.info("Submitted command: '%s %s', pid: %i", cmd_path, t_file_str, proc.pid)
-        time.sleep(SLEEP_TIME)  # We do not want to start proccess too quickly
+        while not self.is_task_running(task_info):
+            time.sleep(SLEEP_TIME)  # We do not want to start proccess too quickly
 
         # If executing serially, we wait for each process to finish before submitting next
         if target_file is not None and not self.run_tasks_in_parallel:
@@ -152,9 +149,6 @@ class BashRunner(OpusPocusRunner):
                     if file_path.exists():
                         file_path.unlink()
                 err_msg = f"Process {pid} exited with non-zero value."
-                import pdb
-
-                pdb.set_trace()
                 raise subprocess.SubprocessError(err_msg)
 
     def is_task_running(self, task_info: BashTaskInfo) -> bool:

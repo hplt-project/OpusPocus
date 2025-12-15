@@ -5,6 +5,7 @@ from typing import Any, Optional, Sequence
 
 from omegaconf import DictConfig, OmegaConf
 
+from opuspocus.config import PipelineConfig
 from opuspocus.pipelines import OpusPocusPipeline
 from opuspocus.runners import RUNNER_REGISTRY
 from opuspocus.utils import file_path, flatten_dict_config
@@ -142,6 +143,13 @@ def parse_run_args(argv: Sequence[str]) -> DictConfig:
     args, _ = parser.parse_known_args(argv)
     if getattr(args, "runner.runner", None) is not None:
         RUNNER_REGISTRY[getattr(args, "runner.runner")].add_args(parser)
+    elif getattr(args, "pipeline_config", None) is not None:
+        config = OmegaConf.load(args.pipeline_config)
+        if "runner" in config and "runner" in config.runner:
+            RUNNER_REGISTRY[config.runner.runner].add_args(parser)
+    elif getattr(args, "pipeline.pipeline_dir", None) is not None:
+        config = PipelineConfig.load_from_directory(getattr(args, "pipeline.pipeline_dir"))
+        RUNNER_REGISTRY[config.runner.runner].add_args(parser)
 
     return parse2config(parser, argv)
 

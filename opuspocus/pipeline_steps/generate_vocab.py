@@ -139,8 +139,8 @@ class GenerateVocabStep(OpusPocusStep):
             Path(
                 self.output_dir,
                 f"model.{self.tgt_lang}-{self.src_lang}.{suffix}",
-            ).symlink_to(Path(self.output_dir, target_file.stem + suffix))
+            ).symlink_to(Path(self.output_dir, f"{target_file.stem}.{suffix}"))
 
     @property
     def default_resources(self) -> RunnerResources:
-        return RunnerResources(mem="70g")
+        return RunnerResources(mem="50g")

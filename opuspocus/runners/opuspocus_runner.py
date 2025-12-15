@@ -37,7 +37,7 @@ class OpusPocusRunner:
     runner: str = field(validator=validators.instance_of(str))
     pipeline_dir: Path = field(converter=Path)
     runner_resources: RunnerResources = field(
-        validator=validators.instance_of(RunnerResources), default=RunnerResources()
+        validator=validators.optional(validators.instance_of(RunnerResources)), default=None
     )
 
     _parameter_filename = "runner.parameters"
@@ -80,7 +80,7 @@ class OpusPocusRunner:
         Returns:
             An instance of the specified runner class.
         """
-        if "runner_resources" in kwargs:
+        if "runner_resources" in kwargs and kwargs["runner_resources"] is not None:
             kwargs["runner_resources"] = RunnerResources(**kwargs["runner_resources"])
         else:
             logger.debug(
@@ -143,30 +143,35 @@ class OpusPocusRunner:
     def save_parameters(self) -> None:
         """Save the runner instance parameters."""
         with Path(self.pipeline_dir, self._parameter_filename).open("w") as fh:
-            yaml.dump(self.get_parameters_dict(), fh)
+            yaml.safe_dump(self.get_parameters_dict(), fh)
 
     def stop_pipeline(self, pipeline: OpusPocusPipeline) -> None:
         """Stop a running pipeline execution."""
         for step in pipeline.steps:
-            if not step.is_running_or_submitted:
-                continue
-            sub_info = self.load_submission_info(step)
-            sub_runner = sub_info["runner"]
-            if sub_runner != self.runner:
-                err_msg = (
-                    f"Step {step.step_label} cannot be cancelled using {self.runner} runner because it "
-                    f"was submitted by a different runner type ({sub_runner})."
-                )
-                raise ValueError(err_msg)
+            while step.is_running_or_submitted:
+                logger.info("[%s] Attempting to stop step %s...", self.runner, step.step_label)
+                self.stop_step(step)
+                time.sleep(SLEEP_TIME)
 
-            logger.info("[%s] Stopping step %s and setting the step state to FAILED.", self.runner, step.step_label)
-            task_info = sub_info["main_task"]
+    def stop_step(self, step: OpusPocusStep) -> None:
+        """Stop a running step execution."""
+        sub_info = self.load_submission_info(step)
+        sub_runner = sub_info["runner"]
+        if sub_runner != self.runner:
+            err_msg = (
+                f"Step {step.step_label} cannot be cancelled using {self.runner} runner because it "
+                f"was submitted by a different runner type ({sub_runner})."
+            )
+            raise ValueError(err_msg)
 
-            # TODO(varisd): the main task should take care of cancelling / cleaning up its subtasks after receiving a
-            #   SIGTERM/SIGUSR1 signal, however, we should probably take care of situations where the main task dies
-            #   before finishing the cleanup
-            self.cancel_task(task_info)
-            step.state = StepState.FAILED
+        logger.info("[%s] Stopping step %s and setting the step state to FAILED.", self.runner, step.step_label)
+        task_info = sub_info["main_task"]
+
+        # TODO(varisd): the main task should take care of cancelling / cleaning up its subtasks after receiving a
+        #   SIGTERM/SIGUSR1 signal, however, we should probably take care of situations where the main task dies
+        #   before finishing the cleanup
+        self.cancel_task(task_info)
+        step.state = StepState.FAILED
 
     def run_pipeline(
         self,
@@ -389,7 +394,9 @@ class OpusPocusRunner:
             sub_info (SubmissionInfo): submission information for the given step execution submission
         """
         with Path(step.step_dir, self._info_filename).open("w") as fh:
-            yaml.dump(sub_info, fh)
+            yaml.safe_dump(sub_info, fh, sort_keys=False)
+        while sub_info != self.load_submission_info(step):
+            time.sleep(SLEEP_TIME)
 
     def load_submission_info(self, step: OpusPocusStep) -> Optional[SubmissionInfo]:
         """Load the submission information for a given pipeline step.
@@ -408,5 +415,8 @@ class OpusPocusRunner:
         if step.runner_resources is not None:
             # Get step-specific resources if available
             return step.runner_resources
-        # Otherwise, use the global resources
-        return self.runner_resources
+        if self.runner_resources is not None:
+            # Next, try using the user-specified global resources
+            return self.runner_resources
+        # If no resources were specified, use the default step-specific resources
+        return step.default_resources

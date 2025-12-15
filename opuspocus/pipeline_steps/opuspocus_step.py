@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 from attrs import asdict, define, field, fields, validators
+from omegaconf import ListConfig
 
 from opuspocus.runner_resources import RunnerResources
 from opuspocus.utils import clean_dir, print_indented
@@ -42,7 +43,7 @@ class OpusPocusStep:
         validator=validators.optional(validators.instance_of(RunnerResources)), default=None
     )
 
-    _cmd_filename = "step.command"
+    _cmd_filename = "command.py"
     _dependency_filename = "step.dependencies"
     _state_filename = "step.state"
     _parameter_filename = "step.parameters"
@@ -153,6 +154,9 @@ class OpusPocusStep:
                 param_dict[attr] = value.resource_dict
             elif isinstance(value, (list, tuple)) and any(isinstance(v, Path) for v in value):
                 param_dict[attr] = [str(v) for v in value]
+            elif isinstance(value, (ListConfig)):
+                # NOTE(varisd): workaround due to ListConfig objects sometimes leading to yaml.dump errors
+                param_dict[attr] = list(value)
             else:
                 param_dict[attr] = value
         return param_dict
@@ -360,7 +364,11 @@ class OpusPocusStep:
             """Handler for task cancellation signals."""
             logger.info("[%s] Received signal %s. Terminating subtasks...", self.step_label, signum)
             self.state = StepState.FAILED
-            logger.info("[%s] Current subtask list: %s", self.step_label, " ".join(task_info_list))
+            logger.info(
+                "[%s] Current subtask list: %s",
+                self.step_label,
+                " ".join([str(task_info["id"]) for task_info in task_info_list]),
+            )
             for task_info in task_info_list:
                 runner.send_signal(task_info, signum)
             sys.exit(signum)
@@ -432,8 +440,6 @@ class OpusPocusStep:
             submission_info["subtasks"] = task_info_list
             runner.save_submission_info(self, submission_info)
 
-            time.sleep(0.5)
-
         self.state = StepState.RUNNING
         runner.wait_for_tasks(task_info_list)
         self.main_task_postprocess()
@@ -473,6 +479,8 @@ class OpusPocusStep:
         Calls the self.command(target_file) with the give target_file and handles runtime exceptions.
         """
         try:
+            if not self.has_state(StepState.RUNNING):
+                self.state = StepState.RUNNING
             self.command(target_file)
         except Exception:
             if target_file is not None and target_file.exists():
@@ -491,6 +499,7 @@ from opuspocus.pipeline_steps import StepState, load_step
 
 
 def main(argv):
+    step = None
     try:
         step = load_step("{self.step_label}", Path("{self.pipeline_dir}"))
         target_file = None
@@ -505,6 +514,8 @@ def main(argv):
         else:
             ValueError("Wrong number of arguments.")
     except Exception as err:
+        if step is None:
+            raise err
         if len(argv) == 1:
             step.state = StepState.FAILED
         raise err
@@ -551,3 +562,7 @@ if __name__ == "__main__":
                 print_indented("+ None", level + 1)
                 continue
             dep.print_traceback(level + 1, full=full)
+
+    @property
+    def default_resources(self) -> RunnerResources:
+        return RunnerResources(gpus=0, cpus=1, mem="5g")

@@ -6,7 +6,6 @@ from opuspocus_cli import main
 @pytest.mark.parametrize(
     ("pipeline_in_state", "warn"),
     [
-        ("foo_pipeline", True),
         ("foo_pipeline_partially_inited", True),
         ("foo_pipeline_inited", True),
         ("foo_pipeline_failed", True),
