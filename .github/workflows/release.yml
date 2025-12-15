@@ -26,7 +26,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: build-sdist
-          path: dist/opuspocus-*.tar.gz
+          path: dist/opuspocus*.tar.gz
 
   build_wheels:
     name: Build wheels
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: build-wheels
-          path: ./wheelhouse/opuspocus-*.whl
+          path: ./wheelhouse/opuspocus*.whl
           
   run_tests:
     needs: [build_sdist]
@@ -71,7 +71,7 @@ jobs:
           path: dist
 
       - name: Install
-        run: python3 -m pip install dist/opuspocus-*.whl
+        run: python3 -m pip install dist/opuspocus*.whl
 
       - name: Run pytest
         run: python3 -m pytest -s -v tests/
