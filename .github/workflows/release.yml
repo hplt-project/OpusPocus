@@ -71,7 +71,7 @@ jobs:
           path: ./dist
 
       - name: Install
-        run: python3 -m pip install ./dist/opuspocus*.whl
+        run: python3 -m pip install ./dist/opuspocus*.tar.gz
 
       - name: Run pytest
         run: python3 -m pytest -s -v ./tests/
