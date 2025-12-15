@@ -22,7 +22,7 @@ Issues = "https://github.com/hplt-project/opuspocus/issues"
 Repository = "https://github.com/hplt-project/OpusPocus.git"
 
 [tool.setuptools]
-py-modules = ["opuspocus"]
+py-modules = ["opuspocus", "opuspocus_cli"]
 
 [tool.pytest.ini_options]
 log_cli = true
