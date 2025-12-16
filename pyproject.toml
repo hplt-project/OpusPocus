@@ -1,9 +1,8 @@
-
 [project]
 name = "opuspocus"
 description = "Modular NLP pipeline manager."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 keywords = ["OPUS", "HPLT", "pipeline manager"]
 authors = [{ name = "Dušan Variš", email = "varis@ufal.mff.cuni.cz" }]
