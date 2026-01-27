@@ -55,6 +55,11 @@ def main(argv: Sequence[str]) -> int:
     return CMD_MODULES[args.command].main(args)
 
 
+def main_entry() -> None:
+    """Entry point. Similar to go.py"""
+    sys.exit(main(sys.argv[1:]))
+
+
 cli_dir = Path(__file__).parents[0]
 for file in cli_dir.iterdir():
     if (

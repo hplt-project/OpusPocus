@@ -1,25 +1,45 @@
+[build-system]
+requires = ["hatchling", "hatch-requirements-txt"]
+build-backend = "hatchling.build"
 
 [project]
 name = "opuspocus"
+version = "0.1.0"
 description = "Modular NLP pipeline manager."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = { text = "MIT" }
+license-files = ["LICEN[CS]E*"]
 keywords = ["OPUS", "HPLT", "pipeline manager"]
 authors = [{ name = "Dušan Variš", email = "varis@ufal.mff.cuni.cz" }]
 classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Programming Language :: Python",
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3",
 ]
-dynamic = ["version", "dependencies", "optional-dependencies"]
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.scripts]
-opuspocus = "go:main_cli"
+opuspocus = "opuspocus_cli:main_entry"
 
 [project.urls]
 Documentation = "https://github.com/hplt-project/opuspocus#readme"
 Issues = "https://github.com/hplt-project/opuspocus/issues"
 Repository = "https://github.com/hplt-project/OpusPocus.git"
+
+[tool.hatch.version]
+path = "opuspocus/__about__.py"
+
+[tool.hatch.envs.default]
+dependencies = ["pytest"]
+
+[tool.hatch.build]
+include = ["opuspocus", "opuspocus_cli"]
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
+
+[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+all = ["requirements-all.txt"]
 
 [tool.pytest.ini_options]
 log_cli = true
